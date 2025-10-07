@@ -92,8 +92,7 @@ class GoogleCalendarService:
             from django.contrib.auth import get_user_model
             User = get_user_model()
             user, created = User.objects.get_or_create(
-                username=f"whatsapp_{integration_request.whatsapp_number}",
-                defaults={'email': f"whatsapp_{integration_request.whatsapp_number}@example.com"}
+                id=integration_request.user_id,
             )
 
             # Usa a instância Evolution diretamente da solicitação
@@ -106,7 +105,7 @@ class GoogleCalendarService:
                     'access_token': credentials.token,
                     'refresh_token': credentials.refresh_token,
                     'expires_at': timezone.make_aware(datetime.fromtimestamp(credentials.expiry.timestamp())),
-                    'whatsapp_number': integration_request.whatsapp_number,
+                    'user_id': integration_request.user_id,
                     'evolution_instance': evolution_instance,
                 }
             )

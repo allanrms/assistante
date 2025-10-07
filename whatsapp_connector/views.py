@@ -439,7 +439,7 @@ def connect_instance(request, pk):
     Conecta uma instância ao WhatsApp
     """
     try:
-        instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user)
+        instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
         
         # Conectar via Evolution API
         url = f"{instance.base_url}/instance/connect/{instance.instance_name}"
@@ -470,7 +470,7 @@ def logout_instance(request, pk):
     Faz logout de uma instância WhatsApp
     """
     try:
-        instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user)
+        instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
         
         # Logout via Evolution API
         url = f"{instance.base_url}/instance/logout/{instance.instance_name}"
@@ -696,7 +696,7 @@ def configure_webhook(request, pk):
     """
     Página para configurar webhook da instância
     """
-    instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user)
+    instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
     
     if request.method == 'POST':
         # Se é uma requisição JSON (via AJAX)
@@ -859,7 +859,7 @@ def configure_contacts(request, pk):
     """
     Página para configurar contatos autorizados da instância
     """
-    instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user)
+    instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
     
     if request.method == 'POST':
         form = AuthorizedNumbersForm(request.POST)
@@ -908,7 +908,7 @@ def update_connection_info(request, pk):
     """
     API endpoint para forçar atualização das informações de conexão
     """
-    instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user)
+    instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
     
     try:
         success = instance.fetch_and_update_connection_info()
@@ -941,7 +941,7 @@ def toggle_ignore_own_messages(request, pk):
     API endpoint para alternar o campo ignore_own_messages
     """
     try:
-        instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user)
+        instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
         
         # Alternar o valor
         instance.ignore_own_messages = not instance.ignore_own_messages
@@ -967,7 +967,7 @@ def toggle_instance_active(request, pk):
     API endpoint para alternar o campo is_active
     """
     try:
-        instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user)
+        instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
         
         # Alternar o valor
         instance.is_active = not instance.is_active

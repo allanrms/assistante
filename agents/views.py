@@ -261,7 +261,7 @@ class AssistantContextFileUploadView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         # Associar o arquivo à configuração LLM (apenas do usuário atual)
         llm_config_id = self.kwargs.get('llm_config_id')
-        llm_config = get_object_or_404(LLMProviderConfig, id=llm_config_id, owner=self.request.user)
+        llm_config = get_object_or_404(LLMProviderConfig, id=llm_config_id, owner=self.request.user.client)
         
         context_file = form.save(commit=False)
         context_file.llm_config = llm_config
@@ -315,7 +315,7 @@ class AssistantContextFileUploadView(LoginRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         llm_config_id = self.kwargs.get('llm_config_id')
-        context['llm_config'] = get_object_or_404(LLMProviderConfig, id=llm_config_id, owner=self.request.user)
+        context['llm_config'] = get_object_or_404(LLMProviderConfig, id=llm_config_id, owner=self.request.user.client)
         return context
 
 
@@ -338,7 +338,7 @@ class AssistantContextFileListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         llm_config_id = self.kwargs.get('llm_config_id')
-        context['llm_config'] = get_object_or_404(LLMProviderConfig, id=llm_config_id, owner=self.request.user)
+        context['llm_config'] = get_object_or_404(LLMProviderConfig, id=llm_config_id, owner=self.request.user.client)
         return context
 
 
@@ -351,7 +351,7 @@ class AssistantContextFileUpdateView(LoginRequiredMixin, UpdateView):
     template_name = 'agents/context_files/edit.html'
     
     def get_queryset(self):
-        return AssistantContextFile.objects.filter(llm_config__owner=self.request.user)
+        return AssistantContextFile.objects.filter(llm_config__owner=self.request.user.client)
     
     def get_form_class(self):
         # Formulário simplificado para edição (sem campo de arquivo)
@@ -377,7 +377,7 @@ class AssistantContextFileDeleteView(LoginRequiredMixin, DeleteView):
     template_name = 'agents/context_files/delete.html'
     
     def get_queryset(self):
-        return AssistantContextFile.objects.filter(llm_config__owner=self.request.user)
+        return AssistantContextFile.objects.filter(llm_config__owner=self.request.user.client)
     
     def get_success_url(self):
         return reverse_lazy('agents:assistant_detail', kwargs={'pk': self.object.llm_config.pk})

@@ -1,0 +1,253 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Editar Instância - Assistante{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold text-dark">
+        <i class="bi bi-pencil-square me-2"></i>
+        Editar Instância: {{ instance.name }}
+    </h1>
+    <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>
+        Voltar
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-gear me-2"></i>
+                    Configuração da Instância
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">
+                                <i class="bi bi-tag me-1"></i>
+                                {{ form.name.label }}
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.name.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">{{ form.name.help_text }}</div>
+                        </div>
+
+                     <div class="col-md-6 mb-3">
+                        <label for="{{ form.llm_config.id_for_label }}" class="form-label fw-semibold">
+                            <i class="bi bi-robot me-1"></i>
+                            {{ form.llm_config.label }}
+                        </label>
+                        {{ form.llm_config }}
+                        {% if form.llm_config.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.llm_config.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">{{ form.llm_config.help_text }}</div>
+                    </div>
+                        
+{#                        <div class="col-md-6 mb-3">#}
+{#                            <label for="{{ form.instance_name.id_for_label }}" class="form-label fw-semibold">#}
+{#                                <i class="bi bi-code-slash me-1"></i>#}
+{#                                {{ form.instance_name.label }}#}
+{#                                <small class="text-muted">(gerado automaticamente)</small>#}
+{#                            </label>#}
+{#                            {{ form.instance_name }}#}
+{#                            {% if form.instance_name.errors %}#}
+{#                                <div class="text-danger small mt-1">#}
+{#                                    {% for error in form.instance_name.errors %}#}
+{#                                        <div>{{ error }}</div>#}
+{#                                    {% endfor %}#}
+{#                                </div>#}
+{#                            {% endif %}#}
+{#                            <div class="form-text">{{ form.instance_name.help_text }}</div>#}
+{#                        </div>#}
+                    </div>
+                    
+{#                    <div class="mb-3">#}
+{#                        <label for="{{ form.base_url.id_for_label }}" class="form-label fw-semibold">#}
+{#                            <i class="bi bi-globe me-1"></i>#}
+{#                            {{ form.base_url.label }}#}
+{#                        </label>#}
+{#                        {{ form.base_url }}#}
+{#                        {% if form.base_url.errors %}#}
+{#                            <div class="text-danger small mt-1">#}
+{#                                {% for error in form.base_url.errors %}#}
+{#                                    <div>{{ error }}</div>#}
+{#                                {% endfor %}#}
+{#                            </div>#}
+{#                        {% endif %}#}
+{#                        <div class="form-text">{{ form.base_url.help_text }}</div>#}
+{#                    </div>#}
+{#                    #}
+{#                    <div class="mb-3">#}
+{#                        <label for="{{ form.api_key.id_for_label }}" class="form-label fw-semibold">#}
+{#                            <i class="bi bi-key me-1"></i>#}
+{#                            {{ form.api_key.label }}#}
+{#                        </label>#}
+{#                        {{ form.api_key }}#}
+{#                        {% if form.api_key.errors %}#}
+{#                            <div class="text-danger small mt-1">#}
+{#                                {% for error in form.api_key.errors %}#}
+{#                                    <div>{{ error }}</div>#}
+{#                                {% endfor %}#}
+{#                            </div>#}
+{#                        {% endif %}#}
+{#                        <div class="form-text">{{ form.api_key.help_text }}</div>#}
+{#                    </div>#}
+                    
+
+                    
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.ignore_own_messages }}
+                            <label class="form-check-label fw-semibold" for="{{ form.ignore_own_messages.id_for_label }}">
+                                <i class="bi bi-shield-check me-1"></i>
+                                {{ form.ignore_own_messages.label }}
+                            </label>
+                        </div>
+                        {% if form.ignore_own_messages.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.ignore_own_messages.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">{{ form.ignore_own_messages.help_text }}</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i>
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>
+                            Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Informações da Instância
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Status:</strong>
+                    <span class="badge bg-{% if instance.status == 'connected' %}success{% elif instance.status == 'connecting' %}warning{% elif instance.status == 'disconnected' %}secondary{% else %}danger{% endif %}">
+                        {{ instance.get_status_display }}
+                    </span>
+                </div>
+                
+                {% if instance.phone_number %}
+                <div class="mb-3">
+                    <strong>Número:</strong>
+                    <div>{{ instance.phone_number }}</div>
+                </div>
+                {% endif %}
+                
+                {% if instance.profile_name %}
+                <div class="mb-3">
+                    <strong>Perfil:</strong>
+                    <div>{{ instance.profile_name }}</div>
+                </div>
+                {% endif %}
+                
+                {% if instance.last_connection %}
+                <div class="mb-3">
+                    <strong>Última Conexão:</strong>
+                    <div>{{ instance.last_connection|date:"d/m/Y H:i" }}</div>
+                </div>
+                {% endif %}
+                
+                <div class="alert alert-warning small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>Atenção:</strong> Alterações na URL ou chave da API podem afetar a conectividade.
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-shield-check me-1"></i>
+                    Configurações de Segurança
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <strong>Filtro de Mensagens Próprias:</strong>
+                </div>
+                <div class="mb-3">
+                    {% if instance.ignore_own_messages %}
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle me-1"></i>
+                            Ativado
+                        </span>
+                        <div class="small text-muted mt-1">
+                            Mensagens enviadas pela própria instância serão ignoradas.
+                        </div>
+                    {% else %}
+                        <span class="badge bg-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Desativado
+                        </span>
+                        <div class="small text-muted mt-1">
+                            <strong>Cuidado:</strong> A instância pode processar suas próprias mensagens, causando loops.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function generateSlug() {
+    const nameField = document.getElementById('id_name');
+    const instanceNameField = document.getElementById('id_instance_name');
+    
+    if (nameField && instanceNameField && nameField.value) {
+        // Gerar slug do nome da instância
+        let slug = nameField.value
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+            .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
+            .trim()
+            .replace(/\s+/g, '_') // Substitui espaços por underscore
+            .replace(/_+/g, '_') // Remove underscores duplos
+            .replace(/^_+|_+$/g, ''); // Remove underscores no início e fim
+        
+        instanceNameField.value = slug;
+    }
+}
+
+// Gerar slug inicial se houver valor no campo nome
+document.addEventListener('DOMContentLoaded', function() {
+    generateSlug();
+});
+</script>
+{% endblock %}

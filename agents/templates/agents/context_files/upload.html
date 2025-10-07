@@ -1,0 +1,150 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Upload Arquivo de Contexto{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold text-dark">
+        <i class="bi bi-upload me-2"></i>
+        Upload Arquivo de Contexto
+    </h1>
+    <a href="{% url 'agents:assistant_detail' llm_config.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>
+        Voltar
+    </a>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'agents:assistant_list' %}">Assistants</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'agents:assistant_detail' llm_config.pk %}">{{ llm_config.display_name }}</a></li>
+        <li class="breadcrumb-item active">Upload Arquivo</li>
+    </ol>
+</nav>
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-upload me-2"></i>
+                    Upload Arquivo de Contexto
+                </h5>
+                <small class="text-muted">Para: {{ llm_config.display_name }}</small>
+            </div>
+            <div class="card-body">
+                <!-- Informações sobre tipos suportados -->
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle me-2"></i>Tipos de arquivo suportados:</h6>
+                    <ul class="mb-0">
+                        <li><strong>PDF:</strong> Documentos PDF com texto pesquisável</li>
+                        <li><strong>TXT/MD:</strong> Arquivos de texto simples e Markdown</li>
+                        <li><strong>DOCX:</strong> Documentos Microsoft Word</li>
+                        <li><strong>CSV:</strong> Planilhas CSV (convertidas para formato tabular)</li>
+                        <li><strong>JSON:</strong> Dados estruturados JSON</li>
+                        <li><strong>HTML:</strong> Páginas web (texto extraído)</li>
+                    </ul>
+                    <small class="text-muted mt-2 d-block">Tamanho máximo: 10MB por arquivo</small>
+                </div>
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">
+                                    {{ form.name.label }}
+                                </label>
+                                {{ form.name }}
+                                {% if form.name.help_text %}
+                                    <div class="form-text">{{ form.name.help_text }}</div>
+                                {% endif %}
+                                {% if form.name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.name.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="{{ form.file.id_for_label }}" class="form-label">
+                                    {{ form.file.label }}
+                                </label>
+                                {{ form.file }}
+                                {% if form.file.help_text %}
+                                    <div class="form-text">{{ form.file.help_text }}</div>
+                                {% endif %}
+                                {% if form.file.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.file.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="form-check mb-3">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    {{ form.is_active.label }}
+                                </label>
+                                {% if form.is_active.help_text %}
+                                    <div class="form-text">{{ form.is_active.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'agents:assistant_detail' llm_config.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-2"></i>Fazer Upload
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Dicas de uso -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Dicas para melhores resultados
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li><strong>Nome descritivo:</strong> Use nomes que identifiquem claramente o conteúdo (ex: "Manual do Produto v2.1", "FAQ Suporte Técnico")</li>
+                    <li><strong>Conteúdo relevante:</strong> Inclua apenas informações que são relevantes para as respostas do assistant</li>
+                    <li><strong>Texto claro:</strong> Para PDFs, certifique-se de que o texto é pesquisável (não apenas imagens)</li>
+                    <li><strong>Organização:</strong> Mantenha arquivos organizados por tema ou função</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validação do lado cliente para tamanho do arquivo
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.querySelector('input[type="file"]');
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.size > maxSize) {
+                alert('Arquivo muito grande. O tamanho máximo permitido é 10MB.');
+                e.target.value = '';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

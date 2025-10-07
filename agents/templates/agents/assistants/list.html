@@ -1,0 +1,132 @@
+{% extends 'webapp/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans 'Assistants' %} - Assistante{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold text-dark">
+        <i class="bi bi-robot me-2"></i>
+        {% trans 'Assistants' %} de IA
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'agents:assistant_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>
+            {% trans 'Criar Assistant' %}
+        </a>
+    </div>
+</div>
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-robot me-2"></i>
+                    Seus Assistants de IA
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if assistants %}
+                <div class="row">
+                    {% for assistant in assistants %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-primary">{{ assistant.get_name_display }}</span>
+                                    <small class="text-muted">{{ assistant.created_at|date:"d/m/Y" }}</small>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title">{{ assistant.display_name }}</h6>
+                                <small class="text-muted d-block mb-2">Modelo: {{ assistant.model }}</small>
+                                <p class="card-text text-muted small">
+                                    {% if assistant.instructions|length > 100 %}
+                                        {{ assistant.instructions|slice:":100" }}...
+                                    {% else %}
+                                        {{ assistant.instructions }}
+                                    {% endif %}
+                                </p>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <small class="text-muted">Temperatura:</small>
+                                        <div class="fw-bold">{{ assistant.temperature }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Max Tokens:</small>
+                                        <div class="fw-bold">{{ assistant.max_tokens }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'agents:assistant_detail' assistant.pk %}" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-eye me-1"></i>
+                                        Ver
+                                    </a>
+                                    <div>
+                                        <a href="{% url 'agents:assistant_edit' assistant.pk %}" class="btn btn-outline-secondary btn-sm me-1">
+                                            <i class="bi bi-pencil me-1"></i>
+                                            {% trans 'Editar' %}
+                                        </a>
+                                        <a href="{% url 'agents:assistant_delete' assistant.pk %}" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-trash me-1"></i>
+                                            Excluir
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Paginação -->
+                {% if is_paginated %}
+                <nav aria-label="Paginação">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próximo</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-robot text-muted mb-3" style="font-size: 4rem;"></i>
+                    <h4 class="text-muted mb-3">Nenhum assistant criado ainda</h4>
+                    <p class="text-muted mb-4">
+                        {% trans 'Crie seu primeiro assistant de IA para personalizar as respostas automáticas do WhatsApp.' %}
+                    </p>
+                    <a href="{% url 'agents:assistant_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        {% trans 'Criar Primeiro Assistant' %}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

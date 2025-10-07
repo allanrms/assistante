@@ -1,0 +1,151 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Configurar Contatos - {{ instance.name }} - Assistante{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 fw-bold text-dark mb-1">
+            <i class="bi bi-person-lines-fill me-2"></i>
+            Configurar Contatos Autorizados
+        </h1>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted">{{ instance.name }}</span>
+            <small class="text-muted">{{ instance.instance_name }}</small>
+        </div>
+    </div>
+    <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>
+        Voltar
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-shield-check me-2"></i>
+                    Números Autorizados
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.authorized_numbers.id_for_label }}" class="form-label fw-semibold">
+                            {{ form.authorized_numbers.label }}
+                        </label>
+                        {{ form.authorized_numbers }}
+                        {% if form.authorized_numbers.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.authorized_numbers.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">{{ form.authorized_numbers.help_text }}</div>
+                    </div>
+                    
+                    {% if current_numbers %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Números Atualmente Configurados:</label>
+                        <div class="border rounded p-3 bg-light">
+                            {% for number in current_numbers %}
+                                <span class="badge bg-primary me-2 mb-1">{{ number }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i>
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>
+                            Salvar Configuração
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Guia de Configuração -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Como Configurar
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Formato dos Números:</strong>
+                    <p class="small text-muted mb-2">Use o formato completo com DDI e DDD (ex: 5511999999999)</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Múltiplos Números:</strong>
+                    <p class="small text-muted mb-2">Digite um número por linha ou separe por vírgula</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Sem Restrições:</strong>
+                    <p class="small text-muted mb-2">Deixe o campo vazio para permitir todos os números</p>
+                </div>
+                
+                <div class="alert alert-info small">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    <strong>Dica:</strong> Use esta configuração para restringir quem pode interagir com seu bot.
+                </div>
+            </div>
+        </div>
+        
+        <!-- Status Atual -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-gear me-1"></i>
+                    Status da Configuração
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if current_numbers %}
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-shield-check text-success me-2"></i>
+                        <span class="text-success fw-semibold">Restrições Ativas</span>
+                    </div>
+                    <p class="small text-muted mb-2">
+                        {{ current_numbers|length }} número{{ current_numbers|length|pluralize }} autorizado{{ current_numbers|length|pluralize }}
+                    </p>
+                    <p class="small text-muted">
+                        Apenas os números configurados podem interagir com este bot.
+                    </p>
+                {% else %}
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-shield-x text-warning me-2"></i>
+                        <span class="text-warning fw-semibold">Sem Restrições</span>
+                    </div>
+                    <p class="small text-muted">
+                        Todos os números podem interagir com este bot.
+                    </p>
+                {% endif %}
+                
+                <hr>
+                
+                <div class="d-grid">
+                    <a href="{% url 'whatsapp_connector:instance_webhook_config' instance.pk %}" class="btn btn-outline-info btn-sm">
+                        <i class="bi bi-webhook me-1"></i>
+                        Configurar Webhook
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

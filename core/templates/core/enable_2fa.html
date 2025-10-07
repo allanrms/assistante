@@ -1,0 +1,56 @@
+{% extends 'webapp/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Habilitar Autenticação em 2 Fatores" %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-shield-check"></i> {% trans "Habilitar Autenticação em 2 Fatores" %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>{% trans "O que é 2FA?" %}</strong>
+                        <p class="mb-0 mt-2">
+                            {% trans "A autenticação em 2 fatores adiciona uma camada extra de segurança à sua conta. Ao fazer login, você precisará inserir um código temporário enviado para seu e-mail." %}
+                        </p>
+                    </div>
+
+                    <h5 class="mt-4">{% trans "Como funciona:" %}</h5>
+                    <ol class="mb-4">
+                        <li>{% trans "Ao fazer login, você digitará seu e-mail e senha normalmente." %}</li>
+                        <li>{% trans "Um código de 6 dígitos será enviado para" %} <strong>{{ client.email }}</strong>.</li>
+                        <li>{% trans "Você terá 5 minutos para digitar o código e completar o login." %}</li>
+                    </ol>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>{% trans "Importante:" %}</strong>
+                        <p class="mb-0">
+                            {% trans "Certifique-se de ter acesso ao e-mail cadastrado antes de habilitar esta funcionalidade." %}
+                        </p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> {% trans "Habilitar 2FA" %}
+                            </button>
+                            <a href="{% url 'webapp:profile' %}?tab=security" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> {% trans "Cancelar" %}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,173 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Verificação em 2 Fatores" %} - Assistante</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #000000 0%, #333333 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .card-header {
+            border-radius: 15px 15px 0 0 !important;
+            padding: 1.5rem;
+        }
+
+        .form-control {
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 1.1rem;
+            text-align: center;
+            letter-spacing: 0.5rem;
+            font-weight: 600;
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+        }
+
+        .alert {
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <!-- Messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0 text-center">
+                            <i class="bi bi-shield-check"></i> {% trans "Verificação em 2 Fatores" %}
+                        </h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <p class="text-center text-muted mb-2">
+                            {% trans "Um código de verificação foi enviado para" %}
+                        </p>
+                        <p class="text-center mb-4">
+                            <strong>{{ client.email }}</strong>
+                        </p>
+                        <p class="text-center text-muted mb-4">
+                            {% trans "Digite o código de 6 dígitos abaixo:" %}
+                        </p>
+
+                        <form method="post" class="mb-3">
+                            {% csrf_token %}
+
+                            <div class="mb-4">
+                                <label for="id_otp_code" class="form-label text-center w-100">
+                                    {% trans "Código de Verificação" %}
+                                </label>
+                                <input type="text"
+                                       name="otp_code"
+                                       maxlength="6"
+                                       class="form-control form-control-lg text-center"
+                                       id="id_otp_code"
+                                       placeholder="000000"
+                                       required
+                                       autocomplete="off"
+                                       autofocus>
+                                {% if form.otp_code.errors %}
+                                    <div class="text-danger text-center mt-2">
+                                        {{ form.otp_code.errors }}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted d-block text-center mt-2">
+                                    {% trans "Digite o código de 6 dígitos enviado para seu e-mail" %}
+                                </small>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-box-arrow-in-right"></i> {% trans "Verificar e Entrar" %}
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="text-center">
+                            <a href="{% url 'core:resend_otp' %}" class="btn btn-link">
+                                <i class="bi bi-arrow-clockwise"></i> {% trans "Reenviar código" %}
+                            </a>
+                        </div>
+
+                        <hr>
+
+                        <div class="text-center">
+                            <a href="{% url 'webapp:login' %}" class="btn btn-link text-muted">
+                                <i class="bi bi-arrow-left"></i> {% trans "Voltar ao login" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>{% trans "Dica:" %}</strong>
+                    {% trans "O código expira em 5 minutos. Se não receber o e-mail, verifique sua caixa de spam." %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Auto-submit quando 6 dígitos forem digitados
+        document.getElementById('id_otp_code').addEventListener('input', function(e) {
+            // Remove caracteres não numéricos
+            this.value = this.value.replace(/[^0-9]/g, '');
+
+            // Auto-submit quando tiver 6 dígitos
+            if (this.value.length === 6) {
+                // Pequeno delay para melhor UX
+                setTimeout(() => {
+                    this.form.submit();
+                }, 300);
+            }
+        });
+
+        // Auto-dismiss alerts após 5 segundos
+        setTimeout(function() {
+            var alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(function(alert) {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    </script>
+</body>
+</html>

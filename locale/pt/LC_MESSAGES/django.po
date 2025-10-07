@@ -1,0 +1,469 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-09-15 07:59-0300\n"
+"PO-Revision-Date: 2025-09-11 18:30-0300\n"
+"Last-Translator: Auto Generated\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: agents/templates/agents/assistants/list.html:4
+#: agents/templates/agents/assistants/list.html:10
+#, fuzzy
+#| msgid "Assistentes"
+msgid "Assistants"
+msgstr "Assistentes"
+
+#: agents/templates/agents/assistants/list.html:15
+msgid "Criar Assistant"
+msgstr "Criar Assistant"
+
+#: agents/templates/agents/assistants/list.html:70
+msgid "Editar"
+msgstr "Editar"
+
+#: agents/templates/agents/assistants/list.html:120
+msgid ""
+"Crie seu primeiro assistant de IA para personalizar as respostas automáticas "
+"do WhatsApp."
+msgstr ""
+
+#: agents/templates/agents/assistants/list.html:124
+msgid "Criar Primeiro Assistant"
+msgstr "Criar Primeiro Assistant"
+
+#: agents/templates/agents/context_files/list.html:4
+#: agents/templates/agents/context_files/list.html:10
+msgid "Arquivos de Contexto"
+msgstr "Arquivos de Contexto"
+
+#: common/custom_exception_handler.py:50
+msgid "Esta operação não pode ser executada"
+msgstr "Esta operação não pode ser executada"
+
+#: common/custom_exception_handler.py:53
+msgid ""
+"Esta operação não pode ser executada devido a um erro de integridade do "
+"banco, contate o suporte"
+msgstr ""
+"Esta operação não pode ser executada devido a um erro de integridade do "
+"banco, contate o suporte"
+
+#: common/custom_exception_handler.py:56
+msgid ""
+"O sistema não encontrou a referência da entidade, por favor atualize a pagina"
+msgstr ""
+"O sistema não encontrou a referência da entidade, por favor atualize a pagina"
+
+#: webapp/templates/webapp/base.html:610 webapp/templates/webapp/home.html:4
+#: webapp/templates/webapp/home.html:6
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: webapp/templates/webapp/base.html:617
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:4
+msgid "Instâncias"
+msgstr "Instâncias"
+
+#: webapp/templates/webapp/base.html:625
+msgid "Assistentes"
+msgstr "Assistentes"
+
+#: webapp/templates/webapp/base.html:632
+msgid "Mensagens"
+msgstr "Mensagens"
+
+#: webapp/templates/webapp/base.html:640
+msgid "Relatórios"
+msgstr "Relatórios"
+
+#: webapp/templates/webapp/base.html:654
+msgid "Sair"
+msgstr "Sair"
+
+#: webapp/templates/webapp/base.html:674
+msgid "Buscar instâncias, mensagens..."
+msgstr "Buscar instâncias, mensagens..."
+
+#: webapp/templates/webapp/base.html:681 webapp/templates/webapp/base.html:687
+msgid "Português"
+msgstr "Português"
+
+#: webapp/templates/webapp/base.html:694
+msgid "English"
+msgstr "English"
+
+#: webapp/templates/webapp/home.html:14
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:19
+msgid "Nova Instância"
+msgstr "Nova Instância"
+
+#: webapp/templates/webapp/home.html:18
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:15
+msgid "Sincronizar"
+msgstr "Sincronizar"
+
+#: webapp/templates/webapp/home.html:23
+msgid "Última atualização"
+msgstr "Última atualização"
+
+#: webapp/templates/webapp/home.html:23
+msgid "agora"
+msgstr "agora"
+
+#: webapp/templates/webapp/home.html:35
+msgid "Total de Instâncias"
+msgstr "Total de Instâncias"
+
+#: webapp/templates/webapp/home.html:38
+msgid "Sistema ativo"
+msgstr "Sistema ativo"
+
+# Additional translations identified from examples
+#: webapp/templates/webapp/home.html:49 webapp/templates/webapp/home.html:103
+msgid "Conectadas"
+msgstr "Conectadas"
+
+#: webapp/templates/webapp/home.html:52
+msgid "Online agora"
+msgstr "Online agora"
+
+#: webapp/templates/webapp/home.html:63
+msgid "Ativas"
+msgstr "Ativas"
+
+#: webapp/templates/webapp/home.html:66
+msgid "Funcionando"
+msgstr "Funcionando"
+
+#: webapp/templates/webapp/home.html:77
+#, fuzzy
+#| msgid "Mensagens"
+msgid "Mensagens (24h)"
+msgstr "Mensagens"
+
+#: webapp/templates/webapp/home.html:80
+msgid "Últimas 24h"
+msgstr "Últimas 24h"
+
+#: webapp/templates/webapp/home.html:94
+msgid "Status das Instâncias"
+msgstr "Status das Instâncias"
+
+#: webapp/templates/webapp/home.html:104 webapp/templates/webapp/home.html:141
+#, fuzzy
+#| msgid "Conectada"
+msgid "Conectando"
+msgstr "Conectada"
+
+# Additional translations identified from examples
+#: webapp/templates/webapp/home.html:105
+#, fuzzy
+#| msgid "Conectadas"
+msgid "Desconectadas"
+msgstr "Conectadas"
+
+#: webapp/templates/webapp/home.html:106
+msgid "Com Erro"
+msgstr ""
+
+#: webapp/templates/webapp/home.html:123
+msgid "Instâncias Recentes"
+msgstr "Instâncias Recentes"
+
+#: webapp/templates/webapp/home.html:140
+msgid "Conectada"
+msgstr "Conectada"
+
+#: webapp/templates/webapp/home.html:142
+#, fuzzy
+#| msgid "Conectada"
+msgid "Desconectada"
+msgstr "Conectada"
+
+#: webapp/templates/webapp/home.html:143
+msgid "Erro"
+msgstr ""
+
+#: webapp/templates/webapp/home.html:154
+msgid "Nenhuma instância criada ainda"
+msgstr "Nenhuma instância criada ainda"
+
+#: webapp/templates/webapp/home.html:157
+msgid "Criar primeira instância"
+msgstr "Criar primeira instância"
+
+#: webapp/templates/webapp/home.html:175
+msgid "Últimas Mensagens"
+msgstr "Últimas Mensagens"
+
+#: webapp/templates/webapp/home.html:178
+msgid "Ver todas"
+msgstr "Ver todas"
+
+#: webapp/templates/webapp/home.html:185
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:72
+msgid "Instância"
+msgstr "Instância"
+
+#: webapp/templates/webapp/home.html:186
+msgid "De"
+msgstr ""
+
+#: webapp/templates/webapp/home.html:187
+msgid "Tipo"
+msgstr ""
+
+#: webapp/templates/webapp/home.html:188
+msgid "Conteúdo"
+msgstr "Conteúdo"
+
+#: webapp/templates/webapp/home.html:189
+msgid "Data"
+msgstr ""
+
+#: webapp/templates/webapp/home.html:190
+msgid "Status"
+msgstr ""
+
+#: webapp/templates/webapp/home.html:245
+msgid "Imagem recebida"
+msgstr ""
+
+#: webapp/templates/webapp/home.html:250
+msgid "Áudio recebido"
+msgstr "Áudio recebido"
+
+#: webapp/templates/webapp/home.html:284
+msgid "Nenhuma mensagem ainda"
+msgstr "Nenhuma mensagem ainda"
+
+#: webapp/templates/webapp/home.html:285
+msgid ""
+"As mensagens do WhatsApp aparecerão aqui quando você conectar suas "
+"instâncias."
+msgstr ""
+"As mensagens do WhatsApp aparecerão aqui quando você conectar suas "
+"instâncias."
+
+#: webapp/templates/webapp/home.html:298
+#, fuzzy
+#| msgid "Sincronizar"
+msgid "Sincronizando..."
+msgstr "Sincronizar"
+
+#: webapp/views.py:143
+msgid "Código do idioma é obrigatório"
+msgstr "Código do idioma é obrigatório"
+
+#: webapp/views.py:150
+#, python-format
+msgid ""
+"Idioma \"%(language)s\" não disponível. Idiomas disponíveis: %(languages)s"
+msgstr ""
+"Idioma \"%(language)s\" não disponível. Idiomas disponíveis: %(languages)s"
+
+#: webapp/views.py:165
+#, python-format
+msgid "Idioma alterado para %(language)s"
+msgstr "Idioma alterado para %(language)s"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:159
+msgid "Passo 1:"
+msgstr ""
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:159
+msgid "Nome da Instância"
+msgstr "Nome da Instância"
+
+# Additional form and UI translations
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:160
+#, fuzzy
+#| msgid "Nome descritivo para identificar a instância"
+msgid "Escolha um nome descritivo que identifique facilmente esta instância."
+msgstr "Nome descritivo para identificar a instância"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:179
+msgid "Passo 2:"
+msgstr ""
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:179
+#, fuzzy
+#| msgid "Assistants de IA"
+msgid "Assistant de IA"
+msgstr "Assistants de IA"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:180
+#, fuzzy
+#| msgid "Selecione qual assistant/IA será usado para responder mensagens"
+msgid "Selecione um assistant para respostas automáticas inteligentes."
+msgstr "Selecione qual assistant/IA será usado para responder mensagens"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:184
+msgid "Passo 3:"
+msgstr ""
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:184
+#, fuzzy
+#| msgid "Últimas Mensagens"
+msgid "Filtro de Mensagens"
+msgstr "Últimas Mensagens"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:184
+msgid "(Recomendado)"
+msgstr ""
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/create.html:185
+msgid "Ative para evitar que a instância processe suas próprias mensagens."
+msgstr ""
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:10
+msgid "Instâncias Evolution"
+msgstr "Instâncias Evolution"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:60
+msgid "Lista de Instâncias"
+msgstr "Lista de Instâncias"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:74
+msgid "Conexão"
+msgstr "Conexão"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:86
+msgid "Ações"
+msgstr "Ações"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:123
+#, fuzzy
+#| msgid "Conectada"
+msgid "Não conectado"
+msgstr "Conectada"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:264
+#, fuzzy
+#| msgid "Nenhuma instância criada ainda"
+msgid "Nenhuma instância encontrada"
+msgstr "Nenhuma instância criada ainda"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:266
+msgid "Tente ajustar os filtros de busca."
+msgstr ""
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:269
+msgid "Limpar Filtros"
+msgstr ""
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:272
+#, fuzzy
+#| msgid "Criar primeira instância"
+msgid "Crie sua primeira instância Evolution para começar."
+msgstr "Criar primeira instância"
+
+#: whatsapp_connector/templates/whatsapp_connector/instances/list.html:275
+msgid "Criar Instância"
+msgstr "Criar Instância"
+
+#~ msgid "Gerado automaticamente a partir do nome da instância"
+#~ msgstr "Gerado automaticamente a partir do nome da instância"
+
+#~ msgid "URL da sua instalação Evolution API"
+#~ msgstr "URL da sua instalação Evolution API"
+
+#~ msgid "Token de autenticação da Evolution API"
+#~ msgstr "Token de autenticação da Evolution API"
+
+#~ msgid ""
+#~ "Quando ativo, ignora mensagens enviadas pelo próprio número da instância"
+#~ msgstr ""
+#~ "Quando ativo, ignora mensagens enviadas pelo próprio número da instância"
+
+#~ msgid "Todas as conexões são criptografadas"
+#~ msgstr "Todas as conexões são criptografadas"
+
+#~ msgid "Chaves API são armazenadas com segurança"
+#~ msgstr "Chaves API são armazenadas com segurança"
+
+#~ msgid "Validação de dados em tempo real"
+#~ msgstr "Validação de dados em tempo real"
+
+#~ msgid "Pending"
+#~ msgstr "Pendente"
+
+#~ msgid "Buscar"
+#~ msgstr "Buscar"
+
+#~ msgid "Filtrar"
+#~ msgstr "Filtrar"
+
+#~ msgid "Nome, instância ou perfil..."
+#~ msgstr "Nome, instância ou perfil..."
+
+#~ msgid "Todos os status"
+#~ msgstr "Todos os status"
+
+#~ msgid "total"
+#~ msgstr "total"
+
+#~ msgid "Criada em"
+#~ msgstr "Criada em"
+
+#~ msgid "Nova Instância Evolution"
+#~ msgstr "Nova Instância Evolution"
+
+#~ msgid "Voltar"
+#~ msgstr "Voltar"
+
+#~ msgid "Configuração da Instância"
+#~ msgstr "Configuração da Instância"
+
+#~ msgid "Guia de Criação"
+#~ msgstr "Guia de Criação"
+
+#~ msgid "Nome Técnico"
+#~ msgstr "Nome Técnico"
+
+#~ msgid "URL da Evolution API"
+#~ msgstr "URL da Evolution API"
+
+#~ msgid "Chave da API"
+#~ msgstr "Chave da API"
+
+#~ msgid "Assistant/IA"
+#~ msgstr "Assistant/IA"
+
+#~ msgid "Ignorar Mensagens Próprias"
+#~ msgstr "Ignorar Mensagens Próprias"
+
+#~ msgid "Segurança"
+#~ msgstr "Segurança"
+
+#~ msgid "Auditoria completa de ações"
+#~ msgstr "Auditoria completa de ações"
+
+#~ msgid "Seus Assistants de IA"
+#~ msgstr "Seus Assistants de IA"
+
+#~ msgid "Ver"
+#~ msgstr "Ver"
+
+#~ msgid "Excluir"
+#~ msgstr "Excluir"
+
+#~ msgid "Temperatura"
+#~ msgstr "Temperatura"
+
+#~ msgid "Max Tokens"
+#~ msgstr "Max Tokens"
+
+#~ msgid "Modelo"
+#~ msgstr "Modelo"

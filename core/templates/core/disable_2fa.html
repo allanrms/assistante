@@ -1,0 +1,48 @@
+{% extends 'webapp/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Desabilitar Autenticação em 2 Fatores" %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="bi bi-shield-slash"></i> {% trans "Desabilitar Autenticação em 2 Fatores" %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>{% trans "Atenção!" %}</strong>
+                        <p class="mb-0 mt-2">
+                            {% trans "Ao desabilitar a autenticação em 2 fatores, sua conta ficará menos segura." %}
+                        </p>
+                    </div>
+
+                    <h5>{% trans "Você tem certeza?" %}</h5>
+                    <p class="text-muted">
+                        {% trans "A autenticação em 2 fatores adiciona uma camada extra de proteção à sua conta. Recomendamos mantê-la habilitada." %}
+                    </p>
+
+                    <form method="post" onsubmit="return confirm('{% trans "Tem certeza que deseja desabilitar a autenticação em 2 fatores?" %}');">
+                        {% csrf_token %}
+                        <input type="hidden" name="confirm" value="yes">
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="bi bi-x-circle"></i> {% trans "Sim, Desabilitar 2FA" %}
+                            </button>
+                            <a href="{% url 'webapp:profile' %}?tab=security" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> {% trans "Cancelar" %}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

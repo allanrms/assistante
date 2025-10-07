@@ -1,0 +1,20 @@
+
+
+#POST http://localhost:5678/webhook/ac1597f0-1b6b-4654-888d-4cdfec9d83f1
+POST http://localhost:5678/webhook-test/0d6f2e6b-636b-4b07-b3bb-f74bc5ed0a38
+Content-Type: application/json
+
+//{
+//  "user_id": 1,
+//  "msg": "Meu nome é allan, eu trabalho de desenvolvedor de sistemas na neo ventures."
+//}
+
+//{
+//  "user_id": 2,
+//  "msg": "Meu nome é charles, eu trabalho de mecanico."
+//}
+
+{
+  "user_id": 3,
+  "msg": "Onde eu trabalho?"
+}

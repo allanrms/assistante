@@ -1,0 +1,509 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Editar Assistant - Assistante{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold text-dark">
+        <i class="bi bi-pencil me-2"></i>
+        Editar Assistant
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'agents:assistant_detail' object.pk %}" class="btn btn-outline-info">
+            <i class="bi bi-eye me-1"></i>
+            Ver Detalhes
+        </a>
+        <a href="{% url 'agents:assistant_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            Voltar
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-pencil me-2"></i>
+                    Editando: {{ object.display_name }}
+                </h5>
+                <p class="card-text text-muted mb-0">
+                    Modifique a personalidade, comportamento e parâmetros do seu assistant
+                </p>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <!-- Informações Básicas -->
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Informações Básicas
+                            </h6>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label for="{{ form.display_name.id_for_label }}" class="form-label">
+                                {{ form.display_name.label }}
+                            </label>
+                            {{ form.display_name }}
+                            {% if form.display_name.help_text %}
+                                <div class="form-text">{{ form.display_name.help_text }}</div>
+                            {% endif %}
+                            {% if form.display_name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.display_name.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                {{ form.name.label }}
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.help_text %}
+                                <div class="form-text">{{ form.name.help_text }}</div>
+                            {% endif %}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.name.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.model.id_for_label }}" class="form-label">
+                                {{ form.model.label }}
+                            </label>
+                            {{ form.model }}
+                            {% if form.model.help_text %}
+                                <div class="form-text">{{ form.model.help_text }}</div>
+                            {% endif %}
+                            {% if form.model.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.model.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label for="{{ form.instructions.id_for_label }}" class="form-label mb-0">
+                                    {{ form.instructions.label }}
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-preview">
+                                    <i class="bi bi-eye me-1"></i>
+                                    <span id="preview-toggle-text">Mostrar Preview</span>
+                                </button>
+                            </div>
+
+                            <div class="row g-2" id="editor-container">
+                                <div class="col-12" id="editor-col">
+                                    <div class="border rounded p-2">
+                                        {{ form.instructions }}
+                                    </div>
+                                </div>
+                                <div class="col-6 d-none" id="preview-col">
+                                    <div class="border rounded p-3" style="height: 100%;">
+                                        <div id="markdown-preview" class="markdown-body">
+                                            <p class="text-muted">O preview aparecerá aqui...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if form.instructions.help_text %}
+                                <div class="form-text">{{ form.instructions.help_text }}</div>
+                            {% endif %}
+                            {% if form.instructions.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.instructions.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Parâmetros Avançados -->
+                        <div class="col-12 mt-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-sliders me-2"></i>
+                                Parâmetros de Geração
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.temperature.id_for_label }}" class="form-label">
+                                {{ form.temperature.label }}
+                            </label>
+                            {{ form.temperature }}
+                            {% if form.temperature.help_text %}
+                                <div class="form-text">{{ form.temperature.help_text }}</div>
+                            {% endif %}
+                            {% if form.temperature.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.temperature.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.max_tokens.id_for_label }}" class="form-label">
+                                {{ form.max_tokens.label }}
+                            </label>
+                            {{ form.max_tokens }}
+                            {% if form.max_tokens.help_text %}
+                                <div class="form-text">{{ form.max_tokens.help_text }}</div>
+                            {% endif %}
+                            {% if form.max_tokens.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.max_tokens.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.top_p.id_for_label }}" class="form-label">
+                                {{ form.top_p.label }}
+                            </label>
+                            {{ form.top_p }}
+                            {% if form.top_p.help_text %}
+                                <div class="form-text">{{ form.top_p.help_text }}</div>
+                            {% endif %}
+                            {% if form.top_p.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.top_p.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.presence_penalty.id_for_label }}" class="form-label">
+                                {{ form.presence_penalty.label }}
+                            </label>
+                            {{ form.presence_penalty }}
+                            {% if form.presence_penalty.help_text %}
+                                <div class="form-text">{{ form.presence_penalty.help_text }}</div>
+                            {% endif %}
+                            {% if form.presence_penalty.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.presence_penalty.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.frequency_penalty.id_for_label }}" class="form-label">
+                                {{ form.frequency_penalty.label }}
+                            </label>
+                            {{ form.frequency_penalty }}
+                            {% if form.frequency_penalty.help_text %}
+                                <div class="form-text">{{ form.frequency_penalty.help_text }}</div>
+                            {% endif %}
+                            {% if form.frequency_penalty.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.frequency_penalty.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Arquivos de Contexto -->
+                        <div class="col-12 mt-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-file-earmark-text me-2"></i>
+                                Arquivos de Contexto
+                            </h6>
+                            
+                            {% if object.context_files.all %}
+                                <div class="row g-2 mb-3">
+                                    {% for file in object.context_files.all|slice:":4" %}
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center p-2 border rounded">
+                                            <i class="bi bi-file-earmark-{% if file.file_type == 'pdf' %}pdf{% elif file.file_type == 'docx' %}word{% elif file.file_type == 'txt' or file.file_type == 'md' %}text{% elif file.file_type == 'csv' %}spreadsheet{% elif file.file_type == 'json' %}code{% else %}text{% endif %} me-2 text-primary"></i>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold text-truncate" style="max-width: 120px;">{{ file.name }}</div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <small class="text-muted">{{ file.get_file_type_display }}</small>
+                                                    {% if file.status == 'ready' %}
+                                                        <span class="badge bg-success badge-sm">✓</span>
+                                                    {% elif file.status == 'processing' %}
+                                                        <span class="badge bg-warning badge-sm">⏳</span>
+                                                    {% elif file.status == 'error' %}
+                                                        <span class="badge bg-danger badge-sm">✗</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                
+                                {% if object.context_files.count > 4 %}
+                                <div class="text-center mb-3">
+                                    <small class="text-muted">e mais {{ object.context_files.count|add:"-4" }} arquivo{{ object.context_files.count|add:"-4"|pluralize }}</small>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'agents:context_file_list' object.pk %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-list me-1"></i>Gerenciar Arquivos
+                                    </a>
+                                    <a href="{% url 'agents:context_file_upload' object.pk %}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-upload me-1"></i>Adicionar Arquivo
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <strong>Nenhum arquivo de contexto adicionado.</strong> Adicione documentos para personalizar as respostas do assistant.
+                                </div>
+                                <div class="text-center">
+                                    <a href="{% url 'agents:context_file_upload' object.pk %}" class="btn btn-primary">
+                                        <i class="bi bi-upload me-2"></i>Adicionar Primeiro Arquivo
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'agents:assistant_detail' object.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.querySelector('#id_instructions');
+    const previewDiv = document.getElementById('markdown-preview');
+    const toggleBtn = document.getElementById('toggle-preview');
+    const toggleText = document.getElementById('preview-toggle-text');
+    const editorCol = document.getElementById('editor-col');
+    const previewCol = document.getElementById('preview-col');
+    let previewVisible = false;
+
+    // Configurar textarea para crescer automaticamente
+    if (textarea) {
+        textarea.removeAttribute('rows');
+        textarea.style.minHeight = '400px';
+        textarea.style.resize = 'vertical';
+        textarea.style.overflow = 'hidden';
+
+        // Função para ajustar altura do textarea
+        function autoResize() {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+
+        // Ajustar altura inicial
+        autoResize();
+
+        // Ajustar altura ao digitar
+        textarea.addEventListener('input', autoResize);
+    }
+
+    // Função para atualizar preview
+    function updatePreview() {
+        if (textarea && previewDiv) {
+            const markdown = textarea.value || '*Nenhum conteúdo para visualizar*';
+            previewDiv.innerHTML = marked.parse(markdown);
+
+            // Aplicar syntax highlighting
+            previewDiv.querySelectorAll('pre code').forEach((block) => {
+                Prism.highlightElement(block);
+            });
+        }
+    }
+
+    // Toggle preview
+    toggleBtn.addEventListener('click', function() {
+        previewVisible = !previewVisible;
+
+        if (previewVisible) {
+            // Mostrar preview lado a lado
+            editorCol.classList.remove('col-12');
+            editorCol.classList.add('col-6');
+            previewCol.classList.remove('d-none');
+            toggleText.textContent = 'Ocultar Preview';
+            toggleBtn.querySelector('i').classList.remove('bi-eye');
+            toggleBtn.querySelector('i').classList.add('bi-eye-slash');
+            updatePreview();
+        } else {
+            // Ocultar preview
+            editorCol.classList.remove('col-6');
+            editorCol.classList.add('col-12');
+            previewCol.classList.add('d-none');
+            toggleText.textContent = 'Mostrar Preview';
+            toggleBtn.querySelector('i').classList.remove('bi-eye-slash');
+            toggleBtn.querySelector('i').classList.add('bi-eye');
+        }
+    });
+
+    // Atualizar preview em tempo real enquanto digita
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            if (previewVisible) {
+                updatePreview();
+            }
+        });
+    }
+});
+</script>
+
+<style>
+/* Estilos das tabs */
+#instructionsTabs .nav-link {
+    color: #666666;
+    border: 1px solid transparent;
+    background-color: #f5f5f5;
+}
+#instructionsTabs .nav-link:hover {
+    color: #4d4d4d;
+    background-color: #e6e6e6;
+    border-color: #d9d9d9;
+}
+#instructionsTabs .nav-link.active {
+    color: #000000;
+    font-weight: 600;
+    background-color: #fff;
+    border-color: #d9d9d9 #d9d9d9 #fff;
+}
+
+.markdown-body {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+}
+.markdown-body h1 {
+    font-size: 1.8em;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    color: #000000;
+    font-weight: 600;
+    border-bottom: 2px solid #d9d9d9;
+    padding-bottom: 0.3em;
+}
+.markdown-body h2 {
+    font-size: 1.5em;
+    margin-top: 0.8em;
+    margin-bottom: 0.4em;
+    color: #1a1a1a;
+    font-weight: 600;
+    border-bottom: 1px solid #d9d9d9;
+    padding-bottom: 0.3em;
+}
+.markdown-body h3 {
+    font-size: 1.2em;
+    margin-top: 0.6em;
+    margin-bottom: 0.3em;
+    color: #333333;
+    font-weight: 600;
+}
+.markdown-body h4 {
+    font-size: 1.1em;
+    color: #4d4d4d;
+    font-weight: 600;
+}
+.markdown-body p {
+    margin-bottom: 0.8em;
+    line-height: 1.7;
+}
+.markdown-body ul, .markdown-body ol {
+    margin-bottom: 0.8em;
+    padding-left: 2em;
+    line-height: 1.7;
+}
+.markdown-body li {
+    margin-bottom: 0.3em;
+}
+.markdown-body strong {
+    font-weight: 600;
+    color: #000000;
+}
+.markdown-body em {
+    font-style: italic;
+    color: #555;
+}
+.markdown-body code {
+    background-color: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #666666;
+    border: 1px solid #d9d9d9;
+}
+.markdown-body pre {
+    background-color: #2d2d2d;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 1em 0;
+    border: 1px solid #444;
+}
+.markdown-body pre code {
+    background-color: transparent;
+    padding: 0;
+    color: #ccc;
+    border: none;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+.markdown-body blockquote {
+    border-left: 4px solid #000000;
+    padding-left: 1em;
+    color: #666;
+    margin: 1em 0;
+    background-color: #f5f5f5;
+    padding: 0.5em 1em;
+    border-radius: 0 4px 4px 0;
+}
+.markdown-body a {
+    color: #000000;
+    text-decoration: none;
+}
+.markdown-body a:hover {
+    text-decoration: underline;
+}
+.markdown-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+.markdown-body table th,
+.markdown-body table td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+}
+.markdown-body table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+}
+.markdown-body hr {
+    border: none;
+    border-top: 2px solid #d9d9d9;
+    margin: 1.5em 0;
+}
+</style>
+{% endblock %}

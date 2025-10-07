@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  api:
+    container_name: evolution_api
+    image: evoapicloud/evolution-api:latest
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks:
+      - evolution-net
+      - dokploy-network
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:Fp698XxWeDvcg9qr500m@producao.covuy4eqc3v8.us-east-1.rds.amazonaws.com:5432/evolution_db
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://postgres:Fp698XxWeDvcg9qr500m@producao.covuy4eqc3v8.us-east-1.rds.amazonaws.com:5432/evolution_db
+      - CACHE_REDIS_URI=${CACHE_REDIS_URI}
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '0.8'
+
+  redis:
+    container_name: evolution_redis
+    image: redis:latest
+    restart: always
+    command: redis-server --port 6379 --appendonly yes
+    volumes:
+      - evolution_redis:/data
+    networks:
+      - evolution-net
+      - dokploy-network
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+
+volumes:
+  evolution_instances:
+  evolution_redis:
+
+networks:
+  evolution-net:
+    driver: bridge
+  dokploy-network:
+    external: true

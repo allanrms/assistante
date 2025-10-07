@@ -1,0 +1,331 @@
+{% extends 'webapp/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans 'Dashboard' %}{% endblock %}
+
+{% block page_title %}{% trans 'Dashboard' %}{% endblock %}
+
+{% block content %}
+<!-- Action Buttons -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" onclick="window.location.href='{% url 'whatsapp_connector:instance_create' %}'">
+            <i class="bi bi-plus-circle me-2"></i>
+            {% trans 'Nova Instância' %}
+        </button>
+        <button class="btn btn-outline-light" onclick="syncInstances()">
+            <i class="bi bi-arrow-clockwise me-2"></i>
+            {% trans 'Sincronizar' %}
+        </button>
+    </div>
+    <div class="text-muted">
+        <i class="bi bi-clock me-1"></i>
+        {% trans 'Última atualização' %}: <span id="lastUpdate">{% trans 'agora' %}</span>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #000000, #1a1a1a);">
+                <i class="bi bi-phone-fill"></i>
+            </div>
+            <div class="stat-value" id="totalInstances">{{ total_instances|default:0 }}</div>
+            <div class="stat-label">{% trans 'Total de Instâncias' %}</div>
+            <div class="stat-change positive">
+                <i class="bi bi-arrow-up"></i>
+                {% trans 'Sistema ativo' %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #1a1a1a, #333333);">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <div class="stat-value" id="connectedInstances">{{ connected_instances|default:0 }}</div>
+            <div class="stat-label">{% trans 'Conectadas'%}</div>
+            <div class="stat-change positive">
+                <i class="bi bi-check-circle"></i>
+                {% trans 'Online agora'%}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #333333, #4d4d4d);">
+                <i class="bi bi-lightning-charge-fill"></i>
+            </div>
+            <div class="stat-value" id="activeInstances">{{ active_instances|default:0 }}</div>
+            <div class="stat-label">{% trans 'Ativas'%}</div>
+            <div class="stat-change positive">
+                <i class="bi bi-activity"></i>
+                {% trans 'Funcionando'%}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #4d4d4d, #666666);">
+                <i class="bi bi-chat-dots-fill"></i>
+            </div>
+            <div class="stat-value" id="recentMessages">{{ recent_messages_count|default:0 }}</div>
+            <div class="stat-label">{% trans 'Mensagens (24h)'%}</div>
+            <div class="stat-change positive">
+                <i class="bi bi-graph-up"></i>
+                {% trans 'Últimas 24h' %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Distribution -->
+{% if status_counts %}
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="table-container">
+            <div class="p-4 border-bottom" style="border-color: #d9d9d9 !important;">
+                <h5 class="mb-0">
+                    <i class="bi bi-pie-chart me-2"></i>
+                    {% trans 'Status das Instâncias' %}
+                </h5>
+            </div>
+            <div class="p-4">
+                {% for status in status_counts %}
+                <div class="d-flex justify-content-between align-items-center py-2 mb-2">
+                    <div class="d-flex align-items-center">
+                        <span class="status-badge status-{{ status.status }} me-3">&nbsp;</span>
+                        <span class="fw-medium">
+                            {% if status.status == 'connected' %} {% trans 'Conectadas' %}
+                            {% elif status.status == 'connecting' %} {% trans 'Conectando' %}
+                            {% elif status.status == 'disconnected' %} {% trans 'Desconectadas' %}
+                            {% elif status.status == 'error' %} {% trans 'Com Erro' %}
+                            {% else %}{{ status.status }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <span class="fw-bold">{{ status.count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="table-container">
+            <div class="p-4 border-bottom" style="border-color: #d9d9d9 !important;">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history me-2"></i>
+                    {% trans 'Instâncias Recentes' %}
+                </h5>
+            </div>
+            <div class="p-4">
+                {% for instance in recent_instances %}
+                <div class="d-flex justify-content-between align-items-center py-3 border-bottom" style="border-color: #d9d9d9 !important;">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon me-3" style="width: 40px; height: 40px; background: var(--primary-color); font-size: 1rem;">
+                            <i class="bi bi-phone-fill"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">{{ instance.name }}</div>
+                            <small class="text-muted">{{ instance.instance_name }}</small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="status-badge status-{{ instance.status }}">
+                            {% if instance.status == 'connected' %} {% trans 'Conectada' %}
+                            {% elif instance.status == 'connecting' %} {% trans 'Conectando' %}
+                            {% elif instance.status == 'disconnected' %} {% trans 'Desconectada' %}
+                            {% elif instance.status == 'error' %} {% trans 'Erro' %}
+                            {% endif %}
+                        </span>
+                        <div class="mt-1">
+                            <small class="text-muted">{{ instance.created_at|date:"d/m/Y H:i" }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox text-muted mb-3" style="font-size: 3rem;"></i>
+                    <p class="text-muted">{% trans 'Nenhuma instância criada ainda' %}</p>
+                    <button class="btn btn-primary" onclick="window.location.href='{% url 'whatsapp_connector:instance_create' %}'">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        {% trans 'Criar primeira instância' %}
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Latest Messages -->
+{% if latest_messages %}
+<div class="row">
+    <div class="col-12">
+        <div class="table-container">
+            <div class="p-4 border-bottom d-flex justify-content-between align-items-center" style="border-color: #d9d9d9 !important;">
+                <h5 class="mb-0">
+                    <i class="bi bi-chat-left-text me-2"></i>
+                    {% trans 'Últimas Mensagens' %}
+                </h5>
+                <a href="{% url 'admin:whatsapp_connector_messagehistory_changelist' %}" class="btn btn-outline-light btn-sm">
+                     {% trans 'Ver todas' %}
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>{% trans 'Instância' %}</th>
+                            <th>{% trans 'De' %}</th>
+                            <th>{% trans 'Tipo' %}</th>
+                            <th>{% trans 'Conteúdo' %}</th>
+                            <th>{% trans 'Data' %}</th>
+                            <th>{% trans 'Status' %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for message in latest_messages %}
+                        <tr>
+                            <td>
+                                {% if message.evolution_instance %}
+                                    <div>
+                                        <span class="fw-semibold">{{ message.evolution_instance.name }}</span>
+                                        <br>
+                                        <small class="text-muted">{{ message.evolution_instance.instance_name }}</small>
+                                    </div>
+                                {% elif message.chat_session and message.chat_session.to_number %}
+                                    <span class="text-muted">{{ message.chat_session.to_number }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>
+                                    {% if message.sender_name %}
+                                        <div class="fw-semibold">{{ message.sender_name }}</div>
+                                    {% endif %}
+                                    {% if message.chat_session %}
+                                        <small class="text-muted">{{ message.chat_session.from_number }}</small>
+                                    {% else %}
+                                        <small class="text-muted">-</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge
+                                    {% if message.message_type == 'text' %}status-connected
+                                    {% elif message.message_type == 'image' %}status-connecting
+                                    {% elif message.message_type == 'audio' %}status-disconnected
+                                    {% else %}status-disconnected
+                                    {% endif %}">
+                                    <i class="bi 
+                                        {% if message.message_type == 'text' %}bi-chat-text
+                                        {% elif message.message_type == 'image' %}bi-image
+                                        {% elif message.message_type == 'audio' %}bi-mic
+                                        {% else %}bi-file-earmark
+                                        {% endif %} me-1"></i>
+                                    {{ message.get_message_type_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if message.content %}
+                                    <div class="text-truncate" style="max-width: 300px;">
+                                        {{ message.content }}
+                                    </div>
+                                {% elif message.message_type == 'image' %}
+                                    <span class="text-muted">
+                                        <i class="bi bi-image me-1"></i>
+                                         {% trans 'Imagem recebida' %}
+                                    </span>
+                                {% elif message.message_type == 'audio' %}
+                                    <span class="text-muted">
+                                        <i class="bi bi-mic me-1"></i>
+                                        {% trans 'Áudio recebido' %}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>{{ message.received_at|date:"d/m/Y" }}</div>
+                                <small class="text-muted">{{ message.received_at|date:"H:i" }}</small>
+                            </td>
+                            <td>
+                                <span class="status-badge 
+                                    {% if message.processing_status == 'completed' %}status-connected
+                                    {% elif message.processing_status == 'processing' %}status-connecting
+                                    {% elif message.processing_status == 'failed' %}status-disconnected
+                                    {% else %}status-disconnected
+                                    {% endif %}">
+                                    {{ message.get_processing_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="table-container">
+            <div class="p-5 text-center">
+                <i class="bi bi-chat-square-dots text-muted mb-3" style="font-size: 4rem;"></i>
+                <h4 class="text-muted">{% trans 'Nenhuma mensagem ainda' %}</h4>
+                <p class="text-muted">{% trans 'As mensagens do WhatsApp aparecerão aqui quando você conectar suas instâncias.' %}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Sync instances function
+function syncInstances() {
+    const btn = event.target;
+    const originalContent = btn.innerHTML;
+    
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-2 spin"></i>{% trans 'Sincronizando...' %}';
+    btn.disabled = true;
+    
+    fetch('{% url "whatsapp_connector:instance_sync" %}')
+        .then(() => {
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        })
+        .catch(() => {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+        });
+}
+
+// Update timestamp
+setInterval(() => {
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+}, 60000);
+
+// Add spin animation for loading
+const style = document.createElement('style');
+style.textContent = `
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

@@ -1,0 +1,387 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Webhook - {{ instance.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 fw-bold text-dark mb-1">
+            <i class="bi bi-webhook me-2"></i>
+            Configurar Webhook
+        </h1>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted">{{ instance.name }} ({{ instance.instance_name }})</span>
+            <span class="badge status-{{ instance.status }} fs-6">
+                {% if instance.status == 'connected' %}
+                    <i class="bi bi-check-circle me-1"></i>Conectada
+                {% elif instance.status == 'connecting' %}
+                    <i class="bi bi-arrow-clockwise me-1"></i>Conectando
+                {% elif instance.status == 'disconnected' %}
+                    <i class="bi bi-x-circle me-1"></i>Desconectada
+                {% elif instance.status == 'error' %}
+                    <i class="bi bi-exclamation-triangle me-1"></i>Erro
+                {% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            Voltar
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-gear me-2"></i>
+                    Configurações do Webhook
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="webhookConfigForm">
+                    {% csrf_token %}
+                    
+                    <!-- URL do Webhook -->
+                    <div class="mb-4">
+                        <label for="webhook_url" class="form-label">URL do Webhook</label>
+                        <input type="url" 
+                               class="form-control" 
+                               id="webhook_url" 
+                               name="webhook_url"
+                               placeholder="https://meusite.com/webhook/whatsapp"
+                               value="{{ form.webhook_url.value|default_if_none:'' }}">
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            URL que receberá os eventos do WhatsApp
+                        </div>
+                    </div>
+
+                    <!-- Webhook Ativo -->
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="webhook_enabled" 
+                                   name="enabled"
+                                   {% if current_config.enabled|default:True %}checked{% endif %}>
+                            <label class="form-check-label" for="webhook_enabled">
+                                Webhook Ativo
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Ative ou desative o recebimento de eventos
+                        </div>
+                    </div>
+
+                    <!-- Configurações Avançadas -->
+                    <div class="mb-4">
+                        <h6 class="fw-semibold">Configurações Avançadas</h6>
+                        
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="webhook_by_events" 
+                                   name="webhook_by_events"
+                                   {% if current_config.webhookByEvents|default:True %}checked{% endif %}>
+                            <label class="form-check-label" for="webhook_by_events">
+                                Webhook por Eventos
+                            </label>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="webhook_base64" 
+                                   name="webhook_base64"
+                                   {% if current_config.webhookBase64|default:True %}checked{% endif %}>
+                            <label class="form-check-label" for="webhook_base64">
+                                Enviar Mídias em Base64
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Seleção de Eventos -->
+                    <div class="mb-4">
+                        <label class="form-label">Eventos para Receber</label>
+                        <div class="form-text mb-3">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Selecione quais eventos serão enviados para o webhook
+                        </div>
+                        
+                        <div class="row">
+                            {% for event_code, event_name in all_events %}
+                            <div class="col-md-6 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input event-checkbox" 
+                                           type="checkbox" 
+                                           id="event_{{ event_code }}" 
+                                           name="events"
+                                           value="{{ event_code }}"
+                                           {% if event_code in current_config.events or event_code == 'MESSAGES_UPSERT' and not current_config.events %}checked{% endif %}>
+                                    <label class="form-check-label" for="event_{{ event_code }}">
+                                        <strong>{{ event_code }}</strong>
+                                        <br><small class="text-muted">{{ event_name }}</small>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllEvents">
+                                <i class="bi bi-check-all me-1"></i>Selecionar Todos
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="selectNoneEvents">
+                                <i class="bi bi-x me-1"></i>Desmarcar Todos
+                            </button>
+                            <button type="button" class="btn btn-outline-info btn-sm" id="selectRecommended">
+                                <i class="bi bi-star me-1"></i>Recomendados
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Botões de Ação -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>
+                            Salvar Configurações
+                        </button>
+                        <button type="button" class="btn btn-outline-info" id="testWebhook">
+                            <i class="bi bi-arrow-right-circle me-1"></i>
+                            Testar Webhook
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Configuração Atual
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if current_config %}
+                    <div class="mb-3">
+                        <strong>Status:</strong>
+                        <span class="badge {% if current_config.enabled %}bg-success{% else %}bg-secondary{% endif %} ms-2">
+                            {% if current_config.enabled %}Ativo{% else %}Inativo{% endif %}
+                        </span>
+                    </div>
+                    
+                    {% if current_config.url %}
+                    <div class="mb-3">
+                        <strong>URL:</strong>
+                        <div class="text-break small text-muted">
+                            {{ current_config.url }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <strong>Eventos:</strong>
+                        <div class="mt-1">
+                            {% for event in current_config.events %}
+                                <span class="badge bg-primary me-1 mb-1">{{ event }}</span>
+                            {% empty %}
+                                <span class="text-muted">Nenhum evento selecionado</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-webhook text-muted mb-3" style="font-size: 3rem;"></i>
+                        <p class="text-muted">Nenhuma configuração encontrada</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-book me-2"></i>
+                    Documentação
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Eventos Recomendados:</strong>
+                    <ul class="list-unstyled mt-2">
+                        <li><span class="badge bg-primary me-2">MESSAGES_UPSERT</span>Para receber mensagens</li>
+                        <li><span class="badge bg-warning me-2">CONNECTION_UPDATE</span>Status da conexão</li>
+                        <li><span class="badge bg-info me-2">QRCODE_UPDATED</span>Novos QR Codes</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Formato da URL:</strong>
+                    <code class="d-block mt-1 p-2 bg-light text-dark">
+                        https://meusite.com/webhook
+                    </code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('webhookConfigForm');
+    const webhookUrlInput = document.getElementById('webhook_url');
+    const selectAllBtn = document.getElementById('selectAllEvents');
+    const selectNoneBtn = document.getElementById('selectNoneEvents');
+    const selectRecommendedBtn = document.getElementById('selectRecommended');
+    const testBtn = document.getElementById('testWebhook');
+    
+    // Preencher URL padrão se estiver vazia
+    if (!webhookUrlInput.value || webhookUrlInput.value.trim() === '') {
+        const baseUrl = '{{ EVOLUTION_API_BASE_URL|default:"" }}';
+        if (baseUrl) {
+            const defaultUrl = baseUrl.replace(/\/$/, '') + '/whatsapp_connector/v1/evolution/webhook/receiver';
+            webhookUrlInput.value = defaultUrl;
+        }
+    }
+    
+    // Selecionar todos os eventos
+    selectAllBtn.addEventListener('click', function() {
+        document.querySelectorAll('.event-checkbox').forEach(checkbox => {
+            checkbox.checked = true;
+        });
+    });
+    
+    // Desmarcar todos os eventos
+    selectNoneBtn.addEventListener('click', function() {
+        document.querySelectorAll('.event-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+    });
+    
+    // Selecionar eventos recomendados
+    selectRecommendedBtn.addEventListener('click', function() {
+        const recommended = ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'];
+        document.querySelectorAll('.event-checkbox').forEach(checkbox => {
+            checkbox.checked = recommended.includes(checkbox.value);
+        });
+    });
+    
+    // Enviar configurações
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const selectedEvents = Array.from(document.querySelectorAll('.event-checkbox:checked'))
+            .map(checkbox => checkbox.value);
+        
+        const config = {
+            webhook_url: formData.get('webhook_url'),
+            enabled: document.getElementById('webhook_enabled').checked,
+            webhook_by_events: document.getElementById('webhook_by_events').checked,
+            webhook_base64: document.getElementById('webhook_base64').checked,
+            events: selectedEvents
+        };
+        
+        // Mostrar loading
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i>Salvando...';
+        submitBtn.disabled = true;
+        
+        // Enviar configurações
+        fetch(`{% url 'whatsapp_connector:instance_webhook_config' instance.pk %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(config)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mostrar mensagem de sucesso mais elegante
+                showToast('Configurações salvas com sucesso!', 'success');
+                // Recarregar após um breve delay para mostrar a mensagem
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showToast('Erro ao salvar: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Erro inesperado: ' + error.message, 'error');
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+});
+
+// Função para mostrar toast notifications
+function showToast(message, type = 'success') {
+    // Criar elemento do toast
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+    
+    const toastHTML = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+    
+    // Adicionar ao container de toasts
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // Ativar o toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: type === 'success' ? 3000 : 5000
+    });
+    toast.show();
+    
+    // Remover elemento após esconder
+    toastElement.addEventListener('hidden.bs.toast', function () {
+        toastElement.remove();
+    });
+}
+
+// CSS para animação de loading
+const style = document.createElement('style');
+style.textContent = `
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+
+{% endblock %}

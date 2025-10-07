@@ -1,0 +1,13 @@
+
+
+https://samulinatri.com/blog/django-translation/
+
+
+
+mkdir locale
+
+Criar arquivo .PO
+django-admin makemessages -l pt --ignore venv --ignore allauth
+fr
+preencher as traduções e usar o codigo abaixo pra gerar o .MO
+django-admin compilemessages --ignore venv --ignore allauth

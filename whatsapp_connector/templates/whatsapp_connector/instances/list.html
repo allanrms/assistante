@@ -1,0 +1,470 @@
+{% extends 'webapp/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans 'Instâncias' %} - Assistante{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold text-dark">
+        <i class="bi bi-phone me-2"></i>
+        {% trans 'Instâncias Evolution' %}
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'whatsapp_connector:instance_sync' %}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-clockwise me-1"></i>
+            {% trans 'Sincronizar' %}
+        </a>
+        <a href="{% url 'whatsapp_connector:instance_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>
+            {% trans 'Nova Instância' %}
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Buscar</label>
+                <input type="text" name="search" class="form-control" 
+                       placeholder="Nome, instância ou perfil..." 
+                       value="{{ search_query }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">Todos os status</option>
+                    {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search me-1"></i>
+                    Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Instances List -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-list-ul me-2"></i>
+            {% trans 'Lista de Instâncias' %}
+            {% if instances %}
+                <span class="badge bg-secondary ms-2">{{ page_obj.paginator.count }} total</span>
+            {% endif %}
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        {% if instances %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>{% trans 'Instância' %}</th>
+                            <th>Status</th>
+                            <th>{% trans 'Conexão' %}</th>
+                            <th>Mensagens</th>
+                            <th>Criada em</th>
+
+                            <th class="text-center" style="width: 180px; white-space: nowrap;">
+                                <i class="bi bi-shield-check me-1" title="Filtro de mensagens próprias"></i>
+                                Ignorar mensagens próprias
+                            </th>
+                               <th class="text-center" style="width: 100px;">
+                                <i class="bi bi-power me-1" title="Instância ativa/inativa"></i>
+                                Ativa
+                            </th>
+                            <th class="text-center">{% trans 'Ações' %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for instance in instances %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <div class="fw-semibold">{{ instance.name }}</div>
+                                    <small class="text-muted">{{ instance.instance_name }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge status-{{ instance.status }}">
+                                    {% if instance.status == 'connected' %}
+                                        <i class="bi bi-check-circle me-1"></i>Conectada
+                                    {% elif instance.status == 'connecting' %}
+                                        <i class="bi bi-arrow-clockwise me-1"></i>Conectando
+                                    {% elif instance.status == 'disconnected' %}
+                                        <i class="bi bi-x-circle me-1"></i>Desconectada
+                                    {% elif instance.status == 'error' %}
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Erro
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if instance.phone_number and instance.profile_name %}
+                                    <div>
+                                        <div class="fw-semibold">{{ instance.profile_name }}</div>
+                                        <small class="text-muted">{{ instance.phone_number }}</small>
+                                    </div>
+                                {% elif instance.phone_number %}
+                                    <div>
+                                        <div class="fw-semibold text-success">{{ instance.phone_number }}</div>
+                                        <small class="text-muted">WhatsApp conectado</small>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">{% trans "Não conectado" %}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ instance.message_count }}</span>
+                            </td>
+                        <td>
+                                <div>{{ instance.created_at|date:"d/m/Y" }}</div>
+                                <small class="text-muted">{{ instance.created_at|date:"H:i" }}</small>
+                            </td>
+
+                        <td class="text-center align-middle">
+                                <div class="d-flex align-items-center justify-content-center ignore-own-toggle-container">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input ignore-own-toggle"
+                                               type="checkbox"
+                                               id="ignore_own_{{ instance.pk }}"
+                                               data-instance-id="{{ instance.pk }}"
+                                               style="cursor: pointer;"
+                                               {% if instance.ignore_own_messages %}checked{% endif %}>
+                                        <label class="form-check-label visually-hidden" for="ignore_own_{{ instance.pk }}">
+                                            Filtro de mensagens próprias
+                                        </label>
+                                    </div>
+                                    <small class="ms-2 text-muted" style="font-size: 0.75rem;">
+                                        {% if instance.ignore_own_messages %}
+                                            <i class="bi bi-shield-check text-success toggle-status-icon" title="Filtro ativo - Mensagens próprias são ignoradas"></i>
+                                        {% else %}
+                                            <i class="bi bi-shield-x text-warning toggle-status-icon" title="Filtro inativo - Mensagens próprias serão processadas"></i>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </td>
+
+                            <td class="text-center align-middle">
+                                <div class="d-flex align-items-center justify-content-center active-toggle-container">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input active-toggle" 
+                                               type="checkbox" 
+                                               id="active_{{ instance.pk }}"
+                                               data-instance-id="{{ instance.pk }}"
+                                               style="cursor: pointer;"
+                                               {% if instance.is_active %}checked{% endif %}>
+                                        <label class="form-check-label visually-hidden" for="active_{{ instance.pk }}">
+                                            Instância ativa/inativa
+                                        </label>
+                                    </div>
+                                    <small class="ms-2 text-muted" style="font-size: 0.75rem;">
+                                        {% if instance.is_active %}
+                                            <i class="bi bi-check-circle text-success active-status-icon" title="Instância ativa - Processando mensagens"></i>
+                                        {% else %}
+                                            <i class="bi bi-x-circle text-danger active-status-icon" title="Instância inativa - Não processa mensagens"></i>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </td>
+
+
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-1">
+                                    <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}"
+                                       class="btn btn-outline-primary btn-sm"
+                                       title="Ver detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if instance.status == 'disconnected' %}
+                                        <form method="post" action="{% url 'whatsapp_connector:instance_connect' instance.pk %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-success btn-sm" 
+                                                    title="Conectar instância">
+                                                <i class="bi bi-play-circle"></i>
+                                            </button>
+                                        </form>
+                                    {% elif instance.status == 'connected' %}
+                                        <form method="post" action="{% url 'whatsapp_connector:instance_logout' instance.pk %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-warning btn-sm" 
+                                                    title="Desconectar instância">
+                                                <i class="bi bi-pause-circle"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    <form method="post" action="{% url 'whatsapp_connector:instance_delete' instance.pk %}" class="d-inline"
+                                          onsubmit="return confirm('Tem certeza que deseja deletar esta instância?')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                title="Deletar instância">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}">
+                                    <i class="bi bi-chevron-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}">
+                                    <i class="bi bi-chevron-double-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-phone text-muted mb-3" style="font-size: 4rem;"></i>
+                <h4 class="text-muted">{% trans "Nenhuma instância encontrada" %}</h4>
+                {% if search_query or current_status %}
+                    <p class="text-muted">{% trans "Tente ajustar os filtros de busca." %}</p>
+                    <a href="{% url 'whatsapp_connector:instance_list' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        {% trans "Limpar Filtros" %}
+                    </a>
+                {% else %}
+                    <p class="text-muted">{% trans "Crie sua primeira instância Evolution para começar." %}</p>
+                    <a href="{% url 'whatsapp_connector:instance_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        {% trans 'Criar Instância' %}
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Melhorar visual do toggle na listagem */
+@media (max-width: 768px) {
+    .ignore-own-toggle-container, .active-toggle-container {
+        flex-direction: column !important;
+        gap: 4px;
+    }
+    
+    .ignore-own-toggle-container small, .active-toggle-container small {
+        margin-left: 0 !important;
+        text-align: center;
+    }
+    
+    /* Ocultar texto "Ativa" em telas pequenas */
+    th:nth-child(5) {
+        font-size: 0;
+        width: 70px !important;
+    }
+    
+    th:nth-child(5) i {
+        font-size: 1rem;
+    }
+    
+    /* Ocultar texto "Ignorar mensagens próprias" em telas pequenas */
+    th:nth-child(6) {
+        font-size: 0;
+        width: 80px !important;
+    }
+    
+    th:nth-child(6) i {
+        font-size: 1.1rem;
+    }
+}
+
+/* Melhorar aparência geral do toggle */
+.ignore-own-toggle, .active-toggle {
+    transform: scale(1.1);
+}
+
+.ignore-own-toggle:focus, .active-toggle:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Transição suave para o ícone de status */
+.toggle-status-icon, .active-status-icon {
+    transition: all 0.2s ease-in-out;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle switches para is_active
+    const activeToggles = document.querySelectorAll('.active-toggle');
+    // Toggle switches para ignore_own_messages
+    const toggleSwitches = document.querySelectorAll('.ignore-own-toggle');
+    
+    // Handler para toggle de status ativo
+    activeToggles.forEach(function(toggle) {
+        toggle.addEventListener('change', function() {
+            const instanceId = this.getAttribute('data-instance-id');
+            const isChecked = this.checked;
+            
+            // Desabilitar o switch enquanto processa
+            this.disabled = true;
+            
+            // Fazer requisição AJAX
+            fetch(`/whatsapp/instances/${instanceId}/toggle-active/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Atualizar estado do switch baseado na resposta do servidor
+                    this.checked = data.is_active;
+                    
+                    // Atualizar o ícone de status
+                    const statusIcon = this.parentElement.parentElement.querySelector('small i');
+                    if (data.is_active) {
+                        statusIcon.className = 'bi bi-check-circle text-success active-status-icon';
+                        statusIcon.title = 'Instância ativa - Processando mensagens';
+                    } else {
+                        statusIcon.className = 'bi bi-x-circle text-danger active-status-icon';
+                        statusIcon.title = 'Instância inativa - Não processa mensagens';
+                    }
+                    
+                    // Mostrar mensagem de sucesso
+                    showToast(data.message, 'success');
+                } else {
+                    // Reverter o estado do switch em caso de erro
+                    this.checked = !isChecked;
+                    showToast(data.error || 'Erro ao alterar status da instância', 'error');
+                }
+            })
+            .catch(error => {
+                // Reverter o estado do switch em caso de erro de rede
+                this.checked = !isChecked;
+                showToast('Erro de conexão', 'error');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Reabilitar o switch
+                this.disabled = false;
+            });
+        });
+    });
+    
+    // Handler para toggle de ignore own messages
+    toggleSwitches.forEach(function(toggle) {
+        toggle.addEventListener('change', function() {
+            const instanceId = this.getAttribute('data-instance-id');
+            const isChecked = this.checked;
+            
+            // Desabilitar o switch enquanto processa
+            this.disabled = true;
+            
+            // Fazer requisição AJAX
+            fetch(`/whatsapp/instances/${instanceId}/toggle-ignore-own/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Atualizar estado do switch baseado na resposta do servidor
+                    this.checked = data.ignore_own_messages;
+                    
+                    // Atualizar o ícone de status
+                    const statusIcon = this.parentElement.parentElement.querySelector('small i');
+                    if (data.ignore_own_messages) {
+                        statusIcon.className = 'bi bi-shield-check text-success';
+                        statusIcon.title = 'Filtro ativo - Mensagens próprias são ignoradas';
+                    } else {
+                        statusIcon.className = 'bi bi-shield-x text-warning';
+                        statusIcon.title = 'Filtro inativo - Mensagens próprias serão processadas';
+                    }
+                    
+                    // Mostrar mensagem de sucesso
+                    showToast(data.message, 'success');
+                } else {
+                    // Reverter o estado do switch em caso de erro
+                    this.checked = !isChecked;
+                    showToast(data.error || 'Erro ao alterar configuração', 'error');
+                }
+            })
+            .catch(error => {
+                // Reverter o estado do switch em caso de erro de rede
+                this.checked = !isChecked;
+                showToast('Erro de conexão', 'error');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Reabilitar o switch
+                this.disabled = false;
+            });
+        });
+    });
+    
+    // Função para mostrar toast (mensagem temporária)
+    function showToast(message, type = 'info') {
+        // Criar elemento toast
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Adicionar ao body
+        document.body.appendChild(toast);
+        
+        // Remover após 3 segundos
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}

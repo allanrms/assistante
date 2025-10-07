@@ -1,0 +1,207 @@
+{% extends 'webapp/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans 'Arquivos de Contexto' %}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold text-dark">
+        <i class="bi bi-file-earmark-text me-2"></i>
+        {% trans 'Arquivos de Contexto' %} - {{ llm_config.display_name }}
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'agents:assistant_detail' llm_config.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            Voltar ao Assistant
+        </a>
+        <a href="{% url 'agents:context_file_upload' llm_config.pk %}" class="btn btn-primary">
+            <i class="bi bi-upload me-1"></i>
+            Upload Arquivo
+        </a>
+    </div>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'agents:assistant_list' %}">Assistants</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'agents:assistant_detail' llm_config.pk %}">{{ llm_config.display_name }}</a></li>
+        <li class="breadcrumb-item active">Arquivos de Contexto</li>
+    </ol>
+</nav>
+
+{% if context_files %}
+<div class="row">
+    {% for file in context_files %}
+    <div class="col-lg-6 col-xl-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-start">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-file-earmark-{% if file.file_type == 'pdf' %}pdf{% elif file.file_type == 'docx' %}word{% elif file.file_type == 'txt' or file.file_type == 'md' %}text{% elif file.file_type == 'csv' %}spreadsheet{% elif file.file_type == 'json' %}code{% else %}text{% endif %} me-2 text-primary"></i>
+                    <div>
+                        <h6 class="mb-0">{{ file.name }}</h6>
+                        <small class="text-muted">{{ file.get_file_type_display }}</small>
+                    </div>
+                </div>
+                
+                <!-- Status badge -->
+                {% if file.status == 'ready' %}
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle me-1"></i>Pronto
+                    </span>
+                {% elif file.status == 'processing' %}
+                    <span class="badge bg-warning">
+                        <i class="bi bi-clock me-1"></i>Processando
+                    </span>
+                {% elif file.status == 'error' %}
+                    <span class="badge bg-danger">
+                        <i class="bi bi-exclamation-circle me-1"></i>Erro
+                    </span>
+                {% else %}
+                    <span class="badge bg-secondary">
+                        <i class="bi bi-upload me-1"></i>Enviando
+                    </span>
+                {% endif %}
+            </div>
+            
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Tamanho</small>
+                        <strong>{{ file.get_file_size_display }}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Status</small>
+                        <strong>
+                            {% if file.is_active %}
+                                <span class="text-success">Ativo</span>
+                            {% else %}
+                                <span class="text-muted">Inativo</span>
+                            {% endif %}
+                        </strong>
+                    </div>
+                </div>
+                
+                {% if file.status == 'error' and file.error_message %}
+                <div class="alert alert-danger py-2">
+                    <small><strong>Erro:</strong> {{ file.error_message }}</small>
+                </div>
+                {% endif %}
+                
+                {% if file.extracted_content %}
+                <div class="mb-3">
+                    <small class="text-muted d-block mb-1">Prévia do conteúdo:</small>
+                    <div class="bg-light p-2 rounded" style="font-size: 0.85rem; max-height: 100px; overflow-y: auto;">
+                        {{ file.extracted_content|truncatechars:200 }}
+                        {% if file.extracted_content|length > 200 %}...{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="text-muted">
+                    <small>
+                        <i class="bi bi-calendar me-1"></i>
+                        Enviado em {{ file.created_at|date:"d/m/Y H:i" }}
+                    </small>
+                </div>
+            </div>
+            
+            <div class="card-footer">
+                <div class="d-flex gap-2">
+                    {% if file.file %}
+                    <a href="{{ file.file.url }}" target="_blank" class="btn btn-outline-primary btn-sm flex-fill">
+                        <i class="bi bi-download me-1"></i>Download
+                    </a>
+                    {% endif %}
+                    
+                    <a href="{% url 'agents:context_file_edit' file.pk %}" class="btn btn-outline-secondary btn-sm flex-fill">
+                        <i class="bi bi-pencil me-1"></i>Editar
+                    </a>
+                    
+                    <a href="{% url 'agents:context_file_delete' file.pk %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover este arquivo?')">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Paginação -->
+{% if is_paginated %}
+<nav aria-label="Navegação de páginas">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">Primeira</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<!-- Estado vazio -->
+<div class="text-center py-5">
+    <i class="bi bi-file-earmark-plus text-muted mb-3" style="font-size: 4rem;"></i>
+    <h4 class="text-muted">Nenhum arquivo de contexto</h4>
+    <p class="text-muted mb-4">
+        Adicione arquivos para que o assistant tenha acesso a informações específicas do seu negócio.
+    </p>
+    <a href="{% url 'agents:context_file_upload' llm_config.pk %}" class="btn btn-primary">
+        <i class="bi bi-upload me-2"></i>Fazer Primeiro Upload
+    </a>
+</div>
+{% endif %}
+
+<!-- Informações sobre como funciona -->
+<div class="row mt-5">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Como funciona o contexto
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">
+                    Os arquivos de contexto são utilizados pelo assistant para fornecer respostas mais precisas 
+                    e específicas ao seu negócio. Quando um usuário faz uma pergunta, o sistema:
+                </p>
+                <ol class="mb-0">
+                    <li>Analisa a pergunta do usuário</li>
+                    <li>Busca informações relevantes nos arquivos de contexto ativos</li>
+                    <li>Combina essas informações com o conhecimento do modelo de IA</li>
+                    <li>Gera uma resposta personalizada e precisa</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

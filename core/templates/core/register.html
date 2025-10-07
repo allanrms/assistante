@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Conta - Assistante</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #000000;
+            --secondary-color: #1a1a1a;
+            --accent-color: #333333;
+            --success-color: #2d2d2d;
+            --warning-color: #4d4d4d;
+            --danger-color: #666666;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(-45deg, #000000, #1a1a1a, #333333, #4d4d4d);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .register-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .register-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+            animation: slideUp 1s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            box-shadow: 0 8px 32px rgba(30, 64, 175, 0.3);
+        }
+
+        .logo-icon i {
+            font-size: 2rem;
+            color: white;
+        }
+
+        .brand-title {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid rgba(30, 64, 175, 0.1);
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid rgba(30, 64, 175, 0.1);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.1);
+            outline: none;
+        }
+
+        .form-text {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .invalid-feedback {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--danger-color);
+            margin-top: 0.25rem;
+        }
+
+        .register-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            border: none;
+            border-radius: 16px;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: all 0.3s ease;
+            margin-top: 1.5rem;
+        }
+
+        .register-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(30, 64, 175, 0.4);
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #64748b;
+        }
+
+        .login-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 576px) {
+            .register-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .brand-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-card">
+            <!-- Logo and branding -->
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="bi bi-eye-fill"></i>
+                </div>
+                <h1 class="brand-title">Criar Conta no Assistante</h1>
+                <p class="text-muted">Preencha os dados abaixo para começar</p>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Registration form -->
+            <form method="post" id="registerForm">
+                {% csrf_token %}
+
+                <!-- Dados Básicos -->
+                <h3 class="section-title">
+                    <i class="bi bi-person-circle me-2"></i>Dados Básicos
+                </h3>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.full_name.id_for_label }}" class="form-label">
+                            {{ form.full_name.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.full_name }}
+                        {% if form.full_name.errors %}
+                            {% for error in form.full_name.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.email.id_for_label }}" class="form-label">
+                            {{ form.email.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                            {% for error in form.email.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.phone.id_for_label }}" class="form-label">
+                            {{ form.phone.label }}
+                        </label>
+                        {{ form.phone }}
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.client_type.id_for_label }}" class="form-label">
+                            {{ form.client_type.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.client_type }}
+                        {% if form.client_type.errors %}
+                            {% for error in form.client_type.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Dados de Pessoa Física -->
+                <div id="individual-fields" class="hidden">
+                    <h3 class="section-title">
+                        <i class="bi bi-person me-2"></i>Dados de Pessoa Física
+                    </h3>
+
+                    <div class="mb-3">
+                        <label for="{{ form.cpf.id_for_label }}" class="form-label">
+                            {{ form.cpf.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.cpf }}
+                        {% if form.cpf.errors %}
+                            {% for error in form.cpf.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Dados de Pessoa Jurídica -->
+                <div id="company-fields" class="hidden">
+                    <h3 class="section-title">
+                        <i class="bi bi-building me-2"></i>Dados de Pessoa Jurídica
+                    </h3>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.cnpj.id_for_label }}" class="form-label">
+                                {{ form.cnpj.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.cnpj }}
+                            {% if form.cnpj.errors %}
+                                {% for error in form.cnpj.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.company_name.id_for_label }}" class="form-label">
+                                {{ form.company_name.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.company_name }}
+                            {% if form.company_name.errors %}
+                                {% for error in form.company_name.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dados de Faturamento (opcional) -->
+                <h3 class="section-title">
+                    <i class="bi bi-credit-card me-2"></i>Dados de Faturamento (opcional)
+                </h3>
+
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label for="{{ form.billing_address.id_for_label }}" class="form-label">
+                            {{ form.billing_address.label }}
+                        </label>
+                        {{ form.billing_address }}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-5 mb-3">
+                        <label for="{{ form.billing_city.id_for_label }}" class="form-label">
+                            {{ form.billing_city.label }}
+                        </label>
+                        {{ form.billing_city }}
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label for="{{ form.billing_state.id_for_label }}" class="form-label">
+                            {{ form.billing_state.label }}
+                        </label>
+                        {{ form.billing_state }}
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.billing_zip_code.id_for_label }}" class="form-label">
+                            {{ form.billing_zip_code.label }}
+                        </label>
+                        {{ form.billing_zip_code }}
+                    </div>
+                </div>
+
+                <!-- Senha -->
+                <h3 class="section-title">
+                    <i class="bi bi-lock me-2"></i>Senha de Acesso
+                </h3>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.password.id_for_label }}" class="form-label">
+                            {{ form.password.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.password }}
+                        <small class="form-text">{{ form.password.help_text }}</small>
+                        {% if form.password.errors %}
+                            {% for error in form.password.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.password_confirm.id_for_label }}" class="form-label">
+                            {{ form.password_confirm.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.password_confirm }}
+                        {% if form.password_confirm.errors %}
+                            {% for error in form.password_confirm.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Termos -->
+                <div class="mb-3 form-check">
+                    {{ form.accept_terms }}
+                    <label class="form-check-label" for="{{ form.accept_terms.id_for_label }}">
+                        {{ form.accept_terms.label }}
+                    </label>
+                    {% if form.accept_terms.errors %}
+                        {% for error in form.accept_terms.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="register-btn">
+                    <i class="bi bi-person-plus me-2"></i>
+                    Criar Conta
+                </button>
+            </form>
+
+            <div class="login-link">
+                Já tem uma conta? <a href="{% url 'webapp:login' %}">Faça login aqui</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Toggle campos de pessoa física/jurídica
+        const clientTypeSelect = document.getElementById('{{ form.client_type.id_for_label }}');
+        const individualFields = document.getElementById('individual-fields');
+        const companyFields = document.getElementById('company-fields');
+
+        function toggleClientTypeFields() {
+            const clientType = clientTypeSelect.value;
+
+            if (clientType === 'individual') {
+                individualFields.classList.remove('hidden');
+                companyFields.classList.add('hidden');
+            } else if (clientType === 'company') {
+                individualFields.classList.add('hidden');
+                companyFields.classList.remove('hidden');
+            } else {
+                individualFields.classList.add('hidden');
+                companyFields.classList.add('hidden');
+            }
+        }
+
+        clientTypeSelect.addEventListener('change', toggleClientTypeFields);
+
+        // Inicializa com o valor atual
+        toggleClientTypeFields();
+    </script>
+</body>
+</html>

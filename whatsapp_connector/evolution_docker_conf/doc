@@ -1,0 +1,5 @@
+docker run -d \
+    --name evolution_api \
+    -p 8180:8080 \
+    -e AUTHENTICATION_API_KEY=1234 \
+    atendai/evolution-api:latest

@@ -7,7 +7,7 @@ User = get_user_model()
 class GoogleCalendarAuth(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='google_calendar_auth')
     access_token = models.TextField()
-    refresh_token = models.TextField()
+    refresh_token = models.TextField(null=True, blank=True)
     expires_at = models.DateTimeField()
     whatsapp_number = models.CharField(max_length=20, null=True, blank=True)
     evolution_instance = models.ForeignKey('whatsapp_connector.EvolutionInstance', on_delete=models.CASCADE, null=True, blank=True)

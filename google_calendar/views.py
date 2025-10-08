@@ -2,10 +2,14 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .services import GoogleCalendarService
+from .models import GoogleCalendarAuth, CalendarIntegrationRequest
+import uuid
 
 
 @api_view(['POST'])
@@ -49,7 +53,27 @@ def oauth2_callback(request):
         service = GoogleCalendarService()
         success, message = service.handle_oauth_callback(code, state)
 
+        # Verifica se foi iniciado pelo perfil do usuário
+        from_profile = request.session.get('google_calendar_request_token') == state
+
         if success:
+            # Se foi iniciado pelo perfil, redireciona para lá
+            if from_profile:
+                # Limpa a sessão
+                request.session.pop('google_calendar_request_token', None)
+                request.session.pop('google_calendar_user_id', None)
+
+                # Adiciona mensagem de sucesso
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                user_id = request.session.get('_auth_user_id')
+                if user_id:
+                    # Mensagem será exibida na próxima página
+                    request.session['google_calendar_success'] = message
+
+                return redirect('/perfil/?tab=integrations')
+
+            # Se foi iniciado pelo WhatsApp, mostra página de sucesso
             return HttpResponse(f"""
                 <html>
                 <head><title>Integração Realizada</title></head>
@@ -66,6 +90,13 @@ def oauth2_callback(request):
                 </html>
             """)
         else:
+            # Se foi iniciado pelo perfil, redireciona com erro
+            if from_profile:
+                request.session.pop('google_calendar_request_token', None)
+                request.session.pop('google_calendar_user_id', None)
+                request.session['google_calendar_error'] = message
+                return redirect('/perfil/?tab=integrations')
+
             return HttpResponse(f"""
                 <html>
                 <head><title>Erro na Integração</title></head>
@@ -126,3 +157,49 @@ def oauth2_callback(request):
 #
 #     except Exception as e:
 #         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@login_required
+def connect_google_calendar(request):
+    """
+    Inicia o fluxo de conexão com o Google Calendar.
+    """
+    # Gera um token único para esta requisição
+    request_token = str(uuid.uuid4())
+
+    # Salva na sessão para validar o callback
+    request.session['google_calendar_request_token'] = request_token
+    request.session['google_calendar_user_id'] = request.user.id
+
+    # Cria a solicitação de integração
+    CalendarIntegrationRequest.objects.create(
+        whatsapp_number=request.user.email,  # Usa o email como identificador
+        request_token=request_token,
+        user_id=request.user.id,
+        evolution_instance=None  # Opcional, pode ser None para integração direta do usuário
+    )
+
+    # Inicializa o serviço e obtém a URL de autorização
+    calendar_service = GoogleCalendarService()
+    authorization_url = calendar_service.get_authorization_url(
+        whatsapp_number=request.user.email,
+        user_id=request.user.id,
+        evolution_instance=None
+    )
+
+    return redirect(authorization_url)
+
+
+@login_required
+def disconnect_google_calendar(request):
+    """
+    Desconecta o Google Calendar do usuário.
+    """
+    try:
+        google_auth = GoogleCalendarAuth.objects.get(user=request.user)
+        google_auth.delete()
+        messages.success(request, 'Google Calendar desconectado com sucesso!')
+    except GoogleCalendarAuth.DoesNotExist:
+        messages.warning(request, 'Você não está conectado ao Google Calendar.')
+
+    return redirect('/perfil/?tab=integrations')

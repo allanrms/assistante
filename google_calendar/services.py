@@ -52,6 +52,7 @@ class GoogleCalendarService:
         authorization_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
+            prompt='consent',
             state=request_token
         )
 
@@ -98,12 +99,24 @@ class GoogleCalendarService:
             # Usa a instância Evolution diretamente da solicitação
             evolution_instance = integration_request.evolution_instance
 
+            # Verifica se o refresh_token está disponível
+            refresh_token = credentials.refresh_token
+
+            # Se não tiver refresh_token, tenta reutilizar um existente
+            if not refresh_token:
+                try:
+                    existing_auth = GoogleCalendarAuth.objects.get(user=user)
+                    refresh_token = existing_auth.refresh_token
+                    print(f"⚠️ Refresh token não retornado pelo Google. Reutilizando token existente.")
+                except GoogleCalendarAuth.DoesNotExist:
+                    return False, "Erro: O Google não retornou um refresh_token. Por favor, revogue o acesso nas configurações do Google e tente novamente."
+
             # Salva as credenciais vinculando com a instância
             GoogleCalendarAuth.objects.update_or_create(
                 user=user,
                 defaults={
                     'access_token': credentials.token,
-                    'refresh_token': credentials.refresh_token,
+                    'refresh_token': refresh_token,
                     'expires_at': timezone.make_aware(datetime.fromtimestamp(credentials.expiry.timestamp())),
                     'user_id': integration_request.user_id,
                     'evolution_instance': evolution_instance,
@@ -156,6 +169,9 @@ class GoogleCalendarService:
         """
         Renova o token de acesso
         """
+        if not calendar_auth.refresh_token:
+            raise ValueError("Refresh token não disponível. Por favor, reconecte com o Google Calendar.")
+
         credentials = Credentials(
             token=calendar_auth.access_token,
             refresh_token=calendar_auth.refresh_token,
@@ -195,7 +211,7 @@ class GoogleCalendarService:
             return False, "Usuário não autenticado com Google Calendar."
 
         try:
-            now = datetime.utcnow().isoformat() + 'Z'
+            now = timezone.now().isoformat()
             events_result = service.events().list(
                 calendarId='primary',
                 timeMin=now,

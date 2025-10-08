@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from whatsapp_connector.models import EvolutionInstance, MessageHistory
+from google_calendar.models import GoogleCalendarAuth
 from .forms import LoginForm, UserProfileForm, ClientProfileForm, ChangePasswordForm
 
 
@@ -295,11 +296,30 @@ def profile_view(request):
     client_form = ClientProfileForm(instance=request.user.client)
     password_form = ChangePasswordForm()
 
+    # Verifica status da conexão do Google Calendar
+    google_calendar_connected = False
+    google_calendar_auth = None
+    try:
+        google_calendar_auth = GoogleCalendarAuth.objects.get(user=request.user)
+        google_calendar_connected = True
+    except GoogleCalendarAuth.DoesNotExist:
+        pass
+
+    # Verifica se há mensagens na sessão do Google Calendar
+    if 'google_calendar_success' in request.session:
+        messages.success(request, request.session.pop('google_calendar_success'))
+        active_tab = 'integrations'
+    if 'google_calendar_error' in request.session:
+        messages.error(request, request.session.pop('google_calendar_error'))
+        active_tab = 'integrations'
+
     context = {
         'user_form': user_form,
         'client_form': client_form,
         'password_form': password_form,
         'active_tab': active_tab,
+        'google_calendar_connected': google_calendar_connected,
+        'google_calendar_auth': google_calendar_auth,
     }
 
     return render(request, 'webapp/profile.html', context)

@@ -27,11 +27,11 @@ class GoogleCalendarLangChainTools:
             List[Tool]: Lista de ferramentas LangChain
         """
         return [
-            Tool(
-                name="conectar_google_calendar",
-                func=self._conectar_google_calendar,
-                description="Conecta o Google Calendar do usuário via OAuth2. Use quando o usuário não estiver conectado."
-            ),
+            # Tool(
+            #     name="conectar_google_calendar",
+            #     func=self._conectar_google_calendar,
+            #     description="Conecta o Google Calendar do usuário via OAuth2. Use quando o usuário não estiver conectado."
+            # ),
             Tool(
                 name="listar_eventos_calendar",
                 func=self._listar_eventos_calendar,
@@ -63,54 +63,54 @@ class GoogleCalendarLangChainTools:
             ),
         ]
 
-    def _conectar_google_calendar(self, input_str: str = "") -> str:
-        """Conecta o Google Calendar do usuário via OAuth2"""
-        try:
-            calendar_service = GoogleCalendarService()
-
-            # Primeiro verifica se já está conectado
-            try:
-                existing_service = calendar_service.get_calendar_service(self.numero_whatsapp)
-                if existing_service:
-                    return """✅ *Sua agenda já está conectada!*
-
-🎉 Seu Google Calendar já está integrado e funcionando.
-
-💡 *Comandos disponíveis:*
-• "meus eventos" - Ver próximos compromissos
-• "criar evento [título]" - Criar novo evento
-• "agenda hoje" - Ver eventos de hoje
-• "disponibilidade [data]" - Verificar disponibilidade"""
-
-            except Exception:
-                pass
-
-            # Gera URL de autorização
-            auth_url = calendar_service.get_authorization_url(self.numero_whatsapp)
-
-            return f"""🔗 *Integração com Google Calendar*
-
-Para conectar sua agenda do Google, clique no link abaixo:
-
-{auth_url}
-
-📋 *Instruções:*
-1. Clique no link acima
-2. Faça login na sua conta Google
-3. Autorize o acesso ao seu calendário
-4. Pronto! Sua agenda estará conectada
-
-💡 *O que você poderá fazer depois:*
-• Criar eventos via WhatsApp
-• Consultar sua agenda
-• Receber lembretes
-• Sincronizar compromissos
-
-⚠️ *Importante:* O link expira em 1 hora por segurança."""
-
-        except Exception as e:
-            traceback.print_exc()
-            return f"❌ Erro ao gerar link de conexão: {str(e)}"
+#     def _conectar_google_calendar(self, input_str: str = "") -> str:
+#         """Conecta o Google Calendar do usuário via OAuth2"""
+#         try:
+#             calendar_service = GoogleCalendarService()
+#
+#             # Primeiro verifica se já está conectado
+#             try:
+#                 existing_service = calendar_service.get_calendar_service(self.numero_whatsapp)
+#                 if existing_service:
+#                     return """✅ *Sua agenda já está conectada!*
+#
+# 🎉 Seu Google Calendar já está integrado e funcionando.
+#
+# 💡 *Comandos disponíveis:*
+# • "meus eventos" - Ver próximos compromissos
+# • "criar evento [título]" - Criar novo evento
+# • "agenda hoje" - Ver eventos de hoje
+# • "disponibilidade [data]" - Verificar disponibilidade"""
+#
+#             except Exception:
+#                 pass
+#
+#             # Gera URL de autorização
+#             auth_url = calendar_service.get_authorization_url(self.numero_whatsapp)
+#
+#             return f"""🔗 *Integração com Google Calendar*
+#
+# Para conectar sua agenda do Google, clique no link abaixo:
+#
+# {auth_url}
+#
+# 📋 *Instruções:*
+# 1. Clique no link acima
+# 2. Faça login na sua conta Google
+# 3. Autorize o acesso ao seu calendário
+# 4. Pronto! Sua agenda estará conectada
+#
+# 💡 *O que você poderá fazer depois:*
+# • Criar eventos via WhatsApp
+# • Consultar sua agenda
+# • Receber lembretes
+# • Sincronizar compromissos
+#
+# ⚠️ *Importante:* O link expira em 1 hora por segurança."""
+#
+#         except Exception as e:
+#             traceback.print_exc()
+#             return f"❌ Erro ao gerar link de conexão: {str(e)}"
 
     def _listar_eventos_calendar(self, input_str: str = "") -> str:
         """Lista os próximos eventos com horarios já ocupados do Google Calendar do usuário"""

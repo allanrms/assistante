@@ -11,6 +11,7 @@ from django.utils.translation import gettext_lazy as _
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DetailView, UpdateView
+from django.db import transaction
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -52,26 +53,45 @@ class ClientRegistrationView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            # Cria o cliente
-            client = serializer.save()
+            try:
+                with transaction.atomic():
+                    # Cria o cliente
+                    client = serializer.save()
 
-            # Gera token de confirmação
-            token = client.generate_confirmation_token()
-            client.email_confirmation_sent_at = timezone.now()
-            client.save()
+                    # Gera token de confirmação
+                    token = client.generate_confirmation_token()
+                    client.email_confirmation_sent_at = timezone.now()
+                    client.save()
 
-            # Envia e-mail de confirmação
-            self.send_confirmation_email(client, token)
+                # Tenta enviar e-mail (fora da transação para não desfazer o cadastro se falhar)
+                email_sent = True
+                try:
+                    self.send_confirmation_email(client, token)
+                except Exception as email_error:
+                    email_sent = False
+                    import logging
+                    logging.error(f'Erro ao enviar email de confirmação: {str(email_error)}')
 
-            # Retorna dados do cliente criado
-            response_serializer = ClientSerializer(client)
-            return Response(
-                {
-                    'message': 'Cliente cadastrado com sucesso. Verifique seu e-mail para confirmar a conta.',
-                    'client': response_serializer.data
-                },
-                status=status.HTTP_201_CREATED
-            )
+                # Retorna dados do cliente criado
+                response_serializer = ClientSerializer(client)
+                message = 'Cliente cadastrado com sucesso. Verifique seu e-mail para confirmar a conta.'
+                if not email_sent:
+                    message = 'Cliente cadastrado, mas houve erro ao enviar email de confirmação. Entre em contato com o suporte.'
+
+                return Response(
+                    {
+                        'message': message,
+                        'client': response_serializer.data,
+                        'email_sent': email_sent
+                    },
+                    status=status.HTTP_201_CREATED
+                )
+            except Exception as e:
+                # Se o erro ocorrer na criação do cliente, rollback é automático
+                return Response(
+                    {'error': f'Erro ao criar cliente: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -295,26 +315,37 @@ class ClientRegisterView(CreateView):
         Cria o cliente e usuário, gera token e envia email.
         """
         try:
-            # Cria o cliente e usuário (form.save retorna o user)
-            user = form.save()
+            with transaction.atomic():
+                # Cria o cliente e usuário (form.save retorna o user)
+                user = form.save()
 
-            # Gera token de confirmação no usuário
-            token = user.generate_confirmation_token()
-            user.email_confirmation_sent_at = timezone.now()
-            user.save()
+                # Gera token de confirmação no usuário
+                token = user.generate_confirmation_token()
+                user.email_confirmation_sent_at = timezone.now()
+                user.save()
 
-            # Envia e-mail de confirmação
-            self._send_confirmation_email(user, token)
-
-            # Mensagem de sucesso
-            messages.success(
-                self.request,
-                _('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar a conta.')
-            )
+            # Tenta enviar e-mail (fora da transação para não desfazer o cadastro se falhar)
+            try:
+                self._send_confirmation_email(user, token)
+                messages.success(
+                    self.request,
+                    _('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar a conta.')
+                )
+            except Exception as email_error:
+                # Cadastro foi salvo, mas email falhou
+                messages.warning(
+                    self.request,
+                    _('Cadastro realizado, mas houve erro ao enviar email de confirmação. '
+                      'Entre em contato com o suporte.')
+                )
+                # Log do erro para debug
+                import logging
+                logging.error(f'Erro ao enviar email de confirmação: {str(email_error)}')
 
             return redirect(self.success_url)
 
         except Exception as e:
+            # Se o erro ocorrer na criação do usuário, rollback é automático
             messages.error(self.request, f'Erro ao criar conta: {str(e)}')
             return self.form_invalid(form)
 

@@ -236,80 +236,80 @@ ADMINS = [
 SERVER_EMAIL = EMAIL_HOST_USER
 
 # Logging configuration
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'verbose': {
-#             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-#             'style': '{',
-#         },
-#         'simple': {
-#             'format': '{levelname} {message}',
-#             'style': '{',
-#         },
-#         'error_email': {
-#             'format': '🚨 ERRO CRÍTICO ASSISTANTE\n\nTempo: {asctime}\nMódulo: {module}\nLevel: {levelname}\n\nMensagem:\n{message}\n\nTraceback:\n',
-#             'style': '{',
-#         },
-#     },
-#     'handlers': {
-#         'console': {
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'verbose',
-#         },
-#         'file': {
-#             'class': 'logging.FileHandler',
-#             'filename': os.path.join(BASE_DIR, 'django.log'),
-#             'formatter': 'verbose',
-#         },
-#         'mail_admins': {
-#             'level': 'ERROR',
-#             'class': 'django.utils.log.AdminEmailHandler',
-#             'formatter': 'error_email',
-#             'include_html': False,
-#         },
-#         'critical_file': {
-#             'class': 'logging.FileHandler',
-#             'filename': os.path.join(BASE_DIR, 'critical_errors.log'),
-#             'formatter': 'verbose',
-#             'level': 'ERROR',
-#         },
-#     },
-#     'root': {
-#         'handlers': ['console', 'file'],
-#         'level': 'INFO',
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['console', 'file'],
-#             'level': 'INFO',
-#             'propagate': False,
-#         },
-#         'django.request': {
-#             'handlers': ['console', 'file', 'mail_admins'],
-#             'level': 'ERROR',
-#             'propagate': False,
-#         },
-#         # Logger customizado para erros do LangChain Agent
-#         'assistante.langchain_agent': {
-#             'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
-#             'level': 'ERROR',
-#             'propagate': False,
-#         },
-#         # Logger para erros de processamento de mídia
-#         'assistante.media_processing': {
-#             'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
-#             'level': 'ERROR',
-#             'propagate': False,
-#         },
-#         # Logger para erros críticos do webhook
-#         'assistante.webhook': {
-#             'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
-#             'level': 'ERROR',
-#             'propagate': False,
-#         },
-#     },
-# }
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+        'error_email': {
+            'format': '🚨 ERRO CRÍTICO ORBI\n\nTempo: {asctime}\nMódulo: {module}\nLevel: {levelname}\n\nMensagem:\n{message}\n\nTraceback:\n',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'django.log'),
+            'formatter': 'verbose',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'formatter': 'error_email',
+            'include_html': False,
+        },
+        'critical_file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'critical_errors.log'),
+            'formatter': 'verbose',
+            'level': 'ERROR',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console', 'file', 'mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        # Logger customizado para erros do LangChain Agent
+        'orbi.langchain_agent': {
+            'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        # Logger para erros de processamento de mídia
+        'orbi.media_processing': {
+            'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        # Logger para erros críticos do webhook
+        'orbi.webhook': {
+            'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
 
 

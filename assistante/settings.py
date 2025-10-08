@@ -249,7 +249,7 @@ LOGGING = {
             'style': '{',
         },
         'error_email': {
-            'format': '🚨 ERRO CRÍTICO ORBI\n\nTempo: {asctime}\nMódulo: {module}\nLevel: {levelname}\n\nMensagem:\n{message}\n\nTraceback:\n',
+            'format': '🚨 ERRO CRÍTICO ASSISTANTE\n\nTempo: {asctime}\nMódulo: {module}\nLevel: {levelname}\n\nMensagem:\n{message}\n\nTraceback:\n',
             'style': '{',
         },
     },
@@ -292,19 +292,19 @@ LOGGING = {
             'propagate': False,
         },
         # Logger customizado para erros do LangChain Agent
-        'orbi.langchain_agent': {
+        'assistante.langchain_agent': {
             'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
             'level': 'ERROR',
             'propagate': False,
         },
         # Logger para erros de processamento de mídia
-        'orbi.media_processing': {
+        'assistante.media_processing': {
             'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
             'level': 'ERROR',
             'propagate': False,
         },
         # Logger para erros críticos do webhook
-        'orbi.webhook': {
+        'assistante.webhook': {
             'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
             'level': 'ERROR',
             'propagate': False,

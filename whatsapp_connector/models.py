@@ -215,6 +215,15 @@ class ChatSession(models.Model):
         null=True,
         verbose_name='Instância Evolution'
     )
+    contact = models.ForeignKey(
+        'core.Contact',
+        on_delete=models.SET_NULL,
+        related_name='chat_sessions',
+        blank=True,
+        null=True,
+        verbose_name='Contato',
+        help_text='Contato associado a esta sessão'
+    )
     from_number = models.CharField(max_length=50, verbose_name="Número de origem")
     to_number = models.CharField(max_length=50, verbose_name="Número de destino")
     status = models.CharField(

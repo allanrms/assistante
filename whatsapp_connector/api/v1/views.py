@@ -363,6 +363,7 @@ class EvolutionWebhookView(APIView):
     def _save_message(self, message_data, evolution_instance=None) -> MessageHistory:
         """Save message to database"""
         from whatsapp_connector.models import ChatSession
+        from core.models import Contact
         
         # Get or create chat session first
         from_number = clean_number_whatsapp(message_data['from_number'])
@@ -370,12 +371,44 @@ class EvolutionWebhookView(APIView):
 
         print(f'from_number {from_number} to_number {to_number}')
 
+        # Criar ou buscar contato a partir dos dados do WhatsApp
+        sender_name = message_data.get('sender_name', '')
+        contact_data = {}
+        if sender_name:
+            contact_data['profile_name'] = sender_name
+
+        # Vincular ao cliente (owner) da instância Evolution
+        if evolution_instance and evolution_instance.owner:
+            contact_data['client'] = evolution_instance.owner
+
+        contact, contact_created = Contact.get_or_create_from_whatsapp(
+            phone_number=from_number,
+            **contact_data
+        )
+
+        if contact_created:
+            print(f"✅ Novo contato criado: {contact} (Cliente: {contact.client})")
+        else:
+            print(f"ℹ️ Contato existente: {contact} (Total mensagens: {contact.total_messages})")
+
+            # Se o contato existe mas não tem cliente vinculado, vincular agora
+            if not contact.client and evolution_instance and evolution_instance.owner:
+                contact.client = evolution_instance.owner
+                contact.save(update_fields=['client'])
+                print(f"🔗 Cliente {evolution_instance.owner} vinculado ao contato {contact}")
+
         # Buscar sessão ativa (ai ou human) ou criar nova com status 'ai'
         chat_session, session_created = ChatSession.get_or_create_active_session(
             from_number=from_number,
             to_number=to_number,
             evolution_instance=evolution_instance
         )
+
+        # Vincular contato à sessão se ainda não estiver vinculado
+        if not chat_session.contact:
+            chat_session.contact = contact
+            chat_session.save(update_fields=['contact'])
+            print(f"🔗 Contato {contact} vinculado à sessão {chat_session.id}")
 
         if session_created:
             print(f"✅ Nova sessão criada para {from_number} com status 'ai'")

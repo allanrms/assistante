@@ -126,15 +126,15 @@ class ChatSessionAdmin(admin.ModelAdmin):
     """
     Admin para gerenciar sessões de chat
     """
-    list_display = ('id', 'from_number', 'to_number', 'instance_display', 'status', 'has_summary', 'message_count', 'created_at', 'updated_at')
-    list_filter = ('status', 'evolution_instance', 'created_at', 'updated_at')
-    search_fields = ('from_number', 'to_number', 'contact_summary', 'evolution_instance__name')
+    list_display = ('id', 'from_number', 'contact_display', 'to_number', 'instance_display', 'status', 'has_summary', 'message_count', 'created_at', 'updated_at')
+    list_filter = ('status', 'evolution_instance', 'contact', 'created_at', 'updated_at')
+    search_fields = ('from_number', 'to_number', 'contact_summary', 'evolution_instance__name', 'contact__name', 'contact__phone_number')
     readonly_fields = ('created_at', 'updated_at', 'message_count')
-    list_editable = ('status', )
+    raw_id_fields = ('contact', 'evolution_instance')
 
     fieldsets = (
         ('Session Info', {
-            'fields': ('from_number', 'to_number', 'status', 'evolution_instance')
+            'fields': ('from_number', 'to_number', 'status', 'evolution_instance', 'contact')
         }),
         ('👤 Resumo do Contato', {
             'fields': ('contact_summary',),
@@ -189,6 +189,24 @@ class ChatSessionAdmin(admin.ModelAdmin):
         return format_html('<span class="text-muted">-</span>')
     instance_display.short_description = 'Instância'
     instance_display.admin_order_field = 'evolution_instance__name'
+
+    def contact_display(self, obj):
+        """Exibe o contato vinculado formatado"""
+        if obj.contact:
+            return format_html(
+                '<span class="badge bg-success" title="Total mensagens: {}">👤 {}</span>',
+                obj.contact.total_messages,
+                obj.contact
+            )
+        return format_html('<span class="text-muted">-</span>')
+    contact_display.short_description = 'Contato'
+    contact_display.admin_order_field = 'contact__name'
+
+    def get_queryset(self, request):
+        """Otimiza queryset com select_related para evolution_instance e contact."""
+        qs = super().get_queryset(request)
+        return qs.select_related('evolution_instance', 'contact')
+
 
 
 @admin.register(MessageHistory)

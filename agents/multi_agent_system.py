@@ -122,6 +122,8 @@ class AgendaAgent:
         ))
 
         # Ferramenta para encontrar próximas datas
+        from datetime import datetime, timedelta
+
         def get_next_weekday(weekday: str):
             try:
                 today = datetime.now()
@@ -141,19 +143,26 @@ class AgendaAgent:
                 if days_until_target == 0:
                     days_until_target = 7
 
-                next_date = today + timedelta(days=days_until_target)
-                following_date = next_date + timedelta(days=7)
+                # Gera as próximas 10 ocorrências
+                datas = []
+                for i in range(10):
+                    proxima_data = today + timedelta(days=days_until_target + 7 * i)
+                    datas.append(proxima_data.strftime('%d/%m/%Y'))
 
-                return f"""Próximas {normalized_weekday}s:
-1. {next_date.strftime('%d/%m/%Y')} ({normalized_weekday})
-2. {following_date.strftime('%d/%m/%Y')} ({normalized_weekday})"""
+                # Monta a resposta formatada
+                resposta = f"📅 *Próximas {normalized_weekday}s:*\n"
+                for idx, data in enumerate(datas, 1):
+                    resposta += f"{idx}. {data} ({normalized_weekday})\n"
+
+                return resposta.strip()
+
             except Exception as e:
                 return f"❌ Erro: {str(e)}"
 
         tools.append(Tool(
             name="proximo_dia_semana",
             func=get_next_weekday,
-            description="Encontra as próximas 2 ocorrências de terça ou quinta a partir de hoje. Use: 'terça' ou 'quinta'"
+            description="Encontra as próximas 10 ocorrências de terça ou quinta a partir de hoje. Use: 'terça' ou 'quinta'"
         ))
 
         return tools
@@ -460,6 +469,62 @@ Sempre ADICIONE novas informações ao resumo existente (não substitua).
 Use formato: "Campo: Valor | Campo2: Valor2"
 
 Exemplo: update_contact_summary('Nome: João Silva | Profissão: Engenheiro | Cidade: São Paulo')"""
+        ))
+
+        def validar_evento_convenio(evento_str: str) -> str:
+            """
+            Valida se o evento pode ser agendado conforme as regras:
+            - Consultas de convênio (Unimed, Amil etc.) só podem ocorrer às terças e quintas.
+            - Consultas particulares podem ocorrer em qualquer dia útil.
+
+            Espera receber no formato:
+                "Consulta [tipo] +55numero — Nome do Paciente|DD/MM/YYYY|HH:MM"
+            """
+            try:
+                partes = evento_str.split("|")
+                if len(partes) < 2:
+                    return "❌ Formato inválido. Use: 'Consulta [tipo] +55numero — Nome|DD/MM/YYYY|HH:MM'"
+
+                cabecalho = partes[0].lower().strip()
+                data_str = partes[1].strip()
+
+                # Tenta converter a data
+                try:
+                    data_obj = datetime.strptime(data_str, "%d/%m/%Y")
+                except ValueError:
+                    return f"❌ Data inválida: {data_str}. Use o formato DD/MM/YYYY."
+
+                # Detecta tipo do evento
+                tipo = "particular"
+                if "convênio" in cabecalho or "convenio" in cabecalho:
+                    tipo = "convênio"
+
+                dia_semana = data_obj.weekday()  # segunda=0, terça=1, quinta=3, etc.
+                nome_dia = data_obj.strftime("%A").capitalize()
+
+                # 🔹 Regra principal: convênio só terça ou quinta
+                if tipo == "convênio" and dia_semana not in (1, 3):
+                    return f"❌ Consultas por convênio só são permitidas às terças e quintas. ({nome_dia} não é permitido)"
+
+                # 🔹 Verifica finais de semana
+                if dia_semana >= 5:
+                    return f"❌ {nome_dia} não é um dia útil para agendamentos."
+
+                # Se passou em todas as validações
+                return f"✅ Validação OK para {nome_dia} ({data_str}) — tipo: {tipo}"
+
+            except Exception as e:
+                return f"❌ Erro interno na validação: {str(e)}"
+
+        tools.append(Tool(
+            name="validar_evento_convenio",
+            func=validar_evento_convenio,
+            description=(
+                "Valida se o evento está de acordo com as regras de convênio. "
+                "Convênios (Unimed, Amil etc.) só podem ser marcados às terças e quintas. "
+                "Recebe como input: 'Consulta [tipo] +55numero — Nome|DD/MM/YYYY|HH:MM'. "
+                "Retorna mensagem de validação OK ou erro."
+            )
         ))
 
         return tools

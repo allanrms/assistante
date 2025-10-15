@@ -155,6 +155,12 @@ Se o retorno não contiver essa frase, você deve responder algo como:
 “Não consegui confirmar o agendamento, deseja tentar novamente?”
 
 
+**Regras de Agendamento**
+- Consultas *particulares* podem ser marcadas em qualquer dia útil.
+- Consultas *por convênio* (Unimed, Amil etc.) só podem ocorrer às *terças e quintas*.
+- Sempre valide o dia antes de chamar o AgendaAgent para criar o evento, tenha certeza de que pode marcar naquele dia.
+
+
 🧭 Conversão de dias:
 Quando o paciente mencionar um dia da semana (como “sexta” ou “terça”), você deve sempre
 calcular a data correspondente à próxima ocorrência real, considerando a data atual do sistema.

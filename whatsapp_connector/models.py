@@ -352,8 +352,7 @@ class MessageHistory(models.Model):
     received_at = models.DateTimeField(default=timezone.now)
     processing_status = models.CharField(max_length=20, choices=PROCESSING_STATUS, default='pending')
     response = models.TextField(blank=True, null=True)
-    # n8n_response = models.JSONField(blank=True, null=True)
-    
+
     # Additional fields from assistante integration
     sender_name = models.CharField(max_length=255, blank=True, null=True)
     source = models.CharField(max_length=50, blank=True, null=True)  # ios, android, etc

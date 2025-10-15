@@ -24,6 +24,56 @@ class EvolutionAPIService:
         self.base_url = settings.EVOLUTION_API_BASE_URL
         self.instance = instance
 
+    def configure_instance_settings(self, read_status=False, groups_ignore=True, always_online=False, read_messages=True):
+        """
+        Configura settings da instância Evolution API
+
+        Args:
+            read_status: Se False, ignora status/broadcast do WhatsApp (padrão: False)
+            groups_ignore: Se True, ignora mensagens de grupos (padrão: True)
+            always_online: Se True, mantém status sempre online (padrão: False)
+            read_messages: Se True, envia confirmações de leitura (padrão: True)
+
+        Returns:
+            dict com resultado da configuração ou None em caso de erro
+        """
+        url = f"{self.base_url}/settings/set/{self.instance.instance_name}"
+
+        headers = {
+            "apikey": self.instance.api_key,
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "rejectCall": False,  # Não rejeitar chamadas automaticamente
+            "msgCall": "",
+            "groupsIgnore": groups_ignore,
+            "alwaysOnline": always_online,
+            "readMessages": read_messages,
+            "readStatus": read_status,  # IMPORTANTE: False para ignorar status/broadcast
+            "syncFullHistory": False
+        }
+
+        try:
+            print(f"⚙️ Configurando settings da instância {self.instance.instance_name}")
+            print(f"   URL: {url}")
+            print(f"   Settings: readStatus={read_status}, groupsIgnore={groups_ignore}")
+
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+
+            if response.status_code == 200 or response.status_code == 201:
+                result = response.json()
+                print(f"✅ Settings configurados com sucesso!")
+                print(f"   Resposta: {result}")
+                return result
+            else:
+                print(f"⚠️ Erro ao configurar settings: {response.status_code} - {response.text}")
+                return None
+
+        except requests.RequestException as e:
+            print(f"❌ Erro ao configurar settings da instância: {e}")
+            return None
+
     def check_whatsapp_numbers(self, numbers):
         """Check if numbers have WhatsApp using Evolution API"""
         url = f"{self.base_url}/chat/whatsappNumbers/{self.instance.instance_name}"

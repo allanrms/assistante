@@ -144,7 +144,8 @@ class GoogleCalendarService:
         try:
             print(f'get_calendar_service {whatsapp_number}')
 
-            calendar_auth = GoogleCalendarAuth.objects.get(whatsapp_number=whatsapp_number)
+            #todo PRECIS AJUSTAR AQUI
+            calendar_auth = GoogleCalendarAuth.objects.all().first()
 
             # Verifica se o token precisa ser renovado
             if timezone.now() >= calendar_auth.expires_at:

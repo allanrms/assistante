@@ -12,9 +12,10 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.conf import settings
 
-from .models import EvolutionInstance, MessageHistory
+from .models import EvolutionInstance, MessageHistory, ChatSession
 from .forms import InstanceForm, WebhookConfigForm, AuthorizedNumbersForm
 from core.mixins import ClientRequiredMixin
+from datetime import timedelta
 
 
 class MessageHistoryListView(ClientRequiredMixin, LoginRequiredMixin, ListView):
@@ -214,10 +215,10 @@ class InstanceCreateView(ClientRequiredMixin, LoginRequiredMixin, CreateView):
                 'webhook': self.object.webhook_url or '',
                 'webhookByEvents': False,
                 'websocket': False,
-                "groupsIgnore": True,
-                "alwaysOnline": True,
-                "readMessages": True,
-                "readStatus": True,
+                "groupsIgnore": True,        # Ignorar grupos
+                "alwaysOnline": False,       # Não ficar sempre online
+                "readMessages": True,        # Enviar confirmações de leitura
+                "readStatus": False,         # IMPORTANTE: False para ignorar status/broadcast
                 "integration": "WHATSAPP-BAILEYS"
             }
 
@@ -440,26 +441,50 @@ def connect_instance(request, pk):
     """
     try:
         instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
-        
+
         # Conectar via Evolution API
         url = f"{instance.base_url}/instance/connect/{instance.instance_name}"
         headers = {
             'apikey': instance.api_key,
             'Content-Type': 'application/json'
         }
-        
+
         response = requests.post(url, headers=headers, timeout=30)
-        
+
         if response.status_code == 200:
             instance.status = 'connecting'
             instance.save()
-            messages.success(request, 'Processo de conexão iniciado com sucesso!')
+
+            # Configurar settings da instância para ignorar status/broadcast e grupos
+            from whatsapp_connector.services import EvolutionAPIService
+            evolution_service = EvolutionAPIService(instance)
+
+            # Chamar configuração de settings
+            # readStatus=False -> Ignora status/broadcast do WhatsApp
+            # groupsIgnore=True -> Ignora mensagens de grupos
+            settings_result = evolution_service.configure_instance_settings(
+                read_status=False,      # IMPORTANTE: False para ignorar status@broadcast
+                groups_ignore=True,     # True para ignorar grupos
+                always_online=False,    # False para não ficar sempre online
+                read_messages=True      # True para enviar confirmações de leitura
+            )
+
+            if settings_result:
+                messages.success(
+                    request,
+                    'Processo de conexão iniciado com sucesso! Settings configurados: status/broadcast e grupos serão ignorados.'
+                )
+            else:
+                messages.success(
+                    request,
+                    'Processo de conexão iniciado com sucesso! (Aviso: falha ao configurar settings automáticos)'
+                )
         else:
             messages.error(request, f'Erro ao conectar: {response.text}')
-            
+
     except Exception as e:
         messages.error(request, f'Erro inesperado: {str(e)}')
-    
+
     return redirect('whatsapp_connector:instance_detail', pk=pk)
 
 
@@ -968,17 +993,133 @@ def toggle_instance_active(request, pk):
     """
     try:
         instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
-        
+
         # Alternar o valor
         instance.is_active = not instance.is_active
         instance.save(update_fields=['is_active'])
-        
+
         return JsonResponse({
             'success': True,
             'is_active': instance.is_active,
             'message': f'Instância {"ativada" if instance.is_active else "desativada"} com sucesso'
         })
-        
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+# === CHAT KANBAN VIEWS ===
+
+class ChatKanbanView(ClientRequiredMixin, LoginRequiredMixin, ListView):
+    """
+    View estilo Kanban para gerenciar conversas por status (IA, Humano, Concluídas)
+    """
+    model = ChatSession
+    template_name = 'whatsapp_connector/chat_kanban.html'
+    context_object_name = 'sessions'
+
+    def get_queryset(self):
+        """Busca apenas sessões das instâncias do cliente"""
+        return ChatSession.objects.filter(
+            evolution_instance__owner=self.request.user.client
+        ).select_related(
+            'evolution_instance', 'contact'
+        ).prefetch_related(
+            'messages'
+        ).order_by('-updated_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Separar sessões por status
+        all_sessions = self.get_queryset()
+
+        # Sessões IA (Assistente Virtual)
+        ai_sessions = all_sessions.filter(status='ai')
+
+        # Sessões Humano (Secretária)
+        human_sessions = all_sessions.filter(status='human')
+
+        # Sessões Concluídas
+        closed_sessions = all_sessions.filter(status='closed')
+
+        # Enriquecer cada sessão com informações adicionais
+        for session in [*ai_sessions, *human_sessions, *closed_sessions]:
+            # Última mensagem
+            last_message = session.messages.first()
+            session.last_message = last_message
+
+            # Tempo de espera/conclusão
+            if session.status == 'closed' and last_message:
+                session.waiting_time = timezone.now() - last_message.received_at
+            elif last_message:
+                session.waiting_time = timezone.now() - last_message.received_at
+            else:
+                session.waiting_time = timezone.now() - session.created_at
+
+            # Contagem de mensagens
+            session.message_count = session.messages.count()
+
+            # Contagem de agendamentos (se houver)
+            session.appointments_count = 0  # Placeholder para futuras implementações
+
+        context.update({
+            'ai_sessions': ai_sessions,
+            'human_sessions': human_sessions,
+            'closed_sessions': closed_sessions,
+            'ai_count': ai_sessions.count(),
+            'human_count': human_sessions.count(),
+            'closed_count': closed_sessions.count(),
+        })
+
+        return context
+
+
+@login_required
+@require_http_methods(["POST"])
+def change_session_status(request, pk):
+    """
+    API endpoint para mudar o status de uma sessão (arrastar entre colunas)
+    """
+    try:
+        import json
+        data = json.loads(request.body)
+        new_status = data.get('status')
+
+        # Validar status
+        valid_statuses = ['ai', 'human', 'closed']
+        if new_status not in valid_statuses:
+            return JsonResponse({
+                'success': False,
+                'error': 'Status inválido'
+            })
+
+        # Buscar sessão (garantir que pertence ao cliente)
+        session = get_object_or_404(
+            ChatSession,
+            pk=pk,
+            evolution_instance__owner=request.user.client
+        )
+
+        # Atualizar status
+        old_status = session.status
+        session.status = new_status
+        session.save(update_fields=['status', 'updated_at'])
+
+        status_labels = {
+            'ai': 'Assistente Virtual',
+            'human': 'Atendimento Humano',
+            'closed': 'Concluída'
+        }
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Conversa movida de "{status_labels[old_status]}" para "{status_labels[new_status]}"'
+        })
+
     except Exception as e:
         return JsonResponse({
             'success': False,

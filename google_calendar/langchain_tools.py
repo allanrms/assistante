@@ -1,8 +1,11 @@
 """
 Ferramentas do Google Calendar para integração com LangChain
 """
+import re
 import traceback
 from datetime import datetime, timedelta, time
+from zoneinfo import ZoneInfo
+
 from langchain.agents import Tool
 from .services import GoogleCalendarService
 
@@ -63,54 +66,6 @@ class GoogleCalendarLangChainTools:
             ),
         ]
 
-#     def _conectar_google_calendar(self, input_str: str = "") -> str:
-#         """Conecta o Google Calendar do usuário via OAuth2"""
-#         try:
-#             calendar_service = GoogleCalendarService()
-#
-#             # Primeiro verifica se já está conectado
-#             try:
-#                 existing_service = calendar_service.get_calendar_service(self.numero_whatsapp)
-#                 if existing_service:
-#                     return """✅ *Sua agenda já está conectada!*
-#
-# 🎉 Seu Google Calendar já está integrado e funcionando.
-#
-# 💡 *Comandos disponíveis:*
-# • "meus eventos" - Ver próximos compromissos
-# • "criar evento [título]" - Criar novo evento
-# • "agenda hoje" - Ver eventos de hoje
-# • "disponibilidade [data]" - Verificar disponibilidade"""
-#
-#             except Exception:
-#                 pass
-#
-#             # Gera URL de autorização
-#             auth_url = calendar_service.get_authorization_url(self.numero_whatsapp)
-#
-#             return f"""🔗 *Integração com Google Calendar*
-#
-# Para conectar sua agenda do Google, clique no link abaixo:
-#
-# {auth_url}
-#
-# 📋 *Instruções:*
-# 1. Clique no link acima
-# 2. Faça login na sua conta Google
-# 3. Autorize o acesso ao seu calendário
-# 4. Pronto! Sua agenda estará conectada
-#
-# 💡 *O que você poderá fazer depois:*
-# • Criar eventos via WhatsApp
-# • Consultar sua agenda
-# • Receber lembretes
-# • Sincronizar compromissos
-#
-# ⚠️ *Importante:* O link expira em 1 hora por segurança."""
-#
-#         except Exception as e:
-#             traceback.print_exc()
-#             return f"❌ Erro ao gerar link de conexão: {str(e)}"
 
     def _listar_eventos_calendar(self, input_str: str = "") -> str:
         """Lista os próximos eventos com horarios já ocupados do Google Calendar do usuário"""
@@ -171,13 +126,21 @@ class GoogleCalendarLangChainTools:
             if len(parts) < 2:
                 return "❌ Formato incorreto. Use: titulo|data_inicio|hora_inicio|data_fim|hora_fim|descricao|localizacao"
 
-            titulo = parts[0].strip()
+            # 🧠 CORREÇÃO: definir o título original ANTES de aplicar o formato
+            titulo_original = parts[0].strip()
             data_inicio = parts[1].strip()
             hora_inicio = parts[2].strip() if len(parts) > 2 else ""
             data_fim = parts[3].strip() if len(parts) > 3 else ""
             hora_fim = parts[4].strip() if len(parts) > 4 else ""
             descricao = parts[5].strip() if len(parts) > 5 else ""
             localizacao = parts[6].strip() if len(parts) > 6 else ""
+
+            # ✅ Forçar o formato de título correto
+            if "—" not in titulo_original and "+55" not in titulo_original:
+                tipo_evento = titulo_original.upper() if titulo_original else "CONSULTA"
+                titulo = f"[{tipo_evento}] +55{self.numero_whatsapp} — Nome do Paciente"
+            else:
+                titulo = titulo_original
 
             # Processa as datas
             try:
@@ -304,24 +267,76 @@ Por favor, escolha outro horário disponível."""
         except Exception as e:
             return f"❌ Erro interno ao criar evento: {str(e)}"
 
+
+    def interpretar_data_relativa(self, texto: str) -> str:
+            """
+            Converte expressões como 'sexta', 'amanhã', 'terça-feira' em uma data real (DD/MM/YYYY)
+            baseada na data atual do sistema.
+            """
+            hoje = datetime.now().date()
+            texto = texto.lower()
+
+            # Mapeamento dos dias da semana
+            dias_semana = {
+                "segunda": 0, "segunda-feira": 0,
+                "terça": 1, "terça-feira": 1, "terca": 1, "terca-feira": 1,
+                "quarta": 2, "quarta-feira": 2,
+                "quinta": 3, "quinta-feira": 3,
+                "sexta": 4, "sexta-feira": 4,
+                "sábado": 5, "sabado": 5, "sábado-feira": 5,
+                "domingo": 6
+            }
+
+            # Casos especiais
+            if "hoje" in texto:
+                return hoje.strftime("%d/%m/%Y")
+
+            if "amanhã" in texto or "amanha" in texto:
+                return (hoje + timedelta(days=1)).strftime("%d/%m/%Y")
+
+            if "depois de amanhã" in texto or "depois de amanha" in texto:
+                return (hoje + timedelta(days=2)).strftime("%d/%m/%Y")
+
+            # Verificar se mencionou um dia da semana
+            for nome_dia, indice in dias_semana.items():
+                if re.search(rf"\b{nome_dia}\b", texto):
+                    hoje_idx = hoje.weekday()
+                    dias_a_frente = (indice - hoje_idx + 7) % 7
+                    if dias_a_frente == 0:
+                        dias_a_frente = 7  # próxima ocorrência
+                    data_resultado = hoje + timedelta(days=dias_a_frente)
+                    return data_resultado.strftime("%d/%m/%Y")
+
+            # Se não encontrou nenhuma palavra reconhecida, retorna vazio
+            return ""
+
+
     def _verificar_disponibilidade(self, input_str: str) -> str:
         """Verifica os horários (30 em 30 min) entre 09h-12h e 13h-17h"""
 
+
         def parse_datetime(dt_str: str) -> datetime:
-            """Converte string ISO 8601 para datetime naive (sem timezone)"""
+            """Converte string ISO 8601 para datetime naive (sem timezone, sempre horário local)"""
             dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
             if dt.tzinfo:
-                dt = dt.astimezone().replace(tzinfo=None)  # remove tz
+                dt = dt.astimezone(ZoneInfo("America/Sao_Paulo"))
+                dt = dt.replace(tzinfo=None)
             return dt
 
         try:
             if not input_str or input_str.strip() == "":
                 return "❌ Parâmetros necessários. Use: data"
 
-            parts = input_str.split('|')
-            data = parts[0].strip()
+            # 🆕 NOVO: tentar converter "sexta" ou "terça" em uma data real
+            data_interpretada = self.interpretar_data_relativa(input_str)
+            if data_interpretada:
+                data = data_interpretada
+            else:
+                # Caso contrário, manter formato manual "DD/MM/YYYY"
+                parts = input_str.split('|')
+                data = parts[0].strip()
 
-            # Lista eventos do dia
+            # Continua o código original normalmente...
             calendar_service = GoogleCalendarService()
             success, events = calendar_service.list_events(self.numero_whatsapp, max_results=50)
 
@@ -334,13 +349,11 @@ Por favor, escolha outro horário disponível."""
             except ValueError:
                 return "❌ Formato de data inválido. Use DD/MM/YYYY"
 
-            # Definir blocos do dia útil (09-12 / 13-17)
             blocos = [
                 (datetime.combine(data_obj.date(), time(9, 0)), datetime.combine(data_obj.date(), time(12, 0))),
                 (datetime.combine(data_obj.date(), time(13, 0)), datetime.combine(data_obj.date(), time(17, 0)))
             ]
 
-            # Filtrar eventos do dia
             eventos_do_dia = []
             for event in events:
                 start = event['start'].get('dateTime', event['start'].get('date'))
@@ -348,16 +361,16 @@ Por favor, escolha outro horário disponível."""
 
                 start_dt = parse_datetime(start)
                 end_dt = parse_datetime(end)
+                if end_dt <= start_dt:
+                    end_dt = start_dt + timedelta(minutes=1)
 
                 if start_dt.date() == data_obj.date():
                     eventos_do_dia.append((start_dt, end_dt, event.get('summary', 'Evento sem título')))
 
-            # Ordenar eventos por horário
             eventos_do_dia.sort(key=lambda x: x[0])
 
             resposta = f"📅 *Disponibilidade em {data_obj.strftime('%d/%m/%Y')} (09h-12h / 13h-17h):*\n\n"
 
-            # Gerar intervalos de 30 em 30 minutos nos blocos
             horarios = []
             for bloco_inicio, bloco_fim in blocos:
                 atual = bloco_inicio
@@ -367,17 +380,10 @@ Por favor, escolha outro horário disponível."""
                         horarios.append((atual, fim_slot))
                     atual = fim_slot
 
-            # Verificar disponibilidade de cada slot
-            for i, (ini, fim) in enumerate(horarios, 1):
+            for ini, fim in horarios:
                 ocupado = False
                 evento_nome = None
                 for ev_ini, ev_fim, titulo in eventos_do_dia:
-                    # Se o slot sobrepõe um evento
-                    # DEBUG: Log da verificação
-                    if ini.strftime('%H:%M') == '13:00':
-                        print(f"🔍 DEBUG 13:00: Slot {ini.strftime('%H:%M')}-{fim.strftime('%H:%M')} vs Evento {ev_ini.strftime('%H:%M')}-{ev_fim.strftime('%H:%M')} ({titulo})")
-                        print(f"  Condição: {ini} < {ev_fim} and {fim} > {ev_ini} = {ini < ev_fim and fim > ev_ini}")
-
                     if ini < ev_fim and fim > ev_ini:
                         ocupado = True
                         evento_nome = titulo
@@ -387,7 +393,6 @@ Por favor, escolha outro horário disponível."""
                 else:
                     resposta += f"✅ {ini.strftime('%H:%M')} - {fim.strftime('%H:%M')} (Disponível)\n"
 
-            # Também listar os eventos do dia (para referência)
             if eventos_do_dia:
                 resposta += "\n📋 *Eventos do dia:*\n"
                 for i, (ini, fim, titulo) in enumerate(eventos_do_dia, 1):

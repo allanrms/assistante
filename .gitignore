@@ -165,3 +165,4 @@ CLAUDE.md
 .claude
 /db.sqlite3
 /assistante/local.py
+/exemplo/assistente-tech-main/

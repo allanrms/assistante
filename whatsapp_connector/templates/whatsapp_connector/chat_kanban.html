@@ -1,0 +1,709 @@
+{% extends 'webapp/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans 'Conversas' %} - Assistante{% endblock %}
+
+{% block page_title %}{% trans 'Conversas WhatsApp' %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kanban-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .kanban-column {
+        background: var(--surface);
+        border-radius: var(--radius-xl);
+        padding: 1.25rem;
+        min-height: calc(100vh - 200px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .kanban-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--border-light);
+    }
+
+    .kanban-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .kanban-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.125rem;
+    }
+
+    .kanban-icon.ai {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
+        color: #3b82f6;
+    }
+
+    .kanban-icon.human {
+        background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(234, 88, 12, 0.1));
+        color: #f97316;
+    }
+
+    .kanban-icon.closed {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1));
+        color: #22c55e;
+    }
+
+    .kanban-count {
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.875rem;
+        font-weight: 700;
+    }
+
+    .kanban-cards {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+    }
+
+    .kanban-cards::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .kanban-cards::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .kanban-cards::-webkit-scrollbar-thumb {
+        background: var(--border-medium);
+        border-radius: var(--radius-full);
+    }
+
+    .chat-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: 1rem;
+        cursor: pointer;
+        transition: all var(--transition-base);
+        position: relative;
+    }
+
+    .chat-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+        border-color: var(--border-medium);
+    }
+
+    .chat-card.ai::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: #3b82f6;
+        border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    }
+
+    .chat-card.human::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: #f97316;
+        border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    }
+
+    .chat-card.closed::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: #22c55e;
+        border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    }
+
+    .chat-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+    }
+
+    .chat-time {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        padding: 0.25rem 0.625rem;
+        border-radius: var(--radius-full);
+        white-space: nowrap;
+    }
+
+    .chat-time.waiting {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .chat-time.concluded {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+    }
+
+    .chat-contact {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .chat-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 0.875rem;
+        flex-shrink: 0;
+    }
+
+    .chat-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .chat-name {
+        font-weight: 700;
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+        margin-bottom: 0.125rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .chat-phone {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        font-family: 'Monaco', 'Courier New', monospace;
+    }
+
+    .chat-status-badge {
+        padding: 0.25rem 0.625rem;
+        border-radius: var(--radius-full);
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .chat-status-badge.pending {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .chat-status-badge.attended {
+        background: rgba(249, 115, 22, 0.1);
+        color: #f97316;
+    }
+
+    .chat-message-preview {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        padding: 0.75rem;
+        background: var(--surface);
+        border-radius: var(--radius-md);
+        border-left: 2px solid var(--border-light);
+    }
+
+    .chat-message-preview i {
+        color: var(--text-tertiary);
+        font-size: 1rem;
+        margin-top: 0.125rem;
+    }
+
+    .chat-message-text {
+        flex: 1;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .chat-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border-light);
+    }
+
+    .chat-stats {
+        display: flex;
+        gap: 0.875rem;
+    }
+
+    .chat-stat {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+    }
+
+    .chat-stat i {
+        font-size: 0.875rem;
+    }
+
+    .chat-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .chat-action-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-light);
+        background: var(--surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-base);
+        font-size: 0.875rem;
+    }
+
+    .chat-action-btn:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        text-align: center;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: var(--text-tertiary);
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .kanban-container {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .kanban-column {
+            min-height: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Bar -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex gap-3">
+        <input type="text"
+               class="form-control"
+               placeholder="Buscar por nome ou telefone..."
+               style="width: 300px;"
+               id="searchInput">
+        <select class="form-select" style="width: 200px;" id="filterInstance">
+            <option value="">Todas revisões</option>
+            <option value="ai">Atendimento IA</option>
+            <option value="human">Atendimento Humano</option>
+            <option value="closed">Concluídas</option>
+        </select>
+    </div>
+</div>
+
+<!-- Kanban Board -->
+<div class="kanban-container">
+    <!-- Coluna IA (Assistente Virtual) -->
+    <div class="kanban-column">
+        <div class="kanban-header">
+            <div class="kanban-title">
+                <div class="kanban-icon ai">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <span>Assistente Virtual</span>
+            </div>
+            <span class="kanban-count">{{ ai_count }}</span>
+        </div>
+
+        <div class="kanban-cards" id="ai-column">
+            {% for session in ai_sessions %}
+            <div class="chat-card ai" data-session-id="{{ session.id }}" data-status="ai">
+                <div class="chat-card-header">
+                    <div class="chat-time waiting">
+                        <i class="bi bi-clock"></i>
+                        <span class="time-value" data-seconds="{{ session.waiting_time.total_seconds }}"></span>
+                    </div>
+                    <span class="chat-status-badge pending">Pendente</span>
+                </div>
+
+                <div class="chat-contact">
+                    <div class="chat-avatar">
+                        {% if session.contact and session.contact.name %}
+                            {{ session.contact.name|first|upper }}
+                        {% else %}
+                            {{ session.from_number|first }}
+                        {% endif %}
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">
+                            {% if session.contact and session.contact.name %}
+                                {{ session.contact.name }}
+                            {% else %}
+                                Contato
+                            {% endif %}
+                        </div>
+                        <div class="chat-phone">{{ session.from_number }}</div>
+                    </div>
+                </div>
+
+                {% if session.last_message %}
+                <div class="chat-message-preview">
+                    <i class="bi bi-chat-quote"></i>
+                    <div class="chat-message-text">
+                        {% if session.last_message.content %}
+                            {{ session.last_message.content|truncatewords:15 }}
+                        {% elif session.last_message.message_type == 'image' %}
+                            Imagem enviada
+                        {% elif session.last_message.message_type == 'audio' %}
+                            Áudio enviado
+                        {% else %}
+                            Mídia enviada
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="chat-footer">
+                    <div class="chat-stats">
+                        <div class="chat-stat">
+                            <i class="bi bi-chat-dots"></i>
+                            <span>{{ session.message_count }} msgs</span>
+                        </div>
+                        {% if session.appointments_count > 0 %}
+                        <div class="chat-stat">
+                            <i class="bi bi-calendar"></i>
+                            <span>{{ session.appointments_count }} agendas</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="chat-actions">
+                        <button class="chat-action-btn" onclick="moveToHuman({{ session.id }})" title="Mover para Humano">
+                            <i class="bi bi-person"></i>
+                        </button>
+                        <button class="chat-action-btn" onclick="moveToClosed({{ session.id }})" title="Concluir">
+                            <i class="bi bi-check2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <i class="bi bi-robot"></i>
+                <p>Nenhuma conversa em atendimento automático</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Coluna Humano (Secretária) -->
+    <div class="kanban-column">
+        <div class="kanban-header">
+            <div class="kanban-title">
+                <div class="kanban-icon human">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <span>Secretária</span>
+            </div>
+            <span class="kanban-count">{{ human_count }}</span>
+        </div>
+
+        <div class="kanban-cards" id="human-column">
+            {% for session in human_sessions %}
+            <div class="chat-card human" data-session-id="{{ session.id }}" data-status="human">
+                <div class="chat-card-header">
+                    <div class="chat-time waiting">
+                        <i class="bi bi-clock"></i>
+                        <span class="time-value" data-seconds="{{ session.waiting_time.total_seconds }}"></span>
+                    </div>
+                    <span class="chat-status-badge attended">Ajuda</span>
+                </div>
+
+                <div class="chat-contact">
+                    <div class="chat-avatar">
+                        {% if session.contact and session.contact.name %}
+                            {{ session.contact.name|first|upper }}
+                        {% else %}
+                            {{ session.from_number|first }}
+                        {% endif %}
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">
+                            {% if session.contact and session.contact.name %}
+                                {{ session.contact.name }}
+                            {% else %}
+                                Contato
+                            {% endif %}
+                        </div>
+                        <div class="chat-phone">{{ session.from_number }}</div>
+                    </div>
+                </div>
+
+                {% if session.last_message %}
+                <div class="chat-message-preview">
+                    <i class="bi bi-chat-quote"></i>
+                    <div class="chat-message-text">
+                        {% if session.last_message.content %}
+                            {{ session.last_message.content|truncatewords:15 }}
+                        {% elif session.last_message.message_type == 'image' %}
+                            Imagem enviada
+                        {% elif session.last_message.message_type == 'audio' %}
+                            Áudio enviado
+                        {% else %}
+                            Mídia enviada
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="chat-footer">
+                    <div class="chat-stats">
+                        <div class="chat-stat">
+                            <i class="bi bi-chat-dots"></i>
+                            <span>{{ session.message_count }} msgs</span>
+                        </div>
+                        {% if session.appointments_count > 0 %}
+                        <div class="chat-stat">
+                            <i class="bi bi-calendar"></i>
+                            <span>{{ session.appointments_count }} agendas</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="chat-actions">
+                        <button class="chat-action-btn" onclick="moveToAI({{ session.id }})" title="Mover para IA">
+                            <i class="bi bi-robot"></i>
+                        </button>
+                        <button class="chat-action-btn" onclick="moveToClosed({{ session.id }})" title="Concluir">
+                            <i class="bi bi-check2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <i class="bi bi-person"></i>
+                <p>Nenhuma conversa em atendimento humano</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Coluna Concluídas -->
+    <div class="kanban-column">
+        <div class="kanban-header">
+            <div class="kanban-title">
+                <div class="kanban-icon closed">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <span>Concluídas</span>
+            </div>
+            <span class="kanban-count">{{ closed_count }}</span>
+        </div>
+
+        <div class="kanban-cards" id="closed-column">
+            {% for session in closed_sessions %}
+            <div class="chat-card closed" data-session-id="{{ session.id }}" data-status="closed">
+                <div class="chat-card-header">
+                    <div class="chat-time concluded">
+                        <i class="bi bi-check"></i>
+                        <span class="time-value" data-seconds="{{ session.waiting_time.total_seconds }}"></span>
+                    </div>
+                </div>
+
+                <div class="chat-contact">
+                    <div class="chat-avatar">
+                        {% if session.contact and session.contact.name %}
+                            {{ session.contact.name|first|upper }}
+                        {% else %}
+                            {{ session.from_number|first }}
+                        {% endif %}
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">
+                            {% if session.contact and session.contact.name %}
+                                {{ session.contact.name }}
+                            {% else %}
+                                Contato
+                            {% endif %}
+                        </div>
+                        <div class="chat-phone">{{ session.from_number }}</div>
+                    </div>
+                </div>
+
+                {% if session.last_message %}
+                <div class="chat-message-preview">
+                    <i class="bi bi-chat-quote"></i>
+                    <div class="chat-message-text">
+                        {% if session.last_message.content %}
+                            {{ session.last_message.content|truncatewords:15 }}
+                        {% elif session.last_message.message_type == 'image' %}
+                            Imagem enviada
+                        {% elif session.last_message.message_type == 'audio' %}
+                            Áudio enviado
+                        {% else %}
+                            Mídia enviada
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="chat-footer">
+                    <div class="chat-stats">
+                        <div class="chat-stat">
+                            <i class="bi bi-chat-dots"></i>
+                            <span>{{ session.message_count }} msgs</span>
+                        </div>
+                    </div>
+                    <div class="chat-actions">
+                        <button class="chat-action-btn" onclick="moveToAI({{ session.id }})" title="Reabrir">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <i class="bi bi-check-circle"></i>
+                <p>Nenhuma conversa concluída</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Funções para mover cards entre colunas
+function moveToAI(sessionId) {
+    changeSessionStatus(sessionId, 'ai');
+}
+
+function moveToHuman(sessionId) {
+    changeSessionStatus(sessionId, 'human');
+}
+
+function moveToClosed(sessionId) {
+    changeSessionStatus(sessionId, 'closed');
+}
+
+function changeSessionStatus(sessionId, newStatus) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    fetch(`/whatsapp/chat/${sessionId}/change-status/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Recarregar a página para atualizar o Kanban
+            window.location.reload();
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erro ao mover conversa');
+    });
+}
+
+// Busca em tempo real
+document.getElementById('searchInput').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    document.querySelectorAll('.chat-card').forEach(card => {
+        const name = card.querySelector('.chat-name')?.textContent.toLowerCase() || '';
+        const phone = card.querySelector('.chat-phone')?.textContent.toLowerCase() || '';
+
+        if (name.includes(searchTerm) || phone.includes(searchTerm)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+
+// Formatar tempo de espera
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}min`;
+    } else if (minutes > 0) {
+        return `${minutes}min`;
+    } else {
+        return 'agora';
+    }
+}
+
+// Aplicar formatação de tempo em todos os elementos
+document.querySelectorAll('.time-value').forEach(element => {
+    const seconds = parseFloat(element.getAttribute('data-seconds') || 0);
+    element.textContent = formatTime(seconds);
+});
+</script>
+{% endblock %}

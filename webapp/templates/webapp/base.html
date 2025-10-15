@@ -1055,9 +1055,9 @@
             </div>
             
             <div class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="{% url 'whatsapp_connector:chat_kanban' %}" class="nav-link {% if 'chat' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="bi bi-chat-dots-fill"></i>
-                    <span class="nav-text">{% trans 'Mensagens' %}</span>
+                    <span class="nav-text">{% trans 'Conversas' %}</span>
                 </a>
             </div>
             

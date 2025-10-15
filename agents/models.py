@@ -184,7 +184,11 @@ class LLMProviderConfig(BaseUUIDModel, HistoryBaseModel):
         verbose_name="Penalidade de frequência"
     )
 
-    has_calendar_tools = models.BooleanField(default=False)
+    has_calendar_tools = models.BooleanField(
+        default=False,
+        verbose_name="Ferramentas de Calendário",
+        help_text="Habilita integração com Google Calendar"
+    )
 
     def __str__(self):
         return self.display_name if self.display_name else f"{self.get_name_display()} - {self.model}"

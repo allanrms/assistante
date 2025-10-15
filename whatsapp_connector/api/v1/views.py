@@ -6,7 +6,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from agents.langchain_agent import LangChainAgent
+
+from agents.multi_agent_system import MultiAgentOrchestrator
 from whatsapp_connector.models import MessageHistory, EvolutionInstance
 from whatsapp_connector.services import ImageProcessingService, EvolutionAPIService
 from whatsapp_connector.utils import transcribe_audio_from_bytes, clean_number_whatsapp
@@ -139,8 +140,12 @@ class EvolutionWebhookView(APIView):
             llm_config = evolution_instance.llm_config if evolution_instance else None
 
             if llm_config:
-                agent = LangChainAgent(llm_config, message_history)
+                # Usar sistema multi-agent (sempre ativo agora)
+                # agent = LangChainAgent(llm_config, message_history)
+                # response = agent.send_message(message_history.content)
+                agent = MultiAgentOrchestrator(llm_config, message_history)
                 response = agent.send_message(message_history.content)
+
 
                 if not response.get('success', True):
                     error_details = response.get('error', 'Erro desconhecido')

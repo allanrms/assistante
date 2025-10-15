@@ -5,9 +5,13 @@ from .webhook_views import ConfigureWebhookView
 app_name = 'whatsapp_connector'
 
 urlpatterns = [
+    # Chat Kanban
+    path('chat/', views.ChatKanbanView.as_view(), name='chat_kanban'),
+    path('chat/<int:pk>/change-status/', views.change_session_status, name='change_session_status'),
+
     # Messages
     path('messages/', views.MessageHistoryListView.as_view(), name='message_list'),
-    
+
     # Gerenciamento de instâncias
     path('instances/', views.InstanceListView.as_view(), name='instance_list'),
     path('instances/create/', views.InstanceCreateView.as_view(), name='instance_create'),

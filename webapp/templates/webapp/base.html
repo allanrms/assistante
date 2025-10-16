@@ -1,4 +1,5 @@
 {% load i18n %}
+{% load client_tags %}
 <!DOCTYPE html>
 <html lang="{% get_current_language as LANGUAGE_CODE %}{{ LANGUAGE_CODE }}">
 <head>
@@ -18,12 +19,12 @@
     
     <style>
         :root {
-            /* Core Colors - Mantendo paleta original */
-            --primary: #000000;
-            --primary-light: #1a1a1a;
-            --primary-dark: #000000;
-            --secondary: #2d2d2d;
-            --accent: #404040;
+            /* Core Colors */
+            --primary: #ffffff; /* White sidebar */
+            --primary-light: #f8f9fa;
+            --primary-dark: #e9ecef;
+            --secondary: #f8f9fa;
+            --accent: #D9534F; /* Orange/Red from image */
             --success: #059669;
             --warning: #f59e0b;
             --danger: #dc2626;
@@ -37,10 +38,10 @@
             --surface-hover: #f9fafb;
 
             /* Text Colors */
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
-            --text-tertiary: #94a3b8;
-            --text-inverse: #ffffff;
+            --text-primary: #212529; /* Black */
+            --text-secondary: #6c757d; /* Gray */
+            --text-tertiary: #adb5bd; /* Light Gray */
+            --text-inverse: #000000; /* Black */
 
             /* Borders & Dividers */
             --border-light: #e2e8f0;
@@ -110,7 +111,7 @@
             height: 100vh;
             width: var(--sidebar-width);
             background: var(--primary);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            border-right: 1px solid var(--border-light);
             transition: width var(--transition-base);
             z-index: 1000;
             display: flex;
@@ -122,46 +123,45 @@
         }
         
         .sidebar-header {
-            padding: var(--spacing-xl) var(--spacing-lg);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: var(--spacing-lg) var(--spacing-2xl);
+            border-bottom: 1px solid var(--border-light);
             display: flex;
             align-items: center;
             gap: var(--spacing-md);
-            min-height: 80px;
+            height: 80px;
         }
 
         .sidebar.collapsed .sidebar-header {
             justify-content: center;
-            padding: var(--spacing-xl) 0;
+            padding: var(--spacing-lg) 0;
         }
 
         .logo {
             width: 48px;
             height: 48px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            background: linear-gradient(135deg, var(--primary-light), var(--secondary));
             border-radius: var(--radius-lg);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-light);
             transition: all var(--transition-base);
             cursor: pointer;
         }
 
         .logo:hover {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
             transform: scale(1.05);
         }
 
         .logo i {
             font-size: 1.5rem;
-            color: var(--text-inverse);
+            color: var(--text-primary);
         }
 
         .brand-name {
-            color: var(--text-inverse);
+            color: var(--text-primary);
             font-size: 1.25rem;
             font-weight: 700;
             letter-spacing: -0.02em;
@@ -196,7 +196,7 @@
         }
 
         .nav-menu::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--border-medium);
             border-radius: var(--radius-full);
         }
 
@@ -213,7 +213,7 @@
             align-items: center;
             gap: var(--spacing-md);
             padding: 0.875rem var(--spacing-md);
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-secondary);
             text-decoration: none;
             border-radius: var(--radius-md);
             transition: all var(--transition-base);
@@ -240,19 +240,19 @@
             top: 0;
             height: 100%;
             width: 3px;
-            background: var(--text-inverse);
+            background: var(--accent);
             transform: scaleY(0);
             transition: transform var(--transition-base);
         }
 
         .nav-link:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: rgba(255, 255, 255, 0.95);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
         }
 
         .nav-link.active {
-            background: rgba(255, 255, 255, 0.12);
-            color: var(--text-inverse);
+            background: var(--bg-tertiary);
+            color: var(--accent);
         }
 
         .nav-link.active::before {
@@ -288,8 +288,8 @@
 
         .nav-badge {
             margin-left: auto;
-            background: rgba(255, 255, 255, 0.15);
-            color: var(--text-inverse);
+            background: var(--accent);
+            color: #ffffff;
             padding: 0.125rem 0.5rem;
             border-radius: var(--radius-full);
             font-size: 0.75rem;
@@ -306,6 +306,43 @@
             overflow: hidden;
         }
 
+        .nav-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: var(--spacing-lg) var(--spacing-md);
+            white-space: nowrap;
+            opacity: 1;
+            transition: opacity var(--transition-base);
+        }
+
+        .sidebar.collapsed .nav-section-title {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+        }
+
+        .client-selector-btn {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: 0.875rem var(--spacing-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            transition: all var(--transition-base);
+            font-weight: 500;
+            font-size: 0.9375rem;
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-light);
+        }
+        .client-selector-btn:hover {
+            background: var(--border-light);
+        }
+
         /* ===== MAIN CONTENT ===== */
         .main-content {
             margin-left: var(--sidebar-width);
@@ -316,6 +353,11 @@
 
         .sidebar.collapsed ~ .main-content {
             margin-left: var(--sidebar-collapsed-width);
+        }
+
+        .sidebar.collapsed ~ .main-content .topbar {
+            left: var(--sidebar-collapsed-width);
+            width: calc(100% - var(--sidebar-collapsed-width));
         }
 
         /* ===== TOPBAR ===== */
@@ -329,9 +371,10 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            min-height: 80px;
+            height: 80px;
             backdrop-filter: blur(8px);
             background: rgba(255, 255, 255, 0.95);
+            transition: left var(--transition-base), width var(--transition-base);
         }
         
         .topbar-left {
@@ -456,14 +499,14 @@
         .user-avatar {
             width: 40px;
             height: 40px;
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary-light), var(--secondary));
             border-radius: var(--radius-lg);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all var(--transition-base);
-            border: 2px solid transparent;
+            border: 1px solid var(--border-light);
         }
 
         .user-avatar:hover {
@@ -1026,45 +1069,107 @@
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="logo" id="logoToggle">
-                <i class="bi bi-eye-fill"></i>
-            </div>
-            <div class="brand-name">Assistante</div>
+            {% client_selector %}
         </div>
 
         <div class="nav-menu">
+            <div class="nav-section-title">Menu Principal</div>
             <div class="nav-item">
                 <a href="{% url 'webapp:home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
                     <i class="bi bi-house-fill"></i>
-                    <span class="nav-text">{% trans 'Dashboard' %}</span>
+                    <span class="nav-text">Dashboard</span>
                 </a>
             </div>
-            
-            <div class="nav-item">
-                <a href="{% url 'whatsapp_connector:instance_list' %}" class="nav-link {% if 'instances' in request.resolver_match.url_name %}active{% endif %}">
-                    <i class="bi bi-phone-fill"></i>
-                    <span class="nav-text">{% trans 'Instâncias' %}</span>
-                </a>
-            </div>
-            
-            <div class="nav-item">
-                <a href="{% url 'agents:assistant_list' %}" class="nav-link {% if 'assistant' in request.resolver_match.url_name %}active{% endif %}">
-                    <i class="bi bi-robot"></i>
-                    <span class="nav-text">{% trans 'Assistentes' %}</span>
-                </a>
-            </div>
-            
             <div class="nav-item">
                 <a href="{% url 'whatsapp_connector:chat_kanban' %}" class="nav-link {% if 'chat' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="bi bi-chat-dots-fill"></i>
-                    <span class="nav-text">{% trans 'Conversas' %}</span>
+                    <span class="nav-text">Chat</span>
                 </a>
             </div>
-            
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-calendar-check"></i>
+                    <span class="nav-text">Consultas</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-person-lines-fill"></i>
+                    <span class="nav-text">Contatos</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-briefcase-fill"></i>
+                    <span class="nav-text">Serviços</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-link-45deg"></i>
+                    <span class="nav-text">AutoAgendamento</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-envelope-fill"></i>
+                    <span class="nav-text">Msg Automatizada</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{% url 'agents:assistant_list' %}" class="nav-link {% if 'assistant' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-robot"></i>
+                    <span class="nav-text">Inteligência Artificial</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{% url 'whatsapp_connector:instance_list' %}" class="nav-link {% if 'instances' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-phone-fill"></i>
+                    <span class="nav-text">Instâncias</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-people-fill"></i>
+                    <span class="nav-text">Usuários</span>
+                </a>
+            </div>
+
+            <div class="nav-section-title">Rascunho</div>
+            <div class="nav-item">
+                <a href="{% url 'whatsapp_connector:message_list' %}" class="nav-link {% if 'message_list' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-chat-left-text-fill"></i>
+                    <span class="nav-text">Mensagens</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-headset"></i>
+                    <span class="nav-text">Atendimentos</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-calendar-event-fill"></i>
+                    <span class="nav-text">Agenda</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-funnel-fill"></i>
+                    <span class="nav-text">Funil</span>
+                </a>
+            </div>
             <div class="nav-item">
                 <a href="#" class="nav-link">
                     <i class="bi bi-graph-up"></i>
-                    <span class="nav-text">{% trans 'Relatórios' %}</span>
+                    <span class="nav-text">Relatórios</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-lightning-charge-fill"></i>
+                    <span class="nav-text">Automações</span>
                 </a>
             </div>
             
@@ -1078,7 +1183,7 @@
             <div class="nav-item">
                 <a href="{% url 'webapp:logout' %}" class="nav-link">
                     <i class="bi bi-box-arrow-right"></i>
-                    <span class="nav-text">{% trans 'Sair' %}</span>
+                    <span class="nav-text">Sair</span>
                 </a>
             </div>
         </div>
@@ -1199,7 +1304,7 @@
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
         const mainContent = document.getElementById('mainContent');
-        const logoToggle = document.getElementById('logoToggle');
+
 
         let isMobile = window.innerWidth <= 768;
         let sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
@@ -1220,14 +1325,8 @@
             }
         });
 
-        // Logo toggle functionality (desktop only)
-        logoToggle.addEventListener('click', () => {
-            if (!isMobile) {
-                sidebar.classList.toggle('collapsed');
-                sidebarCollapsed = sidebar.classList.contains('collapsed');
-                localStorage.setItem('sidebarCollapsed', sidebarCollapsed);
-            }
-        });
+
+
         
         // Close sidebar on overlay click (mobile)
         sidebarOverlay.addEventListener('click', () => {

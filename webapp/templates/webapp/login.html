@@ -11,6 +11,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
+        :root {
+            --primary: #D9534F; /* Accent color from menu */
+            --bg-light: #f9fafb;
+            --surface: #ffffff;
+            --text-dark: #212529;
+            --text-muted: #6c757d;
+            --border-color: #e2e8f0;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -19,91 +28,26 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: #000000;
+            background: var(--bg-light);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Animated gradient background */
-        body::before {
-            content: '';
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 50%, #1a1a1a 0%, #000000 25%),
-                        radial-gradient(circle at 70% 50%, #2d2d2d 0%, #000000 25%);
-            animation: rotate 20s linear infinite;
-        }
-
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Floating orbs */
-        .orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(60px);
-            opacity: 0.3;
-            animation: float 8s ease-in-out infinite;
-        }
-
-        .orb-1 {
-            width: 300px;
-            height: 300px;
-            background: #1a1a1a;
-            top: 10%;
-            left: 20%;
-            animation-delay: 0s;
-        }
-
-        .orb-2 {
-            width: 200px;
-            height: 200px;
-            background: #2d2d2d;
-            bottom: 20%;
-            right: 30%;
-            animation-delay: 2s;
-        }
-
-        .orb-3 {
-            width: 250px;
-            height: 250px;
-            background: #404040;
-            top: 60%;
-            left: 10%;
-            animation-delay: 4s;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0); }
-            33% { transform: translate(30px, -30px); }
-            66% { transform: translate(-20px, 20px); }
         }
 
         .login-container {
-            position: relative;
-            z-index: 10;
             width: 100%;
             max-width: 440px;
             padding: 0 1.5rem;
         }
 
         .login-box {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(40px);
+            background: var(--surface);
             padding: 3.5rem 3rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
-                        0 0 0 1px rgba(255, 255, 255, 0.05);
-            position: relative;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
-        /* Logo */
         .logo {
             text-align: center;
             margin-bottom: 3rem;
@@ -112,47 +56,35 @@
         .logo-icon {
             width: 64px;
             height: 64px;
-            background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+            background: var(--primary);
+            border-radius: 50%;
             margin: 0 auto 1.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-        }
-
-        .logo-icon::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            background: linear-gradient(135deg, #ffffff, #808080);
-            z-index: -1;
-            filter: blur(8px);
-            opacity: 0.5;
         }
 
         .logo-icon i {
             font-size: 2rem;
-            color: #000000;
+            color: #ffffff;
         }
 
         .brand-title {
             font-size: 2.5rem;
             font-weight: 900;
-            color: #ffffff;
+            color: var(--text-dark);
             letter-spacing: -0.03em;
             margin-bottom: 0.5rem;
-            text-shadow: 0 2px 20px rgba(255, 255, 255, 0.3);
         }
 
         .brand-subtitle {
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-muted);
             font-size: 0.875rem;
             font-weight: 500;
             letter-spacing: 0.05em;
             text-transform: uppercase;
         }
 
-        /* Form */
         .input-group {
             margin-bottom: 1.5rem;
             position: relative;
@@ -161,22 +93,22 @@
         .input-field {
             width: 100%;
             padding: 1rem 1rem 1rem 3rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #ffffff;
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            color: var(--text-dark);
             font-size: 0.9375rem;
             transition: all 0.3s;
             outline: none;
         }
 
         .input-field:focus {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.3);
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.2);
         }
 
         .input-field::placeholder {
-            color: rgba(255, 255, 255, 0.4);
+            color: var(--text-muted);
         }
 
         .input-icon {
@@ -184,56 +116,30 @@
             left: 1rem;
             top: 50%;
             transform: translateY(-50%);
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-muted);
             font-size: 1.125rem;
             pointer-events: none;
         }
 
-        /* Button */
         .btn-submit {
             width: 100%;
             padding: 1.125rem;
-            background: #ffffff;
-            color: #000000;
+            background: var(--primary);
+            color: #ffffff;
             border: none;
+            border-radius: 0.5rem;
             font-weight: 700;
             font-size: 0.9375rem;
             letter-spacing: 0.05em;
             text-transform: uppercase;
             cursor: pointer;
             transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-submit::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        .btn-submit:hover::before {
-            width: 300%;
-            height: 300%;
         }
 
         .btn-submit:hover {
-            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.2);
+            opacity: 0.9;
         }
 
-        .btn-submit span {
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Divider */
         .divider {
             margin: 2.5rem 0;
             text-align: center;
@@ -247,12 +153,12 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--border-color);
         }
 
         .divider span {
-            background: rgba(255, 255, 255, 0.03);
-            color: rgba(255, 255, 255, 0.5);
+            background: var(--surface);
+            color: var(--text-muted);
             padding: 0 1rem;
             position: relative;
             font-size: 0.8125rem;
@@ -260,7 +166,6 @@
             letter-spacing: 0.1em;
         }
 
-        /* Register link */
         .register-link {
             text-align: center;
         }
@@ -271,8 +176,9 @@
             gap: 0.5rem;
             padding: 0.875rem 1.5rem;
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            color: var(--text-dark);
             text-decoration: none;
             font-weight: 600;
             font-size: 0.875rem;
@@ -280,79 +186,51 @@
         }
 
         .btn-register:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.3);
-            color: #ffffff;
+            background: var(--bg-light);
+            border-color: var(--primary);
+            color: var(--primary);
         }
 
-        /* Alerts */
         .alert {
             padding: 1rem;
             margin-bottom: 1.5rem;
-            background: rgba(220, 38, 38, 0.15);
-            border: 1px solid rgba(220, 38, 38, 0.3);
-            color: #fca5a5;
+            border-radius: 0.5rem;
             font-size: 0.875rem;
             display: flex;
             align-items: center;
             gap: 0.75rem;
         }
-
-        .alert-success {
-            background: rgba(5, 150, 105, 0.15);
-            border-color: rgba(5, 150, 105, 0.3);
-            color: #6ee7b7;
+        
+        .alert-danger {
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.2);
+            color: #dc2626;
         }
 
-        /* Footer */
+        .alert-success {
+            background: rgba(5, 150, 105, 0.1);
+            border-color: rgba(5, 150, 105, 0.2);
+            color: #059669;
+        }
+
         .footer {
             text-align: center;
             margin-top: 2rem;
             padding-top: 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--border-color);
         }
 
         .security-text {
-            color: rgba(255, 255, 255, 0.4);
+            color: var(--text-muted);
             font-size: 0.75rem;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
         }
-
-        /* Animation */
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .login-box {
-            animation: slideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @media (max-width: 576px) {
-            .login-box {
-                padding: 2.5rem 1.5rem;
-            }
-
-            .brand-title {
-                font-size: 2rem;
-            }
-        }
     </style>
 </head>
 <body>
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-
     <div class="login-container">
         <div class="login-box">
             <div class="logo">
@@ -365,7 +243,7 @@
 
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert {% if message.tags == 'success' %}alert-success{% endif %}">
+                    <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %}">
                         <i class="bi bi-{% if message.tags == 'success' %}check-circle{% else %}exclamation-triangle{% endif %}-fill"></i>
                         <span>{{ message }}</span>
                     </div>

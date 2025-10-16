@@ -231,6 +231,41 @@ Equipe Assistante
         return True
 
 
+class Employee(models.Model):
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name='employees',
+        help_text=_('Cliente')
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='employees',
+        help_text=_('Usuário')
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Criado em')
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_('Atualizado em')
+    )
+
+    class Meta:
+        verbose_name = _('Employee')
+        verbose_name_plural = _('Employees')
+        unique_together = [['client', 'user']]
+        indexes = [
+            models.Index(fields=['client',]),
+        ]
+
+
 class Tag(models.Model):
     """
     Modelo de Tag para categorização de contatos.

@@ -1,9 +1,17 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.utils.html import format_html
-from .models import Client, Contact, Tag
+from .models import Client, Contact, Tag, Employee
 
 User = get_user_model()
+
+
+@admin.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display = ['user', 'client', 'created_at']
+    list_filter = ['client', 'user']
+    search_fields = ['user__username', 'client__full_name']
+    raw_id_fields = ['user', 'client']
 
 
 class UserInline(admin.TabularInline):

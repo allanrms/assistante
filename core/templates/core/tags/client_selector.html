@@ -1,0 +1,25 @@
+{% if clients %}
+<div class="dropdown w-100">
+    <button class="client-selector-btn dropdown-toggle" type="button" id="clientSelectorDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+        <i class="bi bi-people-fill me-2"></i>
+        {% if current_client %}
+            {{ current_client.full_name }}
+        {% else %}
+            Selecione um Cliente
+        {% endif %}
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="clientSelectorDropdown">
+        <li><h6 class="dropdown-header">Trocar de Cliente</h6></li>
+        {% for client in clients %}
+            <li>
+                <a class="dropdown-item d-flex justify-content-between align-items-center" href="?client_id={{ client.pk }}">
+                    {{ client.full_name }}
+                    {% if client == current_client %}
+                        <i class="bi bi-check"></i>
+                    {% endif %}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}

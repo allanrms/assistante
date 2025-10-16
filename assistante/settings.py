@@ -87,6 +87,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.ClientSwitcherMiddleware',
     'webapp.middleware.UserLanguageMiddleware',
     'authentication.middleware.RoleBasedRedirectMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

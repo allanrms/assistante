@@ -17,15 +17,15 @@
         </div>
     </div>
     <div class="d-flex gap-2">
-        <a href="{% url 'agents:assistant_list' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'nodes:assistant_list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>
             Voltar
         </a>
-        <a href="{% url 'agents:assistant_edit' assistant.pk %}" class="btn btn-primary">
+        <a href="{% url 'nodes:assistant_edit' assistant.pk %}" class="btn btn-primary">
             <i class="bi bi-pencil me-1"></i>
             Editar
         </a>
-        <a href="{% url 'agents:assistant_delete' assistant.pk %}" class="btn btn-outline-danger">
+        <a href="{% url 'nodes:assistant_delete' assistant.pk %}" class="btn btn-outline-danger">
             <i class="bi bi-trash me-1"></i>
             Excluir
         </a>
@@ -108,7 +108,7 @@
                     <i class="bi bi-file-earmark-text me-2"></i>
                     Arquivos de Contexto
                 </h5>
-                <a href="{% url 'agents:context_file_upload' assistant.pk %}" class="btn btn-sm btn-outline-primary">
+                <a href="{% url 'nodes:context_file_upload' assistant.pk %}" class="btn btn-sm btn-outline-primary">
                     <i class="bi bi-upload me-1"></i>Upload
                 </a>
             </div>
@@ -144,10 +144,10 @@
                     {% endif %}
                     
                     <div class="d-flex justify-content-between mt-3">
-                        <a href="{% url 'agents:context_file_list' assistant.pk %}" class="btn btn-sm btn-outline-secondary">
+                        <a href="{% url 'nodes:context_file_list' assistant.pk %}" class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-list me-1"></i>Ver Todos
                         </a>
-                        <a href="{% url 'agents:context_file_upload' assistant.pk %}" class="btn btn-sm btn-primary">
+                        <a href="{% url 'nodes:context_file_upload' assistant.pk %}" class="btn btn-sm btn-primary">
                             <i class="bi bi-upload me-1"></i>Adicionar Arquivo
                         </a>
                     </div>
@@ -156,7 +156,7 @@
                         <i class="bi bi-file-earmark-plus text-muted mb-2" style="font-size: 2rem;"></i>
                         <h6 class="text-muted">Nenhum arquivo de contexto</h6>
                         <p class="text-muted mb-3 small">Adicione documentos para personalizar as respostas do assistant</p>
-                        <a href="{% url 'agents:context_file_upload' assistant.pk %}" class="btn btn-sm btn-primary">
+                        <a href="{% url 'nodes:context_file_upload' assistant.pk %}" class="btn btn-sm btn-primary">
                             <i class="bi bi-upload me-1"></i>Fazer Upload
                         </a>
                     </div>
@@ -235,7 +235,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{% url 'agents:assistant_edit' assistant.pk %}" class="btn btn-primary">
+                    <a href="{% url 'nodes:assistant_edit' assistant.pk %}" class="btn btn-primary">
                         <i class="bi bi-pencil me-1"></i>
                         Editar Assistant
                     </a>
@@ -243,7 +243,7 @@
                         <i class="bi bi-plus-circle me-1"></i>
                         Criar Instância com este Assistant
                     </a>
-                    <a href="{% url 'agents:assistant_delete' assistant.pk %}" class="btn btn-outline-danger">
+                    <a href="{% url 'nodes:assistant_delete' assistant.pk %}" class="btn btn-outline-danger">
                         <i class="bi bi-trash me-1"></i>
                         Excluir Assistant
                     </a>

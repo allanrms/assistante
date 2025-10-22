@@ -444,7 +444,7 @@ class WebhookService:
 """
 # No seu view ou código Django:
 
-from agents.services import InstanceManager
+from nodes.services import InstanceManager
 
 def criar_nova_instancia(request):
     try:

@@ -230,7 +230,6 @@ Equipe Assistante
         )
         return True
 
-
 class Employee(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -264,7 +263,6 @@ class Employee(models.Model):
         indexes = [
             models.Index(fields=['client',]),
         ]
-
 
 class Tag(models.Model):
     """
@@ -350,7 +348,6 @@ class Tag(models.Model):
         )
 
         return tag, created
-
 
 class Contact(models.Model):
     """
@@ -664,4 +661,54 @@ class Contact(models.Model):
         """
         self.total_messages += 1
         self.save(update_fields=['total_messages', 'updated_at'])
+
+class Appointment(models.Model):
+    """
+    Represents a medical appointment linked to a WhatsApp contact.
+    """
+    contact = models.ForeignKey(
+        "core.Contact",
+        on_delete=models.CASCADE,
+        related_name="appointments",
+        help_text="Contato vinculado a este agendamento.",
+    )
+
+    # Appointment details
+    date = models.DateField(help_text="Data")
+    time = models.TimeField(help_text="Hora")
+
+    scheduled_for = models.DateTimeField(help_text="Agendado para")
+
+    # Google Calendar integration
+    calendar_event_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="ID do Evento no Google Calendar",
+        help_text="ID do evento criado no Google Calendar"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created at")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated at")
+
+    class Meta:
+        verbose_name = "Consulta"
+        verbose_name_plural = "Consultas"
+        ordering = ["-date", "-time"]
+        indexes = [
+            models.Index(fields=["date"]),
+        ]
+
+    def __str__(self):
+        contact_name = self.contact.name or self.contact.phone_number
+        return f"{contact_name} - {self.date.strftime('%Y-%m-%d')} {self.time.strftime('%H:%M')}"
+
+    def save(self, *args, **kwargs):
+        # Auto-sincroniza date/time ao salvar
+        if self.scheduled_for:
+            self.date = self.scheduled_for.date()
+            self.time = self.scheduled_for.time()
+        super().save(*args, **kwargs)
+
+
 

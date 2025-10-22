@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.utils.html import format_html
-from .models import Client, Contact, Tag, Employee
+from .models import Client, Contact, Tag, Employee, Appointment
 
 User = get_user_model()
 
@@ -29,6 +29,19 @@ class UserInline(admin.TabularInline):
 
     def has_add_permission(self, request, obj=None):
         return False
+
+
+class AppointmentInline(admin.TabularInline):
+    """
+    Inline para exibir agendamentos do contato.
+    """
+    model = Appointment
+    extra = 0
+    fields = ('date', 'time', 'scheduled_for', 'calendar_event_id', 'created_at')
+    readonly_fields = ('created_at', 'calendar_event_id')
+    can_delete = True
+    verbose_name = 'Agendamento'
+    verbose_name_plural = 'Agendamentos do Contato'
 
 
 @admin.register(Client)
@@ -118,12 +131,14 @@ class ContactAdmin(admin.ModelAdmin):
     """
     Configuração do admin para o modelo Contact.
     """
+    inlines = [AppointmentInline]
     list_display = [
         'phone_number',
         'name',
         'profile_name',
         'client',
         'tags_display',
+        'appointments_count',
         'total_messages',
         'is_blocked',
         'is_active',
@@ -203,10 +218,10 @@ class ContactAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """
-        Otimiza queryset com select_related para client e prefetch tags.
+        Otimiza queryset com select_related para client e prefetch tags e appointments.
         """
         qs = super().get_queryset(request)
-        return qs.select_related('client').prefetch_related('tags')
+        return qs.select_related('client').prefetch_related('tags', 'appointments')
 
     def tags_display(self, obj):
         """Exibe as tags do contato com cores"""
@@ -238,6 +253,11 @@ class ContactAdmin(admin.ModelAdmin):
         """Retorna o número total de mensagens do contato."""
         return obj.get_message_history().count()
     messages_count.short_description = 'Mensagens'
+
+    def appointments_count(self, obj):
+        """Retorna o número de agendamentos do contato."""
+        return obj.appointments.count()
+    appointments_count.short_description = 'Agendamentos'
 
     @admin.action(description='Bloquear contatos selecionados')
     def block_contacts(self, request, queryset):
@@ -343,3 +363,102 @@ class TagAdmin(admin.ModelAdmin):
         """Retorna o número de contatos com esta tag"""
         return obj.contacts.count()
     contacts_count.short_description = 'Contatos'
+
+
+@admin.register(Appointment)
+class AppointmentAdmin(admin.ModelAdmin):
+    """
+    Configuração do admin para o modelo Appointment.
+    """
+    list_display = [
+        'contact_info',
+        'date',
+        'time',
+        'scheduled_for',
+        'has_calendar_event',
+        'created_at',
+    ]
+    list_filter = [
+        'date',
+        'created_at',
+    ]
+    search_fields = [
+        'contact__name',
+        'contact__phone_number',
+        'calendar_event_id',
+    ]
+    readonly_fields = [
+        'id',
+        'created_at',
+        'updated_at',
+        'calendar_event_link',
+    ]
+    raw_id_fields = ['contact']
+    date_hierarchy = 'date'
+    ordering = ['-date', '-time']
+
+    fieldsets = (
+        ('Informações do Agendamento', {
+            'fields': (
+                'id',
+                'contact',
+                'scheduled_for',
+                'date',
+                'time',
+            )
+        }),
+        ('Integração Google Calendar', {
+            'fields': (
+                'calendar_event_id',
+                'calendar_event_link',
+            )
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at',
+                'updated_at',
+            )
+        }),
+    )
+
+    def get_queryset(self, request):
+        """
+        Otimiza queryset com select_related para contact.
+        """
+        qs = super().get_queryset(request)
+        return qs.select_related('contact', 'contact__client')
+
+    def contact_info(self, obj):
+        """Exibe informações do contato"""
+        if obj.contact.name:
+            return format_html(
+                '<strong>{}</strong><br><small>{}</small>',
+                obj.contact.name,
+                obj.contact.phone_number
+            )
+        return obj.contact.phone_number
+    contact_info.short_description = 'Contato'
+    contact_info.admin_order_field = 'contact__name'
+
+    def has_calendar_event(self, obj):
+        """Indica se o agendamento tem evento no Google Calendar"""
+        if obj.calendar_event_id:
+            return format_html(
+                '<span style="color: green;">✓ Sim</span>'
+            )
+        return format_html(
+            '<span style="color: gray;">✗ Não</span>'
+        )
+    has_calendar_event.short_description = 'Google Calendar'
+
+    def calendar_event_link(self, obj):
+        """Exibe link para o evento no Google Calendar"""
+        if obj.calendar_event_id:
+            # URL do Google Calendar para visualizar o evento
+            calendar_url = f"https://calendar.google.com/calendar/u/0/r/eventedit/{obj.calendar_event_id}"
+            return format_html(
+                '<a href="{}" target="_blank" style="color: #1a73e8;">📅 Ver no Google Calendar</a>',
+                calendar_url
+            )
+        return format_html('<span style="color: gray;">-</span>')
+    calendar_event_link.short_description = 'Link do Evento'

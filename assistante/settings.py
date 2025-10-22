@@ -70,7 +70,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'rest_framework',
-    'django_ai_assistant',
+    # 'django_ai_assistant',
     'core',
     'agents',
     'webapp',
@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'authentication',
     'google_calendar',
+    'dialog_test',
 ]
 
 MIDDLEWARE = [

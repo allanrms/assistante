@@ -23,7 +23,7 @@ class GoogleCalendarAuth(models.Model):
 
 
 class CalendarIntegrationRequest(models.Model):
-    whatsapp_number = models.CharField(max_length=20)
+    whatsapp_number = models.CharField(max_length=50)
     request_token = models.CharField(max_length=100, unique=True)
     evolution_instance = models.ForeignKey('whatsapp_connector.EvolutionInstance', on_delete=models.CASCADE, null=True, blank=True)
     user_id = models.IntegerField(null=True, blank=True)

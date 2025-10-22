@@ -6,7 +6,7 @@ Define todas as rotas para gerenciamento de instâncias Evolution API
 from django.urls import path
 from . import views
 
-app_name = 'agents'
+app_name = 'nodes'
 
 urlpatterns = [
     # Gerenciamento de Assistants/IA

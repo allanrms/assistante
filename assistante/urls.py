@@ -25,10 +25,11 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),  # Rotas de cadastro e conta de clientes
     path('whatsapp_connector/v1/', include('whatsapp_connector.api.v1.urls')),
-    path('agents/', include('agents.urls')),  # Agent management URLs
+    path('nodes/', include('agents.urls')),  # Agent management URLs
     path('whatsapp/', include('whatsapp_connector.urls')),  # WhatsApp connector URLs
     path('google-calendar/', include('google_calendar.urls')),  # Google Calendar integration URLs
-    path('ai-assistant/', include('django_ai_assistant.urls')),  # AI Assistant URLs
+    path('dialog-test/', include('dialog_test.urls')),  # Dialog Test URLs
+    # path('ai-assistant/', include('django_ai_assistant.urls')),  # AI Assistant URLs
     path('', include('webapp.urls')),  # WebApp como página inicial
 ]
 

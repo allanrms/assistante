@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Simples - POC IA</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container-fluid {
+            height: 100vh;
+            padding: 20px;
+        }
+
+        .row {
+            height: 100%;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .sidebar h4 {
+            color: #667eea;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .config-item {
+            margin-bottom: 20px;
+        }
+
+        .config-item label {
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .config-item .form-select {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .config-item .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
+
+        .config-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .chat-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .chat-header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .message-content {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message.response .message-label {
+            color: #764ba2;
+        }
+
+        .message.response .message-content {
+            border-left-color: #764ba2;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+            text-align: center;
+        }
+
+        .empty-state i {
+            font-size: 60px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: #999;
+        }
+
+        /* Input Area */
+        .chat-input {
+            padding: 20px 30px;
+            border-top: 2px solid #f0f0f0;
+            background: white;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .form-control {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 12px 15px;
+            font-size: 15px;
+            resize: none;
+            min-height: 50px;
+            max-height: 150px;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
+
+        .btn-send {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-send:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* Alert */
+        .alert-danger {
+            border-radius: 12px;
+            border: none;
+            background: #fee;
+            color: #c33;
+        }
+
+        /* Scrollbar */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row g-3">
+            <!-- Sidebar - Configurações -->
+            <div class="col-12 col-lg-3">
+                <div class="sidebar">
+                    <h4><i class="fas fa-cog"></i> Configurações</h4>
+
+                    <div class="config-item">
+                        <label><i class="fas fa-user"></i> Cliente</label>
+                        <select class="form-select" id="clientSelect" required>
+                            <option value="">Selecione um cliente</option>
+                            {% for client in clients %}
+                            <option value="{{ client.id }}">{{ client.email }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="config-item">
+                        <label><i class="fas fa-robot"></i> Configuração LLM</label>
+                        <select class="form-select" id="llmConfigSelect" required>
+                            <option value="">Selecione uma config</option>
+                            {% for config in llm_configs %}
+                            <option value="{{ config.id }}">
+                                {{ config.get_name_display }} - {{ config.model }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <hr style="margin: 30px 0; border-color: #e0e0e0;">
+
+                    <div style="text-align: center; color: #999; font-size: 12px;">
+                        <i class="fas fa-info-circle"></i> Selecione as configurações acima antes de enviar mensagens
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="col-12 col-lg-9">
+                <div class="chat-area">
+                    <!-- Header -->
+                    <div class="chat-header">
+                        <h1><i class="fas fa-comments"></i> Chat POC - MultiAgent AI</h1>
+                        <p>Converse com a IA usando o sistema MultiAgentOrchestrator</p>
+                    </div>
+
+                    <!-- Messages -->
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="empty-state">
+                            <i class="fas fa-paper-plane"></i>
+                            <h3>Nenhuma mensagem ainda</h3>
+                            <p>Digite uma mensagem e pressione enviar para começar</p>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p>Processando com a IA...</p>
+                    </div>
+
+                    <!-- Input -->
+                    <div class="chat-input">
+                        <div class="input-group">
+                            <textarea
+                                class="form-control"
+                                id="messageInput"
+                                placeholder="Digite sua mensagem..."
+                                rows="1"
+                            ></textarea>
+                            <button type="button" class="btn-send" id="sendButton">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const messageInput = document.getElementById('messageInput');
+        const clientSelect = document.getElementById('clientSelect');
+        const llmConfigSelect = document.getElementById('llmConfigSelect');
+        const sendButton = document.getElementById('sendButton');
+        const loading = document.getElementById('loading');
+        const chatMessages = document.getElementById('chatMessages');
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+        });
+
+        // Enter para enviar (Shift+Enter para quebra de linha)
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Click no botão enviar
+        sendButton.addEventListener('click', sendMessage);
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            const clientId = clientSelect.value;
+            const llmConfigId = llmConfigSelect.value;
+
+            // Validações
+            if (!message) {
+                alert('Digite uma mensagem');
+                return;
+            }
+
+            if (!clientId) {
+                alert('Selecione um cliente');
+                clientSelect.focus();
+                return;
+            }
+
+            if (!llmConfigId) {
+                alert('Selecione uma configuração LLM');
+                llmConfigSelect.focus();
+                return;
+            }
+
+            // Limpar empty state se existir
+            const emptyState = chatMessages.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            // Adicionar mensagem do usuário
+            addMessage('Sua mensagem', message, false);
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            // Mostrar loading
+            loading.classList.add('show');
+            sendButton.disabled = true;
+            messageInput.disabled = true;
+
+            try {
+                const response = await fetch('/poc-chat/simple/send/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        client_id: clientId,
+                        llm_config_id: llmConfigId
+                    })
+                });
+
+                const data = await response.json();
+
+                // Esconder loading
+                loading.classList.remove('show');
+
+                if (data.success) {
+                    // Adicionar resposta da IA
+                    addMessage('Resposta da IA', data.response, true);
+                } else {
+                    // Mostrar erro
+                    addErrorMessage(data.error || 'Erro ao processar mensagem');
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                loading.classList.remove('show');
+                addErrorMessage('Erro ao enviar mensagem: ' + error.message);
+            } finally {
+                sendButton.disabled = false;
+                messageInput.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        function addMessage(label, content, isResponse) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isResponse ? 'response' : ''}`;
+            messageDiv.innerHTML = `
+                <div class="message-label">${label}</div>
+                <div class="message-content">${escapeHtml(content)}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function addErrorMessage(error) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${escapeHtml(error)}`;
+            chatMessages.appendChild(errorDiv);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-focus no input
+        messageInput.focus();
+    </script>
+</body>
+</html>

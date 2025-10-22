@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
-from agents.multi_agent_system import MultiAgentOrchestrator
+from agents.langgraph.langgraph_app_runner import run_ai_turn
 from whatsapp_connector.models import MessageHistory, EvolutionInstance
 from whatsapp_connector.services import ImageProcessingService, EvolutionAPIService
 from whatsapp_connector.utils import transcribe_audio_from_bytes, clean_number_whatsapp
@@ -137,36 +137,44 @@ class EvolutionWebhookView(APIView):
                 message_history.processing_status = 'processing'
                 message_history.save()
 
-            llm_config = evolution_instance.llm_config if evolution_instance else None
+            # Preparar dados para run_ai_turn
+            to_number = clean_number_whatsapp(message_data.get('to_number', ''))
+            message_text = message_history.content
+            client = evolution_instance.owner if evolution_instance else None
 
-            if llm_config:
-                # Usar sistema multi-agent (sempre ativo agora)
-                # agent = LangChainAgent(llm_config, message_history)
-                # response = agent.send_message(message_history.content)
-                agent = MultiAgentOrchestrator(llm_config, message_history)
-                response = agent.send_message(message_history.content)
+            if client:
+                # Usar sistema multi-agent com LangGraph
+                try:
+                    response_msg, session = run_ai_turn(
+                        from_number=from_number,
+                        to_number=to_number,
+                        user_message=message_text,
+                        owner=client,
+                        evolution_instance=evolution_instance
+                    )
 
+                    # Atualizar a sessão do message_history se necessário
+                    if session and message_history.chat_session != session:
+                        message_history.chat_session = session
+                        message_history.save(update_fields=['chat_session'])
 
-                if not response.get('success', True):
-                    error_details = response.get('error', 'Erro desconhecido')
+                except Exception as e:
+                    error_details = str(e)
                     langchain_logger.error(
-                        f"Erro LangChain Agent - Usuário: {message_history.chat_session.from_number} | "
-                        f"Mensagem: {message_history.content[:100]}... | "
-                        f"Modelo: {llm_config.model} ({llm_config.get_name_display()}) | "
+                        f"Erro LangGraph Agent - Usuário: {from_number} | "
+                        f"Mensagem: {message_text[:100] if message_text else 'N/A'}... | "
                         f"Erro: {error_details}",
+                        exc_info=True,
                         extra={
-                            'usuario': message_history.chat_session.from_number,
-                            'mensagem': message_history.content,
-                            'modelo': llm_config.model,
-                            'provider': llm_config.get_name_display(),
+                            'usuario': from_number,
+                            'mensagem': message_text,
                             'erro': error_details,
                             'message_id': message_history.message_id
                         }
                     )
-
-                response_msg = response.get('response', 'Erro ao processar mensagem')
+                    response_msg = "⚠️ Erro ao processar sua mensagem. Por favor, tente novamente."
             else:
-                response_msg = "⚠️ Nenhuma configuração de IA foi encontrada para esta instância."
+                response_msg = "⚠️ Nenhuma configuração de cliente foi encontrada para esta instância."
 
             # Processar resposta estruturada ou simples - só se houver resposta
             result = False

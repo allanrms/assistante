@@ -247,7 +247,7 @@ class ChatSession(models.Model):
         ordering = ["-id"]
 
     @classmethod
-    def get_or_create_active_session(cls, from_number, to_number, evolution_instance=None):
+    def get_or_create_active_session(cls, contact, from_number, to_number, evolution_instance=None):
         """
         Busca uma sessão ativa (ai ou human) ou cria uma nova
         IMPORTANTE: Considera a evolution_instance para evitar conflito entre instâncias diferentes
@@ -279,6 +279,7 @@ class ChatSession(models.Model):
 
         # Criar nova sessão se não encontrar ativa
         new_session = cls.objects.create(
+            contact=contact,
             from_number=from_number,
             to_number=to_number,
             status='ai',  # Default para AI

@@ -7,13 +7,12 @@ Este módulo implementa um sistema de múltiplos agentes LangChain que se comuni
 
 A comunicação entre os agentes é feita através de ferramentas especializadas.
 """
-
-from langchain.prompts import ChatPromptTemplate
+from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.tools import Tool
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import initialize_agent, AgentType, Tool
-from langchain.schema import HumanMessage, AIMessage
 from django.conf import settings
 from agents.models import LLMProviderConfig
 from whatsapp_connector.models import MessageHistory
@@ -168,10 +167,10 @@ class AgendaAgent:
         return tools
 
     def _create_agent(self):
-        """Cria o agente de agenda com instruções específicas"""
+        """Cria o agente de agenda com instruções específicas usando LangGraph"""
         # Ler instruções do arquivo
         try:
-            with open('/home/allanramos/Documentos/workspace/pessoal/assistante/agents/instructions/aline_agenda.md', 'r', encoding='utf-8') as f:
+            with open('/nodes/instructions/agenda.md', 'r', encoding='utf-8') as f:
                 agenda_instructions = f.read()
         except Exception as e:
             print(f"⚠️ Erro ao ler instruções da agenda: {e}")
@@ -179,7 +178,7 @@ class AgendaAgent:
 
         current_time = datetime.now().strftime('%d/%m/%Y %H:%M')
 
-        system_prompt = f"""
+        self.system_prompt = f"""
 {agenda_instructions}
 
 ## INFORMAÇÕES DA SESSÃO
@@ -194,27 +193,9 @@ class AgendaAgent:
 - Para criar evento, use criar_evento_calendar() somente com todas as informações
 """
 
-        try:
-            return initialize_agent(
-                self.tools,
-                self.llm,
-                agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
-                verbose=True,
-                handle_parsing_errors=True,
-                max_iterations=5,
-                agent_kwargs={"system_message": system_prompt}
-            )
-        except Exception as e:
-            print(f"⚠️ Erro ao criar agente com system_message, tentando alternativa: {e}")
-            # Fallback: criar sem system_message customizado
-            return initialize_agent(
-                self.tools,
-                self.llm,
-                agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
-                verbose=True,
-                handle_parsing_errors=True,
-                max_iterations=5
-            )
+        # Criar agente usando LangGraph
+        agent = create_react_agent(self.llm, self.tools)
+        return agent
 
     def process_request(self, request: str, chat_history: list = None):
         """
@@ -240,15 +221,18 @@ class AgendaAgent:
                 print(f"⚠️ chat_history não é uma lista, convertendo para lista vazia")
                 chat_history = []
 
-            # Processar request - usar um dicionário limpo para evitar problemas de parsing
-            agent_input = {
-                "input": request,
-                "chat_history": chat_history
-            }
+            # Preparar mensagens no formato da nova API
+            messages = [SystemMessage(content=self.system_prompt)]
+            messages.extend(chat_history)
+            messages.append(HumanMessage(content=request))
 
-            response = self.agent.invoke(agent_input)
+            # Invocar o agente usando a nova API
+            response = self.agent.invoke({"messages": messages})
 
-            result = response.get("output", "")
+            # Extrair a última mensagem AI
+            ai_messages = [msg for msg in response["messages"] if isinstance(msg, AIMessage)]
+            result = ai_messages[-1].content if ai_messages else "Erro ao processar"
+
             print(f"✅ AGENDA AGENT - Resposta gerada")
             print(f"📤 Response: {result[:200]}...")
 
@@ -530,10 +514,10 @@ Exemplo: update_contact_summary('Nome: João Silva | Profissão: Engenheiro | Ci
         return tools
 
     def _create_agent(self):
-        """Cria o agente de atendimento com instruções específicas"""
+        """Cria o agente de atendimento com instruções específicas usando LangGraph"""
         # Ler instruções do arquivo
         try:
-            with open('/home/allanramos/Documentos/workspace/pessoal/assistante/agents/instructions/aline_atendimento.md', 'r', encoding='utf-8') as f:
+            with open('/nodes/instructions/recepcao.md', 'r', encoding='utf-8') as f:
                 atendimento_instructions = f.read()
         except Exception as e:
             print(f"⚠️ Erro ao ler instruções de atendimento: {e}")
@@ -548,30 +532,26 @@ Exemplo: update_contact_summary('Nome: João Silva | Profissão: Engenheiro | Ci
         # Obter resumo do contato
         contact_summary_section = ""
         if self.chat_session.contact_summary:
-            contact_summary_section = f""" ## 👤 RESUMO DO CONTATO {self.chat_session.contact_summary}
+            contact_summary_section = f"""
+## 👤 RESUMO DO CONTATO
+{self.chat_session.contact_summary}
 
 ⚠️ Use essas informações para personalizar o atendimento e evitar perguntar coisas que você já sabe.
 🔄 Sempre que descobrir NOVAS informações importantes, atualize o resumo usando a ferramenta `update_contact_summary`.
 """
 
-        system_prompt = f""" {atendimento_instructions}
+        self.system_prompt = f"""{atendimento_instructions}
 
 ## INFORMAÇÕES DA SESSÃO
 - Número WhatsApp: {numero_whatsapp}
 - Data/Hora atual: {current_time}
 {contact_summary_section}
+{available_files}
 """
 
-        return initialize_agent(
-            self.tools,
-            self.llm,
-            agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
-            verbose=True,
-            handle_parsing_errors=True,
-            max_iterations=5,
-            early_stopping_method="generate",
-            agent_kwargs={"system_message": system_prompt}
-        )
+        # Criar agente usando LangGraph
+        agent = create_react_agent(self.llm, self.tools)
+        return agent
 
     def _get_available_files(self):
         """Obtém lista de arquivos disponíveis"""
@@ -612,13 +592,18 @@ Exemplo: update_contact_summary('Nome: João Silva | Profissão: Engenheiro | Ci
             chat_history = self._get_chat_history()
             print(f"📚 Histórico: {len(chat_history)} mensagens")
 
-            # Executar agente
-            response = self.agent.invoke({
-                "input": user_message,
-                "chat_history": chat_history
-            })
+            # Preparar mensagens no formato da nova API
+            messages = [SystemMessage(content=self.system_prompt)]
+            messages.extend(chat_history)
+            messages.append(HumanMessage(content=user_message))
 
-            ai_response = response.get("output", "")
+            # Executar agente usando a nova API
+            response = self.agent.invoke({"messages": messages})
+
+            # Extrair a última mensagem AI
+            ai_messages = [msg for msg in response["messages"] if isinstance(msg, AIMessage)]
+            ai_response = ai_messages[-1].content if ai_messages else "Erro ao processar"
+
             print(f"✅ ATENDIMENTO AGENT - SUCESSO")
             print(f"📤 Resposta: {ai_response[:150]}{'...' if len(ai_response) > 150 else ''}")
 
@@ -635,7 +620,9 @@ Exemplo: update_contact_summary('Nome: João Silva | Profissão: Engenheiro | Ci
             }
 
         except Exception as e:
+            import traceback
             print(f"❌ ERRO ATENDIMENTO AGENT: {e}")
+            print(f"📍 Traceback: {traceback.format_exc()}")
             return {
                 "success": False,
                 "error": str(e),

@@ -6,7 +6,8 @@ import traceback
 from datetime import datetime, timedelta, time
 from zoneinfo import ZoneInfo
 
-from langchain.agents import Tool
+from langchain_core.tools import Tool
+
 from .services import GoogleCalendarService
 
 
@@ -44,6 +45,8 @@ class GoogleCalendarLangChainTools:
                 name="criar_evento_calendar",
                 func=self._criar_evento_calendar,
                 description="""Cria um novo evento no Google Calendar.
+                IMPORTANTE: Use esta ferramenta SOMENTE após a confirmação explícita do usuário.
+                Se tiver dúvida, pergunte novamente antes de usar esta ferramenta.
                 Formato: titulo|data_inicio|hora_inicio|data_fim|hora_fim|descricao|localizacao
                 Exemplo: Consulta médica|25/12/2024|14:30||15:30|Consulta de rotina|Clínica ABC
                 Campos opcionais: data_fim, hora_fim, descricao, localizacao"""

@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
                 ('webhook_url', models.URLField(blank=True, null=True, verbose_name='URL do Webhook')),
                 ('ignore_own_messages', models.BooleanField(default=True, help_text='Se ativo, ignora mensagens enviadas pelo próprio número da instância', verbose_name='Ignorar Mensagens Próprias')),
                 ('authorized_numbers', models.TextField(blank=True, help_text='Lista de números autorizados separados por vírgula (ex: 5511999999999, 5511888888888)', null=True, verbose_name='Números Autorizados')),
-                ('llm_config', models.ForeignKey(blank=True, help_text='Configuração do modelo de IA para esta instância', null=True, on_delete=django.db.models.deletion.SET_NULL, to='agents.llmproviderconfig', verbose_name='Configuração LLM')),
+                ('llm_config', models.ForeignKey(blank=True, help_text='Configuração do modelo de IA para esta instância', null=True, on_delete=django.db.models.deletion.SET_NULL, to='nodes.llmproviderconfig', verbose_name='Configuração LLM')),
                 ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='evolution_instances', to='core.client')),
             ],
             options={
@@ -93,7 +93,7 @@ class Migration(migrations.Migration):
                 ('history_change_reason', models.CharField(max_length=100, null=True)),
                 ('history_type', models.CharField(choices=[('+', 'Created'), ('~', 'Changed'), ('-', 'Deleted')], max_length=1)),
                 ('history_user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to=settings.AUTH_USER_MODEL)),
-                ('llm_config', models.ForeignKey(blank=True, db_constraint=False, help_text='Configuração do modelo de IA para esta instância', null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='agents.llmproviderconfig', verbose_name='Configuração LLM')),
+                ('llm_config', models.ForeignKey(blank=True, db_constraint=False, help_text='Configuração do modelo de IA para esta instância', null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='nodes.llmproviderconfig', verbose_name='Configuração LLM')),
                 ('owner', models.ForeignKey(blank=True, db_constraint=False, null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='core.client')),
             ],
             options={

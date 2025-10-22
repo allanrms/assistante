@@ -1,0 +1,568 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Diálogo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .main-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar h4 {
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .sidebar .form-label {
+            color: #ecf0f1;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .sidebar .form-select {
+            margin-bottom: 20px;
+            background: #34495e;
+            color: white;
+            border: 1px solid #4a5f7f;
+        }
+
+        .sidebar .form-select:focus {
+            background: #34495e;
+            color: white;
+            border-color: #5dade2;
+        }
+
+        .sidebar .form-control:focus {
+            background: #34495e;
+            color: white;
+            border-color: #5dade2;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ecf0f1;
+        }
+
+        .chat-header {
+            background: white;
+            padding: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .chat-header h3 {
+            margin: 0;
+            font-size: 20px;
+            color: #2c3e50;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message.user .message-bubble {
+            background: #3498db;
+            color: white;
+        }
+
+        .message.assistant .message-bubble {
+            background: white;
+            color: #2c3e50;
+            border: 1px solid #ddd;
+        }
+
+        .input-area {
+            background: white;
+            padding: 20px;
+            border-top: 2px solid #ddd;
+        }
+
+        .input-area .input-group {
+            max-width: 100%;
+        }
+
+        .input-area input {
+            border-radius: 25px;
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+        }
+
+        .input-area input:focus {
+            border-color: #3498db;
+            box-shadow: none;
+        }
+
+        .input-area .btn-primary {
+            border-radius: 25px;
+            padding: 12px 30px;
+            background: #3498db;
+            border: none;
+        }
+
+        .input-area .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #95a5a6;
+            font-size: 16px;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            width: 60px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background: #95a5a6;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        .error-message {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    {% csrf_token %}
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h4>Configurações</h4>
+
+            <div class="mb-3">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" id="clientSelect" required>
+                    <option value="">Selecione um cliente</option>
+                    {% for client in clients %}
+                    <option value="{{ client.id }}">{{ client.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Configuração LLM</label>
+                <select class="form-select" id="llmConfigSelect" required disabled>
+                    <option value="">Primeiro selecione um cliente</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Número</label>
+                <input type="text" class="form-control" id="fromNumberInput" placeholder="Ex: 5511999999999" value="5500000000000" style="background: #34495e; color: white; border: 1px solid #4a5f7f;">
+            </div>
+
+            <div class="mb-3">
+                <button class="btn btn-danger w-100" id="clearChatButton" style="border-radius: 8px;">
+                    Limpar Histórico
+                </button>
+            </div>
+
+            <div class="alert alert-info" style="font-size: 12px; background: #34495e; border: 1px solid #4a5f7f; color: #ecf0f1;">
+                Selecione um cliente, uma configuração LLM e informe um número para começar a conversar.
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <h3>Teste de Diálogo</h3>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-state">
+                    Selecione um cliente e configuração LLM para começar
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="error-message" id="errorMessage"></div>
+
+                <div class="input-group">
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="messageInput"
+                        placeholder="Digite sua mensagem..."
+                        disabled
+                    >
+                    <button class="btn btn-primary" id="sendButton" disabled>Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Função para pegar o CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+
+        const clientSelect = document.getElementById('clientSelect');
+        const llmConfigSelect = document.getElementById('llmConfigSelect');
+        const fromNumberInput = document.getElementById('fromNumberInput');
+        const clearChatButton = document.getElementById('clearChatButton');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const errorMessage = document.getElementById('errorMessage');
+
+        let currentClientId = null;
+        let currentLlmConfigId = null;
+        let currentFromNumber = null;
+
+        // Carregar valores do localStorage ao iniciar
+        function loadFromLocalStorage() {
+            const savedClientId = localStorage.getItem('dialog_test_client_id');
+            const savedLlmConfigId = localStorage.getItem('dialog_test_llm_config_id');
+            const savedFromNumber = localStorage.getItem('dialog_test_from_number');
+
+            if (savedClientId) {
+                clientSelect.value = savedClientId;
+                loadClientLLMConfigs().then(() => {
+                    if (savedLlmConfigId) {
+                        llmConfigSelect.value = savedLlmConfigId;
+                        updateInputState();
+                    }
+                });
+            }
+
+            // Se houver valor salvo, usa esse, senão mantém o valor padrão do input
+            if (savedFromNumber) {
+                fromNumberInput.value = savedFromNumber;
+            }
+            // Sempre atualiza o currentFromNumber com o valor que está no input
+            currentFromNumber = fromNumberInput.value;
+
+            // Se não houver nada salvo, salva o valor padrão
+            if (!savedFromNumber && fromNumberInput.value) {
+                localStorage.setItem('dialog_test_from_number', fromNumberInput.value);
+            }
+        }
+
+        // Salvar no localStorage
+        function saveToLocalStorage() {
+            if (currentClientId) {
+                localStorage.setItem('dialog_test_client_id', currentClientId);
+            }
+            if (currentLlmConfigId) {
+                localStorage.setItem('dialog_test_llm_config_id', currentLlmConfigId);
+            }
+            if (currentFromNumber) {
+                localStorage.setItem('dialog_test_from_number', currentFromNumber);
+            }
+        }
+
+        // Carregar configurações LLM do cliente
+        async function loadClientLLMConfigs() {
+            const clientId = clientSelect.value;
+
+            if (!clientId) {
+                // Se não há cliente selecionado, limpar o select de LLM config
+                llmConfigSelect.innerHTML = '<option value="">Selecione uma config</option>';
+                llmConfigSelect.disabled = true;
+                updateInputState();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/dialog-test/client/${clientId}/llm-configs/`);
+                const data = await response.json();
+
+                if (data.success && data.configs.length > 0) {
+                    llmConfigSelect.innerHTML = '<option value="">Selecione uma config</option>';
+                    data.configs.forEach(config => {
+                        const option = document.createElement('option');
+                        option.value = config.id;
+                        option.textContent = `${config.name} (${config.provider} - ${config.model})`;
+                        llmConfigSelect.appendChild(option);
+                    });
+                    llmConfigSelect.disabled = false;
+                } else {
+                    llmConfigSelect.innerHTML = '<option value="">Nenhuma configuração encontrada</option>';
+                    llmConfigSelect.disabled = true;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar configs LLM:', error);
+                llmConfigSelect.innerHTML = '<option value="">Erro ao carregar configurações</option>';
+                llmConfigSelect.disabled = true;
+            }
+
+            updateInputState();
+        }
+
+        // Habilitar/desabilitar input baseado nas seleções
+        function updateInputState(shouldFocus = false) {
+            currentClientId = clientSelect.value;
+            currentLlmConfigId = llmConfigSelect.value;
+            currentFromNumber = fromNumberInput.value.trim();
+
+            // Salvar no localStorage
+            saveToLocalStorage();
+
+            if (currentClientId && currentLlmConfigId && currentFromNumber) {
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                if (shouldFocus) {
+                    messageInput.focus();
+                }
+            } else {
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+            }
+        }
+
+        clientSelect.addEventListener('change', () => {
+            loadClientLLMConfigs();
+            saveToLocalStorage();
+        });
+        llmConfigSelect.addEventListener('change', () => {
+            updateInputState(true); // Foca no input de mensagem quando seleciona LLM config
+            saveToLocalStorage();
+        });
+        fromNumberInput.addEventListener('input', () => {
+            updateInputState(false); // Não foca no input de mensagem quando está digitando o número
+            saveToLocalStorage();
+        });
+
+        // Enviar mensagem
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+
+            if (!message || !currentClientId || !currentLlmConfigId || !currentFromNumber) {
+                return;
+            }
+
+            // Limpar mensagem de erro
+            errorMessage.style.display = 'none';
+
+            // Adicionar mensagem do usuário
+            addMessage('user', message);
+            messageInput.value = '';
+            sendButton.disabled = true;
+
+            // Mostrar typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message assistant';
+            typingDiv.innerHTML = `
+                <div class="typing-indicator active">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            messagesContainer.appendChild(typingDiv);
+            scrollToBottom();
+
+            try {
+                const response = await fetch('/dialog-test/send/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken,
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        client_id: currentClientId,
+                        llm_config_id: currentLlmConfigId,
+                        from_number: currentFromNumber
+                    })
+                });
+
+                const data = await response.json();
+
+                // Remover typing indicator
+                messagesContainer.removeChild(typingDiv);
+
+                if (data.success) {
+                    addMessage('assistant', data.response);
+                } else {
+                    showError(data.error || 'Erro ao processar mensagem');
+                }
+            } catch (error) {
+                messagesContainer.removeChild(typingDiv);
+                showError('Erro de conexão: ' + error.message);
+            } finally {
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        function addMessage(role, content) {
+            // Remover empty state se existir
+            const emptyState = messagesContainer.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = `
+                <div class="message-bubble">${escapeHtml(content)}</div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Limpar histórico de chat
+        async function clearChat() {
+            if (!currentClientId || !currentFromNumber) {
+                showError('Selecione um cliente e informe um número primeiro');
+                return;
+            }
+
+            if (!confirm('Tem certeza que deseja limpar todo o histórico de chat? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/dialog-test/clear/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken,
+                    },
+                    body: JSON.stringify({
+                        client_id: currentClientId,
+                        from_number: currentFromNumber
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Limpar mensagens da tela
+                    messagesContainer.innerHTML = `
+                        <div class="empty-state">
+                            Selecione um cliente e configuração LLM para começar
+                        </div>
+                    `;
+                } else {
+                    showError(data.error || 'Erro ao limpar histórico');
+                }
+            } catch (error) {
+                showError('Erro de conexão: ' + error.message);
+            }
+        }
+
+        clearChatButton.addEventListener('click', clearChat);
+
+        // Carregar valores salvos ao iniciar
+        loadFromLocalStorage();
+    </script>
+</body>
+</html>

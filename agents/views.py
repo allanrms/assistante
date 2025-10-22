@@ -11,7 +11,7 @@ from rest_framework.permissions import AllowAny
 
 from .models import LLMProviderConfig, AssistantContextFile
 from .forms import AssistantForm, AssistantContextFileForm
-from .services import create_llm_service
+# from .services import create_llm_service
 from .file_processors import file_processor
 from whatsapp_connector.models import EvolutionInstance
 from whatsapp_connector.services import EvolutionAPIService
@@ -25,7 +25,7 @@ class AssistantListView(ClientRequiredMixin, LoginRequiredMixin, ListView):
     Lista todos os assistants/LLM configs
     """
     model = LLMProviderConfig
-    template_name = 'agents/assistants/list.html'
+    template_name = 'nodes/assistants/list.html'
     context_object_name = 'assistants'
     paginate_by = 20
 
@@ -61,7 +61,7 @@ class AssistantDetailView(ClientRequiredMixin, LoginRequiredMixin, DetailView):
     Detalhes de um assistant específico
     """
     model = LLMProviderConfig
-    template_name = 'agents/assistants/detail.html'
+    template_name = 'nodes/assistants/detail.html'
     context_object_name = 'assistant'
 
     def get_queryset(self):
@@ -90,8 +90,8 @@ class AssistantCreateView(ClientRequiredMixin, LoginRequiredMixin, CreateView):
     """
     model = LLMProviderConfig
     form_class = AssistantForm
-    template_name = 'agents/assistants/create.html'
-    success_url = reverse_lazy('agents:assistant_list')
+    template_name = 'nodes/assistants/create.html'
+    success_url = reverse_lazy('nodes:assistant_list')
 
     def get_initial(self):
         """
@@ -109,7 +109,7 @@ class AssistantCreateView(ClientRequiredMixin, LoginRequiredMixin, CreateView):
             self.object.owner = self.request.user.client  # Definir o cliente atual como proprietário
             self.object.save()
             messages.success(self.request, f'Assistant "{self.object.display_name}" criado com sucesso! Agora você pode adicionar arquivos de contexto para personalizar as respostas.')
-            return redirect('agents:assistant_detail', pk=self.object.pk)
+            return redirect('nodes:assistant_detail', pk=self.object.pk)
 
         except Exception as e:
             messages.error(self.request, f'Erro ao criar assistant: {str(e)}')
@@ -122,13 +122,13 @@ class AssistantUpdateView(ClientRequiredMixin, LoginRequiredMixin, UpdateView):
     """
     model = LLMProviderConfig
     form_class = AssistantForm
-    template_name = 'agents/assistants/edit.html'
+    template_name = 'nodes/assistants/edit.html'
 
     def get_queryset(self):
         return LLMProviderConfig.objects.filter(owner=self.request.user.client)
 
     def get_success_url(self):
-        return reverse_lazy('agents:assistant_detail', kwargs={'pk': self.object.pk})
+        return reverse_lazy('nodes:assistant_detail', kwargs={'pk': self.object.pk})
 
     def form_valid(self, form):
         try:
@@ -146,8 +146,8 @@ class AssistantDeleteView(ClientRequiredMixin, LoginRequiredMixin, DeleteView):
     Deletar um assistant
     """
     model = LLMProviderConfig
-    template_name = 'agents/assistants/confirm_delete.html'
-    success_url = reverse_lazy('agents:assistant_list')
+    template_name = 'nodes/assistants/confirm_delete.html'
+    success_url = reverse_lazy('nodes:assistant_list')
     context_object_name = 'assistant'
 
     def get_queryset(self):
@@ -168,7 +168,7 @@ class AssistantDeleteView(ClientRequiredMixin, LoginRequiredMixin, DeleteView):
                 f'Não é possível deletar: {instances_count} instância(s) ainda usam este assistant. '
                 'Remova ou altere a configuração das instâncias primeiro.'
             )
-            return redirect('agents:assistant_detail', pk=self.object.pk)
+            return redirect('nodes:assistant_detail', pk=self.object.pk)
 
         try:
             response = super().delete(request, *args, **kwargs)
@@ -177,7 +177,7 @@ class AssistantDeleteView(ClientRequiredMixin, LoginRequiredMixin, DeleteView):
 
         except Exception as e:
             messages.error(request, f'Erro ao deletar assistant: {str(e)}')
-            return redirect('agents:assistant_list')
+            return redirect('nodes:assistant_list')
 
 
 # def _process_text_message(message):
@@ -256,7 +256,7 @@ class AssistantContextFileUploadView(LoginRequiredMixin, CreateView):
     """
     model = AssistantContextFile
     form_class = AssistantContextFileForm
-    template_name = 'agents/context_files/upload.html'
+    template_name = 'nodes/context_files/upload.html'
     
     def form_valid(self, form):
         # Associar o arquivo à configuração LLM (apenas do usuário atual)
@@ -288,7 +288,7 @@ class AssistantContextFileUploadView(LoginRequiredMixin, CreateView):
         self.process_file_content(context_file)
         
         messages.success(self.request, f'Arquivo "{context_file.name}" enviado com sucesso!')
-        return redirect('agents:assistant_detail', pk=llm_config.pk)
+        return redirect('nodes:assistant_detail', pk=llm_config.pk)
     
     def process_file_content(self, context_file):
         """
@@ -324,7 +324,7 @@ class AssistantContextFileListView(LoginRequiredMixin, ListView):
     View para listar arquivos de contexto de um assistant
     """
     model = AssistantContextFile
-    template_name = 'agents/context_files/list.html'
+    template_name = 'nodes/context_files/list.html'
     context_object_name = 'context_files'
     paginate_by = 20
     
@@ -348,7 +348,7 @@ class AssistantContextFileUpdateView(LoginRequiredMixin, UpdateView):
     """
     model = AssistantContextFile
     form_class = AssistantContextFileForm
-    template_name = 'agents/context_files/edit.html'
+    template_name = 'nodes/context_files/edit.html'
     
     def get_queryset(self):
         return AssistantContextFile.objects.filter(llm_config__owner=self.request.user.client)
@@ -366,7 +366,7 @@ class AssistantContextFileUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
     
     def get_success_url(self):
-        return reverse_lazy('agents:assistant_detail', kwargs={'pk': self.object.llm_config.pk})
+        return reverse_lazy('nodes:assistant_detail', kwargs={'pk': self.object.llm_config.pk})
 
 
 class AssistantContextFileDeleteView(LoginRequiredMixin, DeleteView):
@@ -374,13 +374,13 @@ class AssistantContextFileDeleteView(LoginRequiredMixin, DeleteView):
     View para deletar arquivos de contexto
     """
     model = AssistantContextFile
-    template_name = 'agents/context_files/delete.html'
+    template_name = 'nodes/context_files/delete.html'
     
     def get_queryset(self):
         return AssistantContextFile.objects.filter(llm_config__owner=self.request.user.client)
     
     def get_success_url(self):
-        return reverse_lazy('agents:assistant_detail', kwargs={'pk': self.object.llm_config.pk})
+        return reverse_lazy('nodes:assistant_detail', kwargs={'pk': self.object.llm_config.pk})
     
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()

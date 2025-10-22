@@ -142,13 +142,20 @@ class GoogleCalendarService:
         Retorna o serviço do Google Calendar para um número do WhatsApp
         """
         try:
-            print(f'get_calendar_service {whatsapp_number}')
+            print(f'🔑 [GoogleCalendarService.get_calendar_service] INICIADO para WhatsApp: {whatsapp_number}')
 
             #todo PRECIS AJUSTAR AQUI
             calendar_auth = GoogleCalendarAuth.objects.all().first()
 
+            if not calendar_auth:
+                print(f'❌ [GoogleCalendarService.get_calendar_service] FALHOU - Nenhuma autenticação encontrada')
+                return None
+
+            print(f'✅ [GoogleCalendarService.get_calendar_service] Autenticação encontrada')
+
             # Verifica se o token precisa ser renovado
             if timezone.now() >= calendar_auth.expires_at:
+                print(f'🔄 [GoogleCalendarService.get_calendar_service] Token expirado, renovando...')
                 self._refresh_token(calendar_auth)
 
             credentials = Credentials(
@@ -160,9 +167,15 @@ class GoogleCalendarService:
             )
 
             service = build('calendar', 'v3', credentials=credentials)
+            print(f'✅ [GoogleCalendarService.get_calendar_service] Serviço Google Calendar criado com sucesso')
             return service
 
         except GoogleCalendarAuth.DoesNotExist:
+            print(f'❌ [GoogleCalendarService.get_calendar_service] ERRO - GoogleCalendarAuth não existe')
+            traceback.print_exc()
+            return None
+        except Exception as e:
+            print(f'❌ [GoogleCalendarService.get_calendar_service] ERRO INESPERADO: {str(e)}')
             traceback.print_exc()
             return None
 
@@ -191,15 +204,35 @@ class GoogleCalendarService:
     def create_event(self, whatsapp_number, event_data):
         """
         Cria um evento no Google Calendar
+        Retorna: (success: bool, result: dict ou str)
+            - Se success=True: result é um dict com 'id', 'htmlLink', 'message'
+            - Se success=False: result é uma string com mensagem de erro
         """
+        print(f"📅 [GoogleCalendarService.create_event] INICIADO")
+        print(f"   WhatsApp: {whatsapp_number}")
+        print(f"   Event Data: {event_data}")
+
         service = self.get_calendar_service(whatsapp_number)
         if not service:
+            print(f"❌ [GoogleCalendarService.create_event] FALHOU - Usuário não autenticado")
             return False, "Usuário não autenticado com Google Calendar."
 
         try:
+            print(f"🔄 [GoogleCalendarService.create_event] Chamando Google Calendar API...")
             event = service.events().insert(calendarId='primary', body=event_data).execute()
-            return True, f"Evento criado com sucesso: {event.get('htmlLink')}"
+            event_id = event.get('id')
+            html_link = event.get('htmlLink')
+            print(f"✅ [GoogleCalendarService.create_event] SUCESSO - Evento criado: {html_link}")
+            print(f"   Event ID: {event_id}")
+
+            # Retorna dict com ID e link do evento
+            return True, {
+                'id': event_id,
+                'htmlLink': html_link,
+                'message': f"Evento criado com sucesso: {html_link}"
+            }
         except Exception as e:
+            print(f"❌ [GoogleCalendarService.create_event] ERRO: {str(e)}")
             traceback.print_exc()
             return False, f"Erro ao criar evento: {str(e)}"
 
@@ -207,12 +240,17 @@ class GoogleCalendarService:
         """
         Lista eventos do Google Calendar
         """
+        print(f"📋 [GoogleCalendarService.list_events] INICIADO")
+        print(f"   WhatsApp: {whatsapp_number}, Max Results: {max_results}")
+
         service = self.get_calendar_service(whatsapp_number)
         if not service:
+            print(f"❌ [GoogleCalendarService.list_events] FALHOU - Usuário não autenticado")
             return False, "Usuário não autenticado com Google Calendar."
 
         try:
             now = timezone.now().isoformat()
+            print(f"🔄 [GoogleCalendarService.list_events] Chamando Google Calendar API...")
             events_result = service.events().list(
                 calendarId='primary',
                 timeMin=now,
@@ -222,8 +260,10 @@ class GoogleCalendarService:
             ).execute()
             events = events_result.get('items', [])
 
+            print(f"✅ [GoogleCalendarService.list_events] SUCESSO - {len(events)} eventos encontrados")
             return True, events
         except Exception as e:
+            print(f"❌ [GoogleCalendarService.list_events] ERRO: {str(e)}")
             traceback.print_exc()
             return False, f"Erro ao listar eventos: {str(e)}"
 

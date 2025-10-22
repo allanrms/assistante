@@ -262,7 +262,7 @@ LOGGING = {
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'django.log'),
+            'filename': '/tmp/assistante_django.log',
             'formatter': 'verbose',
         },
         'mail_admins': {
@@ -273,7 +273,7 @@ LOGGING = {
         },
         'critical_file': {
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'critical_errors.log'),
+            'filename': '/tmp/assistante_critical_errors.log',
             'formatter': 'verbose',
             'level': 'ERROR',
         },

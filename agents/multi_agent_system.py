@@ -170,7 +170,7 @@ class AgendaAgent:
         """Cria o agente de agenda com instruções específicas usando LangGraph"""
         # Ler instruções do arquivo
         try:
-            with open('/nodes/instructions/agenda.md', 'r', encoding='utf-8') as f:
+            with open('/agents/instructions/agenda.md', 'r', encoding='utf-8') as f:
                 agenda_instructions = f.read()
         except Exception as e:
             print(f"⚠️ Erro ao ler instruções da agenda: {e}")
@@ -517,7 +517,7 @@ Exemplo: update_contact_summary('Nome: João Silva | Profissão: Engenheiro | Ci
         """Cria o agente de atendimento com instruções específicas usando LangGraph"""
         # Ler instruções do arquivo
         try:
-            with open('/nodes/instructions/recepcao.md', 'r', encoding='utf-8') as f:
+            with open('/agents/instructions/recepcao.md', 'r', encoding='utf-8') as f:
                 atendimento_instructions = f.read()
         except Exception as e:
             print(f"⚠️ Erro ao ler instruções de atendimento: {e}")

@@ -25,7 +25,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),  # Rotas de cadastro e conta de clientes
     path('whatsapp_connector/v1/', include('whatsapp_connector.api.v1.urls')),
-    path('nodes/', include('agents.urls')),  # Agent management URLs
+    path('agents/', include('agents.urls')),  # Agent management URLs
     path('whatsapp/', include('whatsapp_connector.urls')),  # WhatsApp connector URLs
     path('google-calendar/', include('google_calendar.urls')),  # Google Calendar integration URLs
     path('dialog-test/', include('dialog_test.urls')),  # Dialog Test URLs

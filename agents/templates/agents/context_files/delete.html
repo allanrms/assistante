@@ -8,7 +8,7 @@
         <i class="bi bi-trash me-2"></i>
         Remover Arquivo de Contexto
     </h1>
-    <a href="{% url 'nodes:assistant_detail' object.llm_config.pk %}" class="btn btn-outline-secondary">
+    <a href="{% url 'agents:assistant_detail' object.llm_config.pk %}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>
         Voltar
     </a>
@@ -17,8 +17,8 @@
 <!-- Breadcrumb -->
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'nodes:assistant_list' %}">Assistants</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'nodes:assistant_detail' object.llm_config.pk %}">{{ object.llm_config.display_name }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'agents:assistant_list' %}">Assistants</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'agents:assistant_detail' object.llm_config.pk %}">{{ object.llm_config.display_name }}</a></li>
         <li class="breadcrumb-item active">Remover Arquivo</li>
     </ol>
 </nav>
@@ -80,7 +80,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <div class="d-flex justify-content-between">
-                        <a href="{% url 'nodes:assistant_detail' object.llm_config.pk %}" class="btn btn-outline-secondary">
+                        <a href="{% url 'agents:assistant_detail' object.llm_config.pk %}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left me-2"></i>Cancelar
                         </a>
                         <button type="submit" class="btn btn-danger">

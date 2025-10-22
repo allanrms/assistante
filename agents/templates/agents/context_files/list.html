@@ -10,11 +10,11 @@
         {% trans 'Arquivos de Contexto' %} - {{ llm_config.display_name }}
     </h1>
     <div class="d-flex gap-2">
-        <a href="{% url 'nodes:assistant_detail' llm_config.pk %}" class="btn btn-outline-secondary">
+        <a href="{% url 'agents:assistant_detail' llm_config.pk %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>
             Voltar ao Assistant
         </a>
-        <a href="{% url 'nodes:context_file_upload' llm_config.pk %}" class="btn btn-primary">
+        <a href="{% url 'agents:context_file_upload' llm_config.pk %}" class="btn btn-primary">
             <i class="bi bi-upload me-1"></i>
             Upload Arquivo
         </a>
@@ -24,8 +24,8 @@
 <!-- Breadcrumb -->
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'nodes:assistant_list' %}">Assistants</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'nodes:assistant_detail' llm_config.pk %}">{{ llm_config.display_name }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'agents:assistant_list' %}">Assistants</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'agents:assistant_detail' llm_config.pk %}">{{ llm_config.display_name }}</a></li>
         <li class="breadcrumb-item active">Arquivos de Contexto</li>
     </ol>
 </nav>
@@ -114,11 +114,11 @@
                     </a>
                     {% endif %}
                     
-                    <a href="{% url 'nodes:context_file_edit' file.pk %}" class="btn btn-outline-secondary btn-sm flex-fill">
+                    <a href="{% url 'agents:context_file_edit' file.pk %}" class="btn btn-outline-secondary btn-sm flex-fill">
                         <i class="bi bi-pencil me-1"></i>Editar
                     </a>
                     
-                    <a href="{% url 'nodes:context_file_delete' file.pk %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover este arquivo?')">
+                    <a href="{% url 'agents:context_file_delete' file.pk %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover este arquivo?')">
                         <i class="bi bi-trash"></i>
                     </a>
                 </div>
@@ -173,7 +173,7 @@
     <p class="text-muted mb-4">
         Adicione arquivos para que o assistant tenha acesso a informações específicas do seu negócio.
     </p>
-    <a href="{% url 'nodes:context_file_upload' llm_config.pk %}" class="btn btn-primary">
+    <a href="{% url 'agents:context_file_upload' llm_config.pk %}" class="btn btn-primary">
         <i class="bi bi-upload me-2"></i>Fazer Primeiro Upload
     </a>
 </div>

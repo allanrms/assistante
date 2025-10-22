@@ -9,11 +9,11 @@
         Editar Assistant
     </h1>
     <div class="d-flex gap-2">
-        <a href="{% url 'nodes:assistant_detail' object.pk %}" class="btn btn-outline-info">
+        <a href="{% url 'agents:assistant_detail' object.pk %}" class="btn btn-outline-info">
             <i class="bi bi-eye me-1"></i>
             Ver Detalhes
         </a>
-        <a href="{% url 'nodes:assistant_list' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'agents:assistant_list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>
             Voltar
         </a>
@@ -247,10 +247,10 @@
                                 {% endif %}
                                 
                                 <div class="d-flex justify-content-between">
-                                    <a href="{% url 'nodes:context_file_list' object.pk %}" class="btn btn-sm btn-outline-secondary">
+                                    <a href="{% url 'agents:context_file_list' object.pk %}" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-list me-1"></i>Gerenciar Arquivos
                                     </a>
-                                    <a href="{% url 'nodes:context_file_upload' object.pk %}" class="btn btn-sm btn-primary">
+                                    <a href="{% url 'agents:context_file_upload' object.pk %}" class="btn btn-sm btn-primary">
                                         <i class="bi bi-upload me-1"></i>Adicionar Arquivo
                                     </a>
                                 </div>
@@ -260,7 +260,7 @@
                                     <strong>Nenhum arquivo de contexto adicionado.</strong> Adicione documentos para personalizar as respostas do assistant.
                                 </div>
                                 <div class="text-center">
-                                    <a href="{% url 'nodes:context_file_upload' object.pk %}" class="btn btn-primary">
+                                    <a href="{% url 'agents:context_file_upload' object.pk %}" class="btn btn-primary">
                                         <i class="bi bi-upload me-2"></i>Adicionar Primeiro Arquivo
                                     </a>
                                 </div>
@@ -269,7 +269,7 @@
                     </div>
                     
                     <div class="d-flex justify-content-end gap-2 mt-4">
-                        <a href="{% url 'nodes:assistant_detail' object.pk %}" class="btn btn-outline-secondary">
+                        <a href="{% url 'agents:assistant_detail' object.pk %}" class="btn btn-outline-secondary">
                             <i class="bi bi-x-circle me-2"></i>
                             Cancelar
                         </a>

@@ -10,11 +10,11 @@ class EvolutionInstanceAdmin(admin.ModelAdmin):
     Admin para gerenciar instâncias Evolution API
     """
     list_display = ['name', 'instance_name', 'instance_evolution_id', 'owner', 'status_badge', 'connection_info',
-                    'llm_config_display', 'authorized_numbers_count', 'is_active', 'created_at', 'last_connection']
-    list_filter = ['status', 'is_active', 'owner', 'llm_config', 'created_at']
+                    'agent_display', 'authorized_numbers_count', 'is_active', 'created_at', 'last_connection']
+    list_filter = ['status', 'is_active', 'owner', 'agent', 'created_at']
     search_fields = ['name', 'instance_name', 'instance_evolution_id', 'phone_number', 'profile_name', 'owner__full_name', 'owner__email']
     readonly_fields = ['created_at', 'updated_at', 'last_connection', ]
-    raw_id_fields = ['owner', 'llm_config']
+    raw_id_fields = ['owner', 'agent']
     actions = ['update_connection_info']
     fieldsets = (
         ('Informações Básicas', {
@@ -24,7 +24,7 @@ class EvolutionInstanceAdmin(admin.ModelAdmin):
             'fields': ('base_url', 'api_key', 'webhook_url')
         }),
         ('Configuração de IA', {
-            'fields': ('llm_config',)
+            'fields': ('agent',)
         }),
         ('🔐 Configurações de Segurança', {
             'fields': ('ignore_own_messages', 'authorized_numbers'),
@@ -59,15 +59,15 @@ class EvolutionInstanceAdmin(admin.ModelAdmin):
         return obj.connection_info
     connection_info.short_description = 'Conexão'
     
-    def llm_config_display(self, obj):
-        """Exibe configuração LLM formatada"""
-        if obj.llm_config:
+    def agent_display(self, obj):
+        """Exibe configuração do Agent formatada"""
+        if obj.agent:
             return format_html(
                 '<span class="badge bg-info">{}</span>',
-                str(obj.llm_config)
+                str(obj.agent)
             )
         return format_html('<span class="text-muted">Não configurado</span>')
-    llm_config_display.short_description = 'Configuração LLM'
+    agent_display.short_description = 'Agent'
 
     def authorized_numbers_count(self, obj):
         """Exibe contagem de números autorizados com preview"""
@@ -99,7 +99,7 @@ class EvolutionInstanceAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Otimiza queryset com select_related para owner."""
         qs = super().get_queryset(request)
-        return qs.select_related('owner', 'llm_config')
+        return qs.select_related('owner', 'agent')
 
     def update_connection_info(self, request, queryset):
         """Ação para atualizar informações de conexão das instâncias selecionadas"""

@@ -8,7 +8,7 @@ from django.core.validators import URLValidator
 from django.conf import settings
 from django.utils.text import slugify
 from whatsapp_connector.models import EvolutionInstance
-from agents.models import LLMProviderConfig
+from agents.models import Agent
 import re
 
 
@@ -19,15 +19,15 @@ class InstanceForm(forms.ModelForm):
     
     class Meta:
         model = EvolutionInstance
-        fields = ['name', 'llm_config', 'ignore_own_messages']
+        fields = ['name', 'agent', 'ignore_own_messages']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Nome amigável da instância (ex: WhatsApp Empresa)'
             }),
-            'llm_config': forms.Select(attrs={
+            'agent': forms.Select(attrs={
                 'class': 'form-select',
-                'placeholder': 'Selecione um assistant'
+                'placeholder': 'Selecione um agent'
             }),
             'ignore_own_messages': forms.CheckboxInput(attrs={
                 'class': 'form-check-input'
@@ -35,12 +35,12 @@ class InstanceForm(forms.ModelForm):
         }
         labels = {
             'name': 'Nome da Instância',
-            'llm_config': 'Assistant/IA',
+            'agent': 'Agent/IA',
             'ignore_own_messages': 'Ignorar Mensagens Próprias'
         }
         help_texts = {
             'name': 'Nome descritivo para identificar a instância',
-            'llm_config': 'Selecione qual assistant/IA será usado para responder mensagens (opcional)',
+            'agent': 'Selecione qual agent/IA será usado para responder mensagens (opcional)',
             'ignore_own_messages': 'Quando ativo, ignora mensagens enviadas pelo próprio número da instância'
         }
     
@@ -53,18 +53,18 @@ class InstanceForm(forms.ModelForm):
 
         # Marca campos obrigatórios
         self.fields['name'].required = True
-        self.fields['llm_config'].required = False
+        self.fields['agent'].required = False
 
-        # Filtrar assistants apenas do cliente logado
+        # Filtrar agents apenas do cliente logado
         # Se recebeu 'client', usar ele. Caso contrário, tentar 'user.client' (compatibilidade)
         filter_owner = client
         if not filter_owner and user and user.client:
             filter_owner = user.client
 
         if filter_owner:
-            self.fields['llm_config'].queryset = LLMProviderConfig.objects.filter(owner=filter_owner)
+            self.fields['agent'].queryset = Agent.objects.filter(owner=filter_owner)
         else:
-            self.fields['llm_config'].queryset = LLMProviderConfig.objects.none()
+            self.fields['agent'].queryset = Agent.objects.none()
 
 
 class InstanceSearchForm(forms.Form):

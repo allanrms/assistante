@@ -1,9 +1,6 @@
 import traceback
-
-from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
-from django.conf import settings
 
 from common.models import BaseUUIDModel, HistoryBaseModel
 
@@ -56,14 +53,14 @@ class EvolutionInstance(BaseUUIDModel, HistoryBaseModel):
         help_text='Lista de números autorizados separados por vírgula (ex: 5511999999999, 5511888888888)'
     )
     
-    # Configuração de LLM para esta instância
-    llm_config = models.ForeignKey(
-        'agents.LLMProviderConfig',
+    # Agent de IA para esta instância
+    agent = models.ForeignKey(
+        'agents.Agent',
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
-        verbose_name='Configuração LLM',
-        help_text='Configuração do modelo de IA para esta instância'
+        verbose_name='Agent',
+        help_text='Agent de IA que será usado para processar as mensagens'
     )
 
     class Meta:
@@ -199,7 +196,7 @@ class EvolutionInstance(BaseUUIDModel, HistoryBaseModel):
 
         return False
 
-
+#quero remover
 class ChatSession(models.Model):
     SESSION_STATUS = (
         ("ai", "Atendimento por IA"),
@@ -319,6 +316,7 @@ class ChatSession(models.Model):
         """
         return self.status == 'closed'
 
+#quero remover
 class MessageHistory(models.Model):
     MESSAGE_TYPES = (
         ('text', 'Text'),
@@ -372,6 +370,7 @@ class MessageHistory(models.Model):
     def __str__(self):
         return f"{self.message_type} from {self.chat_session.from_number} - {self.message_id}"
 
+#quero remover
 class ImageProcessingJob(models.Model):
     JOB_STATUS = (
         ('queued', 'Queued'),

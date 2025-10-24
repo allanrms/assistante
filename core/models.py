@@ -6,7 +6,6 @@ from django.core.mail import send_mail
 from django.conf import settings
 import uuid
 import pyotp
-import secrets
 
 User = get_user_model()
 
@@ -368,6 +367,7 @@ class Contact(models.Model):
 
     # Dados do contato
     phone_number = models.CharField(
+        unique=True,
         max_length=20,
         verbose_name=_('Número de Telefone'),
         help_text=_('Número no formato internacional (ex: 5511999999999)')

@@ -1,0 +1,5 @@
+sudo apt install postgresql-16-pgvector
+
+psql -U postgres -d assistante
+
+CREATE EXTENSION vector;

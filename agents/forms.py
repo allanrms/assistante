@@ -1,21 +1,21 @@
 from django import forms
-from agents.models import LLMProviderConfig, AssistantContextFile
+from agents.models import Agent, AgentFile
 from .file_processors import file_processor
 
 
-class AssistantForm(forms.ModelForm):
+class AgentForm(forms.ModelForm):
     """
-    Formulário para criar e editar assistants (LLMProviderConfig)
+    Formulário para criar e editar agents
     """
-    
+
     class Meta:
-        model = LLMProviderConfig
-        fields = ['display_name', 'name', 'model', 'instructions', 'temperature', 'max_tokens', 
+        model = Agent
+        fields = ['display_name', 'name', 'model', 'system_prompt', 'temperature', 'max_tokens',
                   'top_p', 'presence_penalty', 'frequency_penalty']
         widgets = {
             'display_name': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'ex: Assistant de Vendas, Suporte Técnico, Especialista em Ciclismo'
+                'placeholder': 'ex: Agent de Vendas, Suporte Técnico, Especialista em Ciclismo'
             }),
             'name': forms.Select(attrs={
                 'class': 'form-select'
@@ -24,7 +24,7 @@ class AssistantForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'ex: gemini-2.5-flash-lite	'
             }),
-            'instructions': forms.Textarea(attrs={
+            'system_prompt': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 12,
                 'placeholder': 'Exemplo:\n\nVocê é um assistente especializado em vendas de bicicletas.\n\nComportamento:\n- Seja amigável e entusiasmado sobre ciclismo\n- Sempre pergunte sobre o uso pretendido antes de recomendar\n- Ofereça opções dentro do orçamento do cliente\n\nRegras:\n- Nunca recomende produtos que não temos em estoque\n- Sempre mencione a garantia e manutenção\n- Se não souber algo, encaminhe para um especialista'
@@ -60,10 +60,10 @@ class AssistantForm(forms.ModelForm):
             })
         }
         labels = {
-            'display_name': 'Nome do Assistant',
+            'display_name': 'Nome do Agent',
             'name': 'Provedor de IA',
             'model': 'Modelo',
-            'instructions': 'Instruções do Assistant',
+            'system_prompt': 'Instruções do Agent',
             'temperature': 'Temperatura',
             'max_tokens': 'Máximo de Tokens',
             'top_p': 'Top-p',
@@ -71,10 +71,10 @@ class AssistantForm(forms.ModelForm):
             'frequency_penalty': 'Penalidade de Frequência'
         }
         help_texts = {
-            'display_name': 'Nome personalizado para identificar este assistant (ex: "Suporte Técnico", "Vendedor Expert")',
+            'display_name': 'Nome personalizado para identificar este agent (ex: "Suporte Técnico", "Vendedor Expert")',
             'name': 'Escolha o provedor de IA (OpenAI, Anthropic, etc)',
-            'model': 'Nome específico do modelo (ex: gemini-2.5-flash-lite	)',
-            'instructions': 'Defina a personalidade, comportamento e regras do seu assistant. Use frases claras e específicas.',
+            'model': 'Nome específico do modelo (ex: gemini-2.5-flash-lite)',
+            'system_prompt': 'Defina a personalidade, comportamento e regras do seu agent. Use frases claras e específicas.',
             'temperature': 'Controla criatividade (0.0 = conservador, 2.0 = criativo)',
             'max_tokens': 'Limite máximo de tokens na resposta',
             'top_p': 'Amostragem nuclear - controla diversidade da resposta',
@@ -88,26 +88,26 @@ class AssistantForm(forms.ModelForm):
         self.fields['display_name'].required = True
         self.fields['name'].required = True
         self.fields['model'].required = True
-        self.fields['instructions'].required = True
-        
-        # Os valores padrão são definidos na view AssistantCreateView.get_initial()
+        self.fields['system_prompt'].required = True
+
+        # Os valores padrão são definidos na view AgentCreateView.get_initial()
         # Não precisamos definir aqui para evitar conflitos
-    
+
     def clean_display_name(self):
         """
         Valida o nome de exibição
         """
         display_name = self.cleaned_data.get('display_name')
-        
+
         if not display_name:
-            raise forms.ValidationError('Nome do Assistant é obrigatório')
-        
+            raise forms.ValidationError('Nome do Agent é obrigatório')
+
         # Remove espaços
         display_name = display_name.strip()
-        
+
         if len(display_name) < 3:
-            raise forms.ValidationError('Nome do Assistant deve ter pelo menos 3 caracteres')
-        
+            raise forms.ValidationError('Nome do Agent deve ter pelo menos 3 caracteres')
+
         return display_name
     
     def clean_model(self):
@@ -127,26 +127,26 @@ class AssistantForm(forms.ModelForm):
         
         return model
     
-    def clean_instructions(self):
+    def clean_system_prompt(self):
         """
         Valida as instruções
         """
-        instructions = self.cleaned_data.get('instructions')
-        
-        if not instructions:
+        system_prompt = self.cleaned_data.get('system_prompt')
+
+        if not system_prompt:
             raise forms.ValidationError('Instruções são obrigatórias')
-        
-        instructions = instructions.strip()
-        
-        if len(instructions) < 10:
+
+        system_prompt = system_prompt.strip()
+
+        if len(system_prompt) < 10:
             raise forms.ValidationError('Instruções devem ter pelo menos 10 caracteres')
-        
-        return instructions
+
+        return system_prompt
 
 
-class AssistantSearchForm(forms.Form):
+class AgentSearchForm(forms.Form):
     """
-    Formulário de busca para assistants
+    Formulário de busca para agents
     """
     search = forms.CharField(
         label='Buscar',
@@ -158,10 +158,10 @@ class AssistantSearchForm(forms.Form):
             'autocomplete': 'off'
         })
     )
-    
+
     provider = forms.ChoiceField(
         label='Provedor',
-        choices=[('', 'Todos os provedores')] + list(LLMProviderConfig.PROVIDERS),
+        choices=[('', 'Todos os provedores')] + list(Agent.PROVIDERS),
         required=False,
         widget=forms.Select(attrs={
             'class': 'form-select'
@@ -169,13 +169,13 @@ class AssistantSearchForm(forms.Form):
     )
 
 
-class AssistantContextFileForm(forms.ModelForm):
+class AgentFileForm(forms.ModelForm):
     """
     Formulário para upload de arquivos de contexto
     """
-    
+
     class Meta:
-        model = AssistantContextFile
+        model = AgentFile
         fields = ['name', 'file', 'is_active']
         
         widgets = {
@@ -258,5 +258,5 @@ class AssistantContextFileForm(forms.ModelForm):
         
         if len(name) < 3:
             raise forms.ValidationError('Nome deve ter pelo menos 3 caracteres')
-        
+
         return name

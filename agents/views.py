@@ -9,8 +9,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 
-from .models import LLMProviderConfig, AssistantContextFile
-from .forms import AssistantForm, AssistantContextFileForm
+from .models import Agent, AgentFile
+from .forms import AgentForm, AgentFileForm
 # from .services import create_llm_service
 from .file_processors import file_processor
 from whatsapp_connector.models import EvolutionInstance
@@ -18,19 +18,19 @@ from whatsapp_connector.services import EvolutionAPIService
 from core.mixins import ClientRequiredMixin
 
 
-# === ASSISTANTS VIEWS ===
+# === AGENTS VIEWS ===
 
-class AssistantListView(ClientRequiredMixin, LoginRequiredMixin, ListView):
+class AgentListView(ClientRequiredMixin, LoginRequiredMixin, ListView):
     """
-    Lista todos os assistants/LLM configs
+    Lista todos os agents/LLM configs
     """
-    model = LLMProviderConfig
-    template_name = 'agents/assistants/list.html'
-    context_object_name = 'assistants'
+    model = Agent
+    template_name = 'agents/agents/list.html'
+    context_object_name = 'agents'
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = LLMProviderConfig.objects.filter(owner=self.request.user.client).order_by('-created_at')
+        queryset = Agent.objects.filter(owner=self.request.user.client).order_by('-created_at')
 
         # Filtro por provedor
         provider = self.request.GET.get('provider')
@@ -43,59 +43,59 @@ class AssistantListView(ClientRequiredMixin, LoginRequiredMixin, ListView):
             queryset = queryset.filter(
                 Q(display_name__icontains=search) |
                 Q(model__icontains=search) |
-                Q(instructions__icontains=search)
+                Q(system_prompt__icontains=search)
             )
 
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['provider_choices'] = LLMProviderConfig.PROVIDERS
+        context['provider_choices'] = Agent.PROVIDERS
         context['current_provider'] = self.request.GET.get('provider', '')
         context['search_query'] = self.request.GET.get('search', '')
         return context
 
 
-class AssistantDetailView(ClientRequiredMixin, LoginRequiredMixin, DetailView):
+class AgentDetailView(ClientRequiredMixin, LoginRequiredMixin, DetailView):
     """
-    Detalhes de um assistant específico
+    Detalhes de um agent específico
     """
-    model = LLMProviderConfig
-    template_name = 'agents/assistants/detail.html'
-    context_object_name = 'assistant'
+    model = Agent
+    template_name = 'agents/agents/detail.html'
+    context_object_name = 'agent'
 
     def get_queryset(self):
-        return LLMProviderConfig.objects.filter(owner=self.request.user.client)
+        return Agent.objects.filter(owner=self.request.user.client)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        assistant = self.get_object()
+        agent = self.get_object()
 
-        # Contar instâncias que usam este assistant (apenas do cliente atual)
+        # Contar instâncias que usam este agent (apenas do cliente atual)
         context['instances_using'] = EvolutionInstance.objects.filter(
-            llm_config=assistant, owner=self.request.user.client
+            agent=agent, owner=self.request.user.client
         ).count()
 
         # Listar algumas instâncias que usam (apenas do cliente atual)
         context['example_instances'] = EvolutionInstance.objects.filter(
-            llm_config=assistant, owner=self.request.user.client
+            agent=agent, owner=self.request.user.client
         )[:5]
 
         return context
 
 
-class AssistantCreateView(ClientRequiredMixin, LoginRequiredMixin, CreateView):
+class AgentCreateView(ClientRequiredMixin, LoginRequiredMixin, CreateView):
     """
-    Criar um novo assistant
+    Criar um novo agent
     """
-    model = LLMProviderConfig
-    form_class = AssistantForm
-    template_name = 'agents/assistants/create.html'
-    success_url = reverse_lazy('agents:assistant_list')
+    model = Agent
+    form_class = AgentForm
+    template_name = 'agents/agents/create.html'
+    success_url = reverse_lazy('agents:agent_list')
 
     def get_initial(self):
         """
-        Define valores padrão para novos assistants
+        Define valores padrão para novos agents
         """
         initial = super().get_initial()
         initial['name'] = 'openai'
@@ -108,187 +108,118 @@ class AssistantCreateView(ClientRequiredMixin, LoginRequiredMixin, CreateView):
             self.object = form.save(commit=False)
             self.object.owner = self.request.user.client  # Definir o cliente atual como proprietário
             self.object.save()
-            messages.success(self.request, f'Assistant "{self.object.display_name}" criado com sucesso! Agora você pode adicionar arquivos de contexto para personalizar as respostas.')
-            return redirect('agents:assistant_detail', pk=self.object.pk)
+            messages.success(self.request, f'Agent "{self.object.display_name}" criado com sucesso! Agora você pode adicionar arquivos de contexto para personalizar as respostas.')
+            return redirect('agents:agent_detail', pk=self.object.pk)
 
         except Exception as e:
-            messages.error(self.request, f'Erro ao criar assistant: {str(e)}')
+            messages.error(self.request, f'Erro ao criar agent: {str(e)}')
             return self.form_invalid(form)
 
 
-class AssistantUpdateView(ClientRequiredMixin, LoginRequiredMixin, UpdateView):
+class AgentUpdateView(ClientRequiredMixin, LoginRequiredMixin, UpdateView):
     """
-    Editar um assistant existente
+    Editar um agent existente
     """
-    model = LLMProviderConfig
-    form_class = AssistantForm
-    template_name = 'agents/assistants/edit.html'
+    model = Agent
+    form_class = AgentForm
+    template_name = 'agents/agents/edit.html'
 
     def get_queryset(self):
-        return LLMProviderConfig.objects.filter(owner=self.request.user.client)
+        return Agent.objects.filter(owner=self.request.user.client)
 
     def get_success_url(self):
-        return reverse_lazy('agents:assistant_detail', kwargs={'pk': self.object.pk})
+        return reverse_lazy('agents:agent_detail', kwargs={'pk': self.object.pk})
 
     def form_valid(self, form):
         try:
             self.object = form.save()
-            messages.success(self.request, f'Assistant "{self.object.display_name}" atualizado com sucesso!')
+            messages.success(self.request, f'Agent "{self.object.display_name}" atualizado com sucesso!')
             return super().form_valid(form)
 
         except Exception as e:
-            messages.error(self.request, f'Erro ao atualizar assistant: {str(e)}')
+            messages.error(self.request, f'Erro ao atualizar agent: {str(e)}')
             return self.form_invalid(form)
 
 
-class AssistantDeleteView(ClientRequiredMixin, LoginRequiredMixin, DeleteView):
+class AgentDeleteView(ClientRequiredMixin, LoginRequiredMixin, DeleteView):
     """
-    Deletar um assistant
+    Deletar um agent
     """
-    model = LLMProviderConfig
-    template_name = 'agents/assistants/confirm_delete.html'
-    success_url = reverse_lazy('agents:assistant_list')
-    context_object_name = 'assistant'
+    model = Agent
+    template_name = 'agents/agents/confirm_delete.html'
+    success_url = reverse_lazy('agents:agent_list')
+    context_object_name = 'agent'
 
     def get_queryset(self):
-        return LLMProviderConfig.objects.filter(owner=self.request.user.client)
+        return Agent.objects.filter(owner=self.request.user.client)
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
-        assistant_name = self.object.display_name
+        agent_name = self.object.display_name
 
-        # Verificar se há instâncias usando este assistant (apenas do cliente atual)
+        # Verificar se há instâncias usando este agent (apenas do cliente atual)
         instances_count = EvolutionInstance.objects.filter(
-            llm_config=self.object, owner=request.user.client
+            agent=self.object, owner=request.user.client
         ).count()
 
         if instances_count > 0:
             messages.warning(
                 request,
-                f'Não é possível deletar: {instances_count} instância(s) ainda usam este assistant. '
+                f'Não é possível deletar: {instances_count} instância(s) ainda usam este agent. '
                 'Remova ou altere a configuração das instâncias primeiro.'
             )
-            return redirect('agents:assistant_detail', pk=self.object.pk)
+            return redirect('agents:agent_detail', pk=self.object.pk)
 
         try:
             response = super().delete(request, *args, **kwargs)
-            messages.success(request, f'Assistant "{assistant_name}" removido com sucesso!')
+            messages.success(request, f'Agent "{agent_name}" removido com sucesso!')
             return response
 
         except Exception as e:
-            messages.error(request, f'Erro ao deletar assistant: {str(e)}')
-            return redirect('agents:assistant_list')
+            messages.error(request, f'Erro ao deletar agent: {str(e)}')
+            return redirect('agents:agent_list')
 
 
-# def _process_text_message(message):
-#     """
-#     Processa mensagens de texto usando OpenAI ao invés de N8N
-#     Similar ao _process_image_message mas para integração OpenAI
-#
-#     Args:
-#         message: Instância do modelo WhatsAppMessage
-#
-#     Returns:
-#         dict: Resultado do processamento
-#     """
-#     try:
-#         print(f"Mensagem de texto detectada para OpenAI: {message}")
-#         message.processing_status = 'processing'
-#         message.save()
-#
-#         # Initialize OpenAI service
-#         openai_service = OpenAIService()
-#         evolution_api = EvolutionAPIService()
-#
-#         # Send to OpenAI
-#         openai_result = openai_service.send_text_message(
-#             message.from_number,
-#             message.sender_name,
-#             message.content
-#         )
-#
-#         if openai_result and openai_result.get('success'):
-#             # Save OpenAI response
-#             message.ai_response = openai_result
-#             message.processing_status = 'completed'
-#
-#             # Send response back to WhatsApp
-#             ai_response_text = openai_result.get('response', '')
-#             if ai_response_text:
-#                 evolution_api.send_text_message(
-#                     message.from_number,
-#                     ai_response_text
-#                 )
-#                 print(f"Resposta enviada para WhatsApp: {ai_response_text}")
-#
-#         else:
-#             message.processing_status = 'failed'
-#             error_msg = openai_result.get('error', 'Erro desconhecido') if openai_result else 'Sem resposta da OpenAI'
-#             print(f"Falha ao processar com OpenAI: {error_msg}")
-#
-#         message.save()
-#
-#         return {
-#             'success': openai_result.get('success', False) if openai_result else False,
-#             'message_id': message.message_id,
-#             'processing_status': message.processing_status
-#         }
-#
-#     except Exception as e:
-#         print(f"Error processing text message with OpenAI: {e}")
-#         message.processing_status = 'failed'
-#         message.save()
-#
-#         return {
-#             'success': False,
-#             'error': str(e),
-#             'message_id': message.message_id,
-#             'processing_status': 'failed'
-#         }
-
-
-# Create your views here.
-
-# Views para gerenciar arquivos de contexto dos assistants
-class AssistantContextFileUploadView(LoginRequiredMixin, CreateView):
+# Views para gerenciar arquivos de contexto dos agents
+class AgentFileUploadView(LoginRequiredMixin, CreateView):
     """
     View para upload de arquivos de contexto
     """
-    model = AssistantContextFile
-    form_class = AssistantContextFileForm
-    template_name = 'agents/context_files/upload.html'
-    
+    model = AgentFile
+    form_class = AgentFileForm
+    template_name = 'agents/files/upload.html'
+
     def form_valid(self, form):
-        # Associar o arquivo à configuração LLM (apenas do usuário atual)
-        llm_config_id = self.kwargs.get('llm_config_id')
-        llm_config = get_object_or_404(LLMProviderConfig, id=llm_config_id, owner=self.request.user.client)
+        # Associar o arquivo ao agent (apenas do usuário atual)
+        agent_id = self.kwargs.get('agent_id')
+        agent = get_object_or_404(Agent, id=agent_id, owner=self.request.user.client)
         
         context_file = form.save(commit=False)
-        context_file.llm_config = llm_config
-        
+        context_file.agent = agent
+
         # Determinar tipo do arquivo baseado na extensão
         if context_file.file:
             file_extension = context_file.get_file_extension()
-            for choice_value, choice_label in AssistantContextFile.FILE_TYPES:
+            for choice_value, choice_label in AgentFile.FILE_TYPES:
                 if file_extension == f'.{choice_value}':
                     context_file.file_type = choice_value
                     break
             else:
                 # Padrão para tipos não mapeados
                 context_file.file_type = 'txt'
-        
+
         # Salvar tamanho do arquivo
         if context_file.file:
             context_file.file_size = context_file.file.size
-            
+
         context_file.status = 'processing'
         context_file.save()
-        
+
         # Processar arquivo em background (simplificado - pode ser movido para Celery)
         self.process_file_content(context_file)
-        
+
         messages.success(self.request, f'Arquivo "{context_file.name}" enviado com sucesso!')
-        return redirect('agents:assistant_detail', pk=llm_config.pk)
+        return redirect('agents:agent_detail', pk=agent.pk)
     
     def process_file_content(self, context_file):
         """
@@ -314,73 +245,73 @@ class AssistantContextFileUploadView(LoginRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        llm_config_id = self.kwargs.get('llm_config_id')
-        context['llm_config'] = get_object_or_404(LLMProviderConfig, id=llm_config_id, owner=self.request.user.client)
+        agent_id = self.kwargs.get('agent_id')
+        context['agent'] = get_object_or_404(Agent, id=agent_id, owner=self.request.user.client)
         return context
 
 
-class AssistantContextFileListView(LoginRequiredMixin, ListView):
+class AgentFileListView(LoginRequiredMixin, ListView):
     """
-    View para listar arquivos de contexto de um assistant
+    View para listar arquivos de contexto de um agent
     """
-    model = AssistantContextFile
-    template_name = 'agents/context_files/list.html'
-    context_object_name = 'context_files'
+    model = AgentFile
+    template_name = 'agents/files/list.html'
+    context_object_name = 'files'
     paginate_by = 20
-    
+
     def get_queryset(self):
-        llm_config_id = self.kwargs.get('llm_config_id')
-        return AssistantContextFile.objects.filter(
-            llm_config_id=llm_config_id,
-            llm_config__owner=self.request.user
+        agent_id = self.kwargs.get('agent_id')
+        return AgentFile.objects.filter(
+            agent_id=agent_id,
+            agent__owner=self.request.user.client
         ).order_by('-created_at')
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        llm_config_id = self.kwargs.get('llm_config_id')
-        context['llm_config'] = get_object_or_404(LLMProviderConfig, id=llm_config_id, owner=self.request.user.client)
+        agent_id = self.kwargs.get('agent_id')
+        context['agent'] = get_object_or_404(Agent, id=agent_id, owner=self.request.user.client)
         return context
 
 
-class AssistantContextFileUpdateView(LoginRequiredMixin, UpdateView):
+class AgentFileUpdateView(LoginRequiredMixin, UpdateView):
     """
     View para editar arquivos de contexto
     """
-    model = AssistantContextFile
-    form_class = AssistantContextFileForm
-    template_name = 'agents/context_files/edit.html'
-    
+    model = AgentFile
+    form_class = AgentFileForm
+    template_name = 'agents/files/edit.html'
+
     def get_queryset(self):
-        return AssistantContextFile.objects.filter(llm_config__owner=self.request.user.client)
-    
+        return AgentFile.objects.filter(agent__owner=self.request.user.client)
+
     def get_form_class(self):
         # Formulário simplificado para edição (sem campo de arquivo)
-        class EditForm(AssistantContextFileForm):
-            class Meta(AssistantContextFileForm.Meta):
+        class EditForm(AgentFileForm):
+            class Meta(AgentFileForm.Meta):
                 fields = ['name', 'is_active']
-        
+
         return EditForm
-    
+
     def form_valid(self, form):
         messages.success(self.request, f'Arquivo "{form.instance.name}" atualizado com sucesso!')
         return super().form_valid(form)
-    
+
     def get_success_url(self):
-        return reverse_lazy('agents:assistant_detail', kwargs={'pk': self.object.llm_config.pk})
+        return reverse_lazy('agents:agent_detail', kwargs={'pk': self.object.agent.pk})
 
 
-class AssistantContextFileDeleteView(LoginRequiredMixin, DeleteView):
+class AgentFileDeleteView(LoginRequiredMixin, DeleteView):
     """
     View para deletar arquivos de contexto
     """
-    model = AssistantContextFile
-    template_name = 'agents/context_files/delete.html'
-    
+    model = AgentFile
+    template_name = 'agents/files/delete.html'
+
     def get_queryset(self):
-        return AssistantContextFile.objects.filter(llm_config__owner=self.request.user.client)
-    
+        return AgentFile.objects.filter(agent__owner=self.request.user.client)
+
     def get_success_url(self):
-        return reverse_lazy('agents:assistant_detail', kwargs={'pk': self.object.llm_config.pk})
+        return reverse_lazy('agents:agent_detail', kwargs={'pk': self.object.agent.pk})
     
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()

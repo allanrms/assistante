@@ -1,4 +1,4 @@
-{% extends 'webapp/base.html' %}
+{% extends 'client_painel/base.html' %}
 {% load i18n %}
 
 {% block title %}{% trans "Habilitar Autenticação em 2 Fatores" %}{% endblock %}
@@ -43,7 +43,7 @@
                             <button type="submit" class="btn btn-success btn-lg">
                                 <i class="bi bi-check-circle"></i> {% trans "Habilitar 2FA" %}
                             </button>
-                            <a href="{% url 'webapp:profile' %}?tab=security" class="btn btn-secondary">
+                            <a href="{% url 'client_painel:profile' %}?tab=security" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> {% trans "Cancelar" %}
                             </a>
                         </div>

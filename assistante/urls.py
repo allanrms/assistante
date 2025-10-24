@@ -30,7 +30,7 @@ urlpatterns = [
     path('google-calendar/', include('google_calendar.urls')),  # Google Calendar integration URLs
     path('dialog-test/', include('dialog_test.urls')),  # Dialog Test URLs
     # path('ai-assistant/', include('django_ai_assistant.urls')),  # AI Assistant URLs
-    path('', include('webapp.urls')),  # WebApp como página inicial
+    path('', include('client_painel.urls')),  # Client Painel como página inicial
 ]
 
 # Servir arquivos de media em desenvolvimento (mesmo com DEBUG=False)

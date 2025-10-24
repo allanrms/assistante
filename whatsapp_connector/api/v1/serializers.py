@@ -11,16 +11,16 @@ class EvolutionInstanceSerializer(serializers.ModelSerializer):
     connection_info = serializers.CharField(read_only=True)
     is_connected = serializers.BooleanField(read_only=True)
     message_count = serializers.SerializerMethodField()
-    llm_config_display = serializers.CharField(source='llm_config.__str__', read_only=True)
+    agent_display = serializers.CharField(source='agent.__str__', read_only=True)
     owner_username = serializers.CharField(source='owner.username', read_only=True)
-    
+
     class Meta:
         model = EvolutionInstance
         fields = [
             'id', 'name', 'instance_name', 'base_url', 'api_key', 'status', 'status_display',
             'phone_number', 'profile_name', 'profile_pic_url', 'created_at', 'updated_at',
             'last_connection', 'is_active', 'webhook_url', 'connection_info', 'is_connected',
-            'message_count', 'llm_config', 'llm_config_display', 'owner', 'owner_username'
+            'message_count', 'agent', 'agent_display', 'owner', 'owner_username'
         ]
         extra_kwargs = {
             'api_key': {'write_only': True}  # Não expor API key nas respostas
@@ -40,7 +40,7 @@ class EvolutionInstanceCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvolutionInstance
         fields = [
-            'name', 'instance_name', 'base_url', 'api_key', 'webhook_url', 'llm_config'
+            'name', 'instance_name', 'base_url', 'api_key', 'webhook_url', 'agent'
         ]
         extra_kwargs = {
             'api_key': {'write_only': True}
@@ -54,7 +54,7 @@ class EvolutionInstanceUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvolutionInstance
         fields = [
-            'name', 'base_url', 'api_key', 'webhook_url', 'is_active', 'llm_config'
+            'name', 'base_url', 'api_key', 'webhook_url', 'is_active', 'agent'
         ]
         extra_kwargs = {
             'api_key': {'write_only': True}

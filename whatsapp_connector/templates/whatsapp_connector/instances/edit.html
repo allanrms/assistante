@@ -1,4 +1,4 @@
-{% extends 'webapp/base.html' %}
+{% extends 'client_painel/base.html' %}
 
 {% block title %}Editar Instância - Assistante{% endblock %}
 
@@ -45,19 +45,19 @@
                         </div>
 
                      <div class="col-md-6 mb-3">
-                        <label for="{{ form.llm_config.id_for_label }}" class="form-label fw-semibold">
+                        <label for="{{ form.agent.id_for_label }}" class="form-label fw-semibold">
                             <i class="bi bi-robot me-1"></i>
-                            {{ form.llm_config.label }}
+                            {{ form.agent.label }}
                         </label>
-                        {{ form.llm_config }}
-                        {% if form.llm_config.errors %}
+                        {{ form.agent }}
+                        {% if form.agent.errors %}
                             <div class="text-danger small mt-1">
-                                {% for error in form.llm_config.errors %}
+                                {% for error in form.agent.errors %}
                                     <div>{{ error }}</div>
                                 {% endfor %}
                             </div>
                         {% endif %}
-                        <div class="form-text">{{ form.llm_config.help_text }}</div>
+                        <div class="form-text">{{ form.agent.help_text }}</div>
                     </div>
                         
 {#                        <div class="col-md-6 mb-3">#}

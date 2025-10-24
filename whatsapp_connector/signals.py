@@ -6,14 +6,15 @@ from django.conf import settings
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 
-from agents.models import ChatHistory
 from whatsapp_connector.models import ChatSession, EvolutionInstance
 
 
 @receiver(post_save, sender=ChatSession, weak=False)
 def post_save_chat_session(sender, instance: ChatSession, *args, **kwargs):
     if instance.status == 'closed':
-        ChatHistory.close(str(instance.id))
+        # TODO: Implementar lógica de fechamento de conversação se necessário
+        # O modelo ChatHistory foi removido - verificar se precisa de nova implementação
+        pass
 
 
 def _configure_webhook_async(instance_pk, instance_name_for_log):

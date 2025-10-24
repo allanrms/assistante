@@ -1,0 +1,399 @@
+{% extends 'client_painel/base.html' %}
+
+{% block title %}{{ agent.model }} - Assistante{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 fw-bold text-dark mb-1">
+            <i class="bi bi-robot me-2"></i>
+            {{ agent.model }}
+        </h1>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-primary fs-6">
+                <i class="bi bi-gear me-1"></i>{{ agent.get_name_display }}
+            </span>
+            <small class="text-muted">Criado em {{ agent.created_at|date:"d/m/Y H:i" }}</small>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'agents:agent_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            Voltar
+        </a>
+        <a href="{% url 'agents:agent_edit' agent.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i>
+            Editar
+        </a>
+        <a href="{% url 'agents:agent_delete' agent.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash me-1"></i>
+            Excluir
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Main Information -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Informações do Assistant
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Provedor de IA</label>
+                        <div class="form-control-plaintext">{{ agent.get_name_display }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Modelo</label>
+                        <div class="form-control-plaintext">{{ agent.model }}</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Instruções</label>
+                        <div class="border rounded p-3 bg-light">
+                            <div id="instructions-content" class="markdown-body"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parameters -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-sliders me-2"></i>
+                    Parâmetros de Geração
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Temperatura</label>
+                        <div class="form-control-plaintext">{{ agent.temperature }}</div>
+                        <small class="text-muted">Controla a criatividade das respostas</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Máximo de Tokens</label>
+                        <div class="form-control-plaintext">{{ agent.max_tokens }}</div>
+                        <small class="text-muted">Limite de tamanho da resposta</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Top-p</label>
+                        <div class="form-control-plaintext">{{ agent.top_p }}</div>
+                        <small class="text-muted">Amostragem nuclear</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Penalidade de Presença</label>
+                        <div class="form-control-plaintext">{{ agent.presence_penalty }}</div>
+                        <small class="text-muted">Evita repetição de tópicos</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Penalidade de Frequência</label>
+                        <div class="form-control-plaintext">{{ agent.frequency_penalty }}</div>
+                        <small class="text-muted">Evita repetição de palavras</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Context Files -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-file-earmark-text me-2"></i>
+                    Arquivos de Contexto
+                </h5>
+                <a href="{% url 'agents:agent_file_upload' agent.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-upload me-1"></i>Upload
+                </a>
+            </div>
+            <div class="card-body">
+                {% if agent.files.all %}
+                    <div class="row g-2">
+                        {% for file in agent.files.all|slice:":6" %}
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center p-2 border rounded">
+                                <i class="bi bi-file-earmark-{% if file.file_type == 'pdf' %}pdf{% elif file.file_type == 'docx' %}word{% elif file.file_type == 'txt' or file.file_type == 'md' %}text{% elif file.file_type == 'csv' %}spreadsheet{% elif file.file_type == 'json' %}code{% else %}text{% endif %} me-2 text-primary"></i>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold text-truncate" style="max-width: 120px;">{{ file.name }}</div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <small class="text-muted">{{ file.get_file_type_display }}</small>
+                                        {% if file.status == 'ready' %}
+                                            <span class="badge bg-success badge-sm">✓</span>
+                                        {% elif file.status == 'processing' %}
+                                            <span class="badge bg-warning badge-sm">⏳</span>
+                                        {% elif file.status == 'error' %}
+                                            <span class="badge bg-danger badge-sm">✗</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if agent.files.count > 6 %}
+                    <div class="text-center mt-3">
+                        <small class="text-muted">e mais {{ agent.files.count|add:"-6" }} arquivo{{ agent.files.count|add:"-6"|pluralize }}</small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between mt-3">
+                        <a href="{% url 'agents:agent_file_list' agent.pk %}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-list me-1"></i>Ver Todos
+                        </a>
+                        <a href="{% url 'agents:agent_file_upload' agent.pk %}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-upload me-1"></i>Adicionar Arquivo
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-file-earmark-plus text-muted mb-2" style="font-size: 2rem;"></i>
+                        <h6 class="text-muted">Nenhum arquivo de contexto</h6>
+                        <p class="text-muted mb-3 small">Adicione documentos para personalizar as respostas do assistant</p>
+                        <a href="{% url 'agents:agent_file_upload' agent.pk %}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-upload me-1"></i>Fazer Upload
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Usage Statistics -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-graph-up me-1"></i>
+                    Estatísticas de Uso
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Instâncias usando:</span>
+                            <span class="badge bg-secondary">{{ instances_using|default:0 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instances Using This Assistant -->
+        {% if example_instances %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-phone me-1"></i>
+                    Instâncias Usando
+                </h6>
+            </div>
+            <div class="card-body">
+                {% for instance in example_instances %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <div class="fw-semibold">{{ instance.name }}</div>
+                        <small class="text-muted">{{ instance.instance_name }}</small>
+                    </div>
+                    <span class="badge status-{{ instance.status }}">
+                        {% if instance.status == 'connected' %}
+                            <i class="bi bi-check-circle me-1"></i>Conectada
+                        {% elif instance.status == 'connecting' %}
+                            <i class="bi bi-arrow-clockwise me-1"></i>Conectando
+                        {% elif instance.status == 'disconnected' %}
+                            <i class="bi bi-x-circle me-1"></i>Desconectada
+                        {% elif instance.status == 'error' %}
+                            <i class="bi bi-exclamation-triangle me-1"></i>Erro
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+                {% if instances_using > example_instances|length %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">e mais {{ instances_using|add:"-5" }} instância{{ instances_using|add:"-5"|pluralize }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-gear me-1"></i>
+                    Ações Rápidas
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'agents:agent_edit' agent.pk %}" class="btn btn-primary">
+                        <i class="bi bi-pencil me-1"></i>
+                        Editar Assistant
+                    </a>
+                    <a href="{% url 'whatsapp_connector:instance_create' %}" class="btn btn-outline-success">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        Criar Instância com este Assistant
+                    </a>
+                    <a href="{% url 'agents:agent_delete' agent.pk %}" class="btn btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>
+                        Excluir Assistant
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const instructionsContent = document.getElementById('instructions-content');
+    const markdownText = `{{ agent.system_prompt|escapejs }}`;
+
+    if (instructionsContent && markdownText) {
+        // Renderizar Markdown
+        instructionsContent.innerHTML = marked.parse(markdownText);
+
+        // Aplicar syntax highlighting
+        instructionsContent.querySelectorAll('pre code').forEach((block) => {
+            Prism.highlightElement(block);
+        });
+    }
+});
+</script>
+
+<style>
+.markdown-body {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+}
+.markdown-body h1 {
+    font-size: 1.8em;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    color: #000000;
+    font-weight: 600;
+    border-bottom: 2px solid #d9d9d9;
+    padding-bottom: 0.3em;
+}
+.markdown-body h2 {
+    font-size: 1.5em;
+    margin-top: 0.8em;
+    margin-bottom: 0.4em;
+    color: #1a1a1a;
+    font-weight: 600;
+    border-bottom: 1px solid #d9d9d9;
+    padding-bottom: 0.3em;
+}
+.markdown-body h3 {
+    font-size: 1.2em;
+    margin-top: 0.6em;
+    margin-bottom: 0.3em;
+    color: #333333;
+    font-weight: 600;
+}
+.markdown-body h4 {
+    font-size: 1.1em;
+    color: #4d4d4d;
+    font-weight: 600;
+}
+.markdown-body p {
+    margin-bottom: 0.8em;
+    line-height: 1.7;
+}
+.markdown-body ul, .markdown-body ol {
+    margin-bottom: 0.8em;
+    padding-left: 2em;
+    line-height: 1.7;
+}
+.markdown-body li {
+    margin-bottom: 0.3em;
+}
+.markdown-body strong {
+    font-weight: 600;
+    color: #000000;
+}
+.markdown-body em {
+    font-style: italic;
+    color: #555;
+}
+.markdown-body code {
+    background-color: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #666666;
+    border: 1px solid #d9d9d9;
+}
+.markdown-body pre {
+    background-color: #2d2d2d;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 1em 0;
+    border: 1px solid #444;
+}
+.markdown-body pre code {
+    background-color: transparent;
+    padding: 0;
+    color: #ccc;
+    border: none;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+.markdown-body blockquote {
+    border-left: 4px solid #000000;
+    padding-left: 1em;
+    color: #666;
+    margin: 1em 0;
+    background-color: #f5f5f5;
+    padding: 0.5em 1em;
+    border-radius: 0 4px 4px 0;
+}
+.markdown-body a {
+    color: #000000;
+    text-decoration: none;
+}
+.markdown-body a:hover {
+    text-decoration: underline;
+}
+.markdown-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+.markdown-body table th,
+.markdown-body table td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+}
+.markdown-body table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+}
+.markdown-body hr {
+    border: none;
+    border-top: 2px solid #d9d9d9;
+    margin: 1.5em 0;
+}
+</style>
+{% endblock %}

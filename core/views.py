@@ -298,7 +298,7 @@ class ClientRegisterView(CreateView):
     model = Client
     form_class = ClientRegistrationForm
     template_name = 'core/register.html'
-    success_url = reverse_lazy('webapp:login')
+    success_url = reverse_lazy('client_painel:login')
 
     def dispatch(self, request, *args, **kwargs):
         """
@@ -306,7 +306,7 @@ class ClientRegisterView(CreateView):
         """
         if request.user.is_authenticated:
             messages.info(request, _('Você já está logado.'))
-            return redirect('webapp:home')
+            return redirect('client_painel:home')
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
@@ -401,7 +401,7 @@ class ConfirmEmailView(View):
 
         if not token:
             messages.error(request, _('Token de confirmação não fornecido.'))
-            return redirect('webapp:login')
+            return redirect('client_painel:login')
 
         try:
             user = User.objects.get(email_confirmation_token=token)
@@ -421,7 +421,7 @@ class ConfirmEmailView(View):
         except User.DoesNotExist:
             messages.error(request, _('Token inválido ou expirado.'))
 
-        return redirect('webapp:login')
+        return redirect('client_painel:login')
 
 
 # ========== 2FA Views ==========
@@ -436,7 +436,7 @@ def enable_2fa_view(request):
 
     if client.is_2fa_enabled:
         messages.info(request, _('A autenticação em 2 fatores já está habilitada.'))
-        return redirect('webapp:profile')
+        return redirect('client_painel:profile')
 
     if request.method == 'POST':
         # Habilita 2FA (política do cliente)
@@ -449,7 +449,7 @@ def enable_2fa_view(request):
             request,
             _('Autenticação em 2 fatores habilitada! Um código de verificação foi enviado para seu e-mail.')
         )
-        return redirect('webapp:profile')
+        return redirect('client_painel:profile')
 
     return render(request, 'core/enable_2fa.html', {'client': client})
 
@@ -463,7 +463,7 @@ def disable_2fa_view(request):
 
     if not client.is_2fa_enabled:
         messages.info(request, _('A autenticação em 2 fatores já está desabilitada.'))
-        return redirect('webapp:profile')
+        return redirect('client_painel:profile')
 
     if request.method == 'POST':
         if request.POST.get('confirm') == 'yes':
@@ -474,7 +474,7 @@ def disable_2fa_view(request):
                 request,
                 _('Autenticação em 2 fatores desabilitada com sucesso.')
             )
-            return redirect('webapp:profile')
+            return redirect('client_painel:profile')
 
     return render(request, 'core/disable_2fa.html', {'client': client})
 
@@ -495,7 +495,7 @@ def verify_otp_view(request):
     if not user_id:
         logger.warning('verify_otp_view - No user_id in session')
         messages.error(request, _('Sessão inválida. Por favor, faça login novamente.'))
-        return redirect('webapp:login')
+        return redirect('client_painel:login')
 
     try:
         user = User.objects.get(id=user_id)
@@ -503,11 +503,11 @@ def verify_otp_view(request):
     except User.DoesNotExist:
         logger.error(f'verify_otp_view - User not found: {user_id}')
         messages.error(request, _('Usuário não encontrado.'))
-        return redirect('webapp:login')
+        return redirect('client_painel:login')
     except Exception as e:
         logger.error(f'verify_otp_view - Exception: {str(e)}')
         messages.error(request, f'Erro ao buscar usuário: {str(e)}')
-        return redirect('webapp:login')
+        return redirect('client_painel:login')
 
     if request.method == 'POST':
         form = OTPVerificationForm(request.POST)
@@ -526,7 +526,7 @@ def verify_otp_view(request):
                 del request.session['2fa_user_id']
 
                 messages.success(request, _('Login realizado com sucesso!'))
-                return redirect('webapp:home')
+                return redirect('client_painel:home')
             else:
                 messages.error(request, _('Código inválido ou expirado.'))
     else:
@@ -551,7 +551,7 @@ def resend_otp_view(request):
 
     if not user_id:
         messages.error(request, _('Sessão inválida.'))
-        return redirect('webapp:login')
+        return redirect('client_painel:login')
 
     try:
         user = User.objects.get(id=user_id)
@@ -560,9 +560,9 @@ def resend_otp_view(request):
             messages.success(request, _('Novo código enviado para seu e-mail.'))
         else:
             messages.error(request, _('Usuário não está vinculado a nenhum cliente.'))
-            return redirect('webapp:login')
+            return redirect('client_painel:login')
     except User.DoesNotExist:
         messages.error(request, _('Usuário não encontrado.'))
-        return redirect('webapp:login')
+        return redirect('client_painel:login')
 
     return redirect('core:verify_otp')

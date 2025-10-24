@@ -14,7 +14,7 @@ class ClientRequiredMixin:
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect('webapp:login')
+            return redirect('client_painel:login')
 
         # Verifica se o usuário pertence a um cliente
         if not request.user.client:
@@ -30,7 +30,7 @@ class ClientRequiredMixin:
                 request,
                 _('Você precisa confirmar seu e-mail antes de acessar esta página.')
             )
-            return redirect('webapp:login')
+            return redirect('client_painel:login')
 
         return super().dispatch(request, *args, **kwargs)
 
@@ -78,6 +78,6 @@ def get_client_or_redirect(request):
             request,
             _('Você precisa confirmar seu e-mail antes de continuar.')
         )
-        raise redirect('webapp:login')
+        raise redirect('client_painel:login')
 
     return client

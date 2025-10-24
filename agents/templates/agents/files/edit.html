@@ -1,0 +1,125 @@
+{% extends 'client_painel/base.html' %}
+
+{% block title %}Editar Arquivo de Contexto{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold text-dark">
+        <i class="bi bi-pencil me-2"></i>
+        Editar Arquivo de Contexto
+    </h1>
+    <a href="{% url 'agents:agent_detail' object.agent.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>
+        Voltar
+    </a>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'agents:agent_list' %}">Assistants</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'agents:agent_detail' object.agent.pk %}">{{ object.agent.display_name }}</a></li>
+        <li class="breadcrumb-item active">Editar Arquivo</li>
+    </ol>
+</nav>
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-pencil me-2"></i>
+                    Editando: {{ object.name }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Informações do arquivo -->
+                <div class="alert alert-info">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Tipo:</strong> {{ object.get_file_type_display }}<br>
+                            <strong>Tamanho:</strong> {{ object.get_file_size_display }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Status:</strong> 
+                            {% if object.status == 'ready' %}
+                                <span class="badge bg-success">Pronto</span>
+                            {% elif object.status == 'processing' %}
+                                <span class="badge bg-warning">Processando</span>
+                            {% elif object.status == 'error' %}
+                                <span class="badge bg-danger">Erro</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Enviando</span>
+                            {% endif %}
+                            <br>
+                            <strong>Enviado:</strong> {{ object.created_at|date:"d/m/Y H:i" }}
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">
+                            {{ form.name.label }}
+                        </label>
+                        {{ form.name }}
+                        {% if form.name.help_text %}
+                            <div class="form-text">{{ form.name.help_text }}</div>
+                        {% endif %}
+                        {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.name.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-check mb-4">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                            {{ form.is_active.label }}
+                        </label>
+                        {% if form.is_active.help_text %}
+                            <div class="form-text">{{ form.is_active.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if object.error_message %}
+                    <div class="alert alert-danger">
+                        <strong>Erro durante processamento:</strong><br>
+                        {{ object.error_message }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'agents:agent_detail' object.agent.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-2"></i>Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Prévia do conteúdo (se disponível) -->
+        {% if object.extracted_content and object.status == 'ready' %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-eye me-2"></i>
+                    Prévia do Conteúdo Extraído
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap;">{{ object.extracted_content|truncatechars:2000 }}</div>
+                {% if object.extracted_content|length > 2000 %}
+                <small class="text-muted mt-2 d-block">Mostrando apenas os primeiros 2000 caracteres...</small>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

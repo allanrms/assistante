@@ -36,5 +36,7 @@ google-api-python-client==2.104.0
 pyotp==2.9.0
 
 psycopg2-binary==2.9.9
+pgvector==0.4.1
+
 
 

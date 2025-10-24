@@ -1,13 +1,10 @@
 # langgraph_app/runner.py
-from typing import TypedDict, Annotated, Sequence
-from langchain_core.messages import BaseMessage, SystemMessage
-from langgraph.graph.message import add_messages
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langgraph.graph import StateGraph, START, END
 from langchain_openai import OpenAIEmbeddings
 from pgvector.django import L2Distance
-from dataclasses import dataclass, field
-from typing import List, Optional, Any
+
+from agents.langgraph.state import State
 from agents.langgraph.nodes import create_recepcao_node, create_agenda_node
 from agents.models import Conversation, Message, ConversationSummary, LongTermMemory
 from core.models import Contact
@@ -15,34 +12,10 @@ from core.models import Contact
 # Configuração de embeddings para RAG
 emb = OpenAIEmbeddings(model="text-embedding-3-small")
 
-@dataclass
-class State:
-    """
-    Estado compartilhado entre os agentes do grafo LangGraph.
 
-    Attributes:
-        history: Histórico de mensagens da conversa (HumanMessage, AIMessage, SystemMessage)
-        agent: Nome do próximo agente a ser executado ('recepcao', 'agenda', ou END)
-        confirmed: Flag indicando se um agendamento foi confirmado
-    """
-
-    # --- Campos obrigatórios (sem default) ---
-    history: Annotated[Sequence[BaseMessage], add_messages]
-    # contato_id: str                         # telefone do WhatsApp
-    # input_text: str                         # mensagem atual do usuário
-
-    # --- Campos opcionais / com valores padrão ---
-    agent: str = "recepcao"                 # nome do nó atual ("recepcao" ou "agenda")
-    confirmed: bool = False                 # flag de confirmação de agendamento
-    conversation_id: Optional[str] = None   # UUID da conversa
-    summary: Optional[str] = None           # resumo longo da conversa
-    retrieved_facts: List[str] = field(default_factory=list)  # fatos relevantes do RAG
-    output_text: Optional[str] = None       # resposta final do agente atual
-    contact: Optional[Any] = None           # objeto Contact (Django)
-    client: Optional[Any] = None            # instância do cliente / empresa
-    from_agent: Optional[str] = None        # agente anterior ("agenda" ou "recepcao")
-    last_result_msg: Optional[str] = None   # última mensagem retornada pelo agente anterior
-
+def router(state: State) -> str:
+    """Roteia para o próximo agente baseado em state.agent"""
+    return state.agent
 
 
 def create_app_for_number():
@@ -52,19 +25,15 @@ def create_app_for_number():
     recepcao_node = create_recepcao_node()
     agenda_node = create_agenda_node()
 
-    def router(state: State) -> str:
-        """Routes to the next agent based on state["agent"]"""
-        return state.agent
-
     # Criar grafo
     graph = StateGraph(State)
     graph.add_node("recepcao", recepcao_node)
     graph.add_node("agenda", agenda_node)
 
-    # Set entry point
+    # Define o ponto de entrada
     graph.add_edge(START, "recepcao")
 
-    # Conditional edges
+    # Conditional edges baseadas no router
     graph.add_conditional_edges(
         "recepcao",
         router,
@@ -140,7 +109,11 @@ def run_ai_turn(from_number, to_number, user_message, owner, evolution_instance=
         print(f"📚 [CONTEXT] Adicionado resumo e {len(retrieved_facts)} fatos relevantes")
 
     # Carregar últimas 10 mensagens (cada Message tem content do usuário e response da IA)
-    last_msgs = Message.objects.filter(conversation=conversation).order_by("created_at")[:10]
+    last_msgs = (
+        Message.objects.filter(conversation=conversation)
+        .order_by("-created_at")[:100]
+    )
+    last_msgs = list(last_msgs)[::-1]
 
     for msg in last_msgs:
         # Mensagem do usuário
@@ -157,6 +130,7 @@ def run_ai_turn(from_number, to_number, user_message, owner, evolution_instance=
 
     # 8. Preparar state inicial
     initial_input = {
+        "user_message": user_message,
         "history": messages,
         "agent": "recepcao",
         "confirmed": False,

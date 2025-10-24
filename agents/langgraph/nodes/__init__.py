@@ -14,8 +14,8 @@ Uso:
     agenda_node = create_agenda_node(contact, client)
 """
 
-from .recepcao_agent import create_recepcao_node
-from .agenda_agent import create_agenda_node
+from .secretary_agent import create_recepcao_node
+from .calendar_agent import create_agenda_node
 
 __all__ = [
     'create_recepcao_node',

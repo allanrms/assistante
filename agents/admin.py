@@ -304,30 +304,13 @@ class LongTermMemoryAdmin(admin.ModelAdmin):
     """
     Admin para memória de longo prazo
     """
-    list_display = ['id', 'contact', 'content_preview', 'created_at']
+    list_display = ['id', 'contact',  'content_preview', 'created_at']
     list_filter = ['created_at']
     search_fields = ['content', 'contact__name', 'contact__phone_number']
-    readonly_fields = ['created_at', 'embedding']
+    readonly_fields = ['created_at']
     raw_id_fields = ['contact']
+    exclude = ("embedding",)  # <== oculta o campo no formulário
 
-    fieldsets = (
-        ('Contato', {
-            'fields': ('contact',)
-        }),
-        ('Conversa Origem', {
-            'fields': ('conversation',)
-        }),
-        ('Conteúdo', {
-            'fields': ('content',)
-        }),
-        ('Embedding', {
-            'fields': ('embedding',),
-            'classes': ('collapse',)
-        }),
-        ('Timestamps', {
-            'fields': ('created_at',)
-        }),
-    )
 
     def content_preview(self, obj):
         """Retorna uma prévia do conteúdo"""

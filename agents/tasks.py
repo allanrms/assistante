@@ -136,11 +136,9 @@ Fatos importantes:"""
         embedding_vector = emb.embed_query(fact)
 
         # Salvar no banco
-        memory = LongTermMemory.objects.create(
-            contact=contact,
+        memory = LongTermMemory.objects.update_or_create(
             conversation=conversation,
-            content=fact,
-            embedding=embedding_vector
+            defaults={"embedding": embedding_vector, 'content':fact, 'contact': contact}
         )
         saved_facts.append(fact)
         print(f"💾 [FACTS] Salvo fato #{memory.id}: {fact[:80]}...")

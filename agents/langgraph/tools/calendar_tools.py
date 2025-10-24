@@ -1,70 +1,24 @@
-# dialog_test/nodes/agenda_agent.py
-"""
-Agente de Agenda - Gerenciamento de Agendamentos
-
-Responsável por:
-- Listar eventos do calendário
-- Verificar disponibilidade de horários
-- Criar novos agendamentos
-- Buscar próximas datas disponíveis
-"""
-
-from typing import TYPE_CHECKING
 from datetime import datetime, timedelta
-from pathlib import Path
+from uuid import UUID
 
-from langchain.agents import create_agent
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, AIMessage
 from langchain_core.tools import tool
-from langgraph.prebuilt import create_react_agent
-from langgraph.graph import END
 
+from core.models import Contact
 from google_calendar.services import GoogleCalendarService
 
-if TYPE_CHECKING:
-    from core.models import Contact
 
-# Configuração do LLM
-# Temperature reduzida de 0.3 para 0.05 para máxima consistência nas operações de agenda
-agenda_llm = ChatOpenAI(model="gpt-4o", temperature=0.05)
-
-# Carregar prompt base
-PROMPT_AGENDA_BASE = (Path(__file__).parent.parent / "prompts" / "agenda.md").read_text()
-
-
-def get_prompt_agenda() -> str:
-    """Retorna o prompt de agenda com a data atual e informações do contato injetadas."""
-    hoje = datetime.now()
-    data_formatada = hoje.strftime("%d/%m/%Y")
-    dia_semana = hoje.strftime("%A")
-
-    # Traduzir dia da semana para português
-    dias_pt = {
-        "Monday": "segunda-feira",
-        "Tuesday": "terça-feira",
-        "Wednesday": "quarta-feira",
-        "Thursday": "quinta-feira",
-        "Friday": "sexta-feira",
-        "Saturday": "sábado",
-        "Sunday": "domingo"
-    }
-    dia_semana_pt = dias_pt.get(dia_semana, dia_semana)
-
-    contexto_data = f"\n\n---\n\n## 📅 Contexto Temporal\n\n**Data de hoje:** {data_formatada} ({dia_semana_pt})\n\nUse esta data como referência para calcular \"amanhã\", \"próximas quintas\", etc.\n"
-
-    return PROMPT_AGENDA_BASE + contexto_data
-
-
-def create_agenda_tools(contact: "Contact", client=None):
-    """Cria as ferramentas de agenda com o número WhatsApp do usuário e client"""
+def create_calendar_tools(contact_id: UUID):
+    """
+    Cria ferramentas do calendário com contact_id injetado via closure.
+    Isso evita que a IA precise adivinhar o contact_id.
+    """
 
     @tool
     def listar_eventos() -> str:
         """Lista os próximos eventos agendados no calendário"""
         try:
             calendar_service = GoogleCalendarService()
-            success, events = calendar_service.list_events(contact.id, max_results=10)
+            success, events = calendar_service.list_events(contact_id, max_results=10)
 
             if not success:
                 return f"❌ Erro ao acessar calendário: {events}"
@@ -99,7 +53,7 @@ def create_agenda_tools(contact: "Contact", client=None):
         """
         try:
             calendar_service = GoogleCalendarService()
-            success, events = calendar_service.list_events(contact.id, max_results=50)
+            success, events = calendar_service.list_events(contact_id, max_results=50)
 
             if not success:
                 return f"❌ Erro: {events}"
@@ -197,15 +151,15 @@ def create_agenda_tools(contact: "Contact", client=None):
         - tipo: Tipo de consulta (convênio ou particular)
         """
         print("\n" + "="*80)
-        print(f"🔧 [TOOL CALL] criar_evento")
+        print(f"🔧 [TOOL CALL] criar_evento (contact_id={contact_id})")
         print(f"   📝 Titulo: {titulo}")
         print(f"   📅 Data: {data}")
         print(f"   ⏰ Hora: {hora}")
         print(f"   🏥 Tipo: {tipo}")
-        print(f"   📞 Contact: {contact.phone_number}")
         print("="*80)
         try:
             calendar_service = GoogleCalendarService()
+            contact = Contact.objects.get(id=contact_id)
 
             # Parse data e hora
             data_obj = datetime.strptime(data, '%d/%m/%Y')
@@ -285,72 +239,3 @@ def create_agenda_tools(contact: "Contact", client=None):
             return f"❌ Erro: {str(e)}"
 
     return [listar_eventos, verificar_disponibilidade, buscar_proximas_datas, criar_evento]
-
-
-def create_agenda_node():
-    """Cria o nó de agenda — cada execução lê o contact e o client do state."""
-
-    def agenda_node(state: "State") -> dict:
-        """Processa requisições de agenda usando ferramentas do Google Calendar."""
-        print("🗓️ [AGENDA NODE] Iniciando processamento...")
-
-        # ⚙️ Pega o contato e o cliente diretamente do state
-        contact = state.contact
-        client = state.client
-
-        # Criar tools dinamicamente com o contato atual
-        agenda_tools = create_agenda_tools(contact, client)
-
-        # Criar agente React com ferramentas de agenda
-        agenda_agent = create_agent(agenda_llm, agenda_tools)
-
-        # Gerar prompt de contexto com data atual e informações do contato
-        prompt_atual = get_prompt_agenda()
-        messages = [SystemMessage(content=prompt_atual)] + list(state.history)
-
-        print(f"📨 [AGENDA NODE] Mensagens enviadas ao agente: {len(messages)}")
-        if messages:
-            last_msg = messages[-1].content if hasattr(messages[-1], "content") else "Sem conteúdo"
-            print(f"🗣️ [AGENDA NODE] Última mensagem: {last_msg[:150]}...")
-
-        # Executar agente com ferramentas
-        result = agenda_agent.invoke({"messages": messages})
-        print("✅ [AGENDA NODE] Agente retornou resultado.")
-
-        # Extrair mensagens AI do resultado
-        ai_messages = [msg for msg in result["messages"] if isinstance(msg, AIMessage)]
-
-        if not ai_messages:
-            print("⚠️ [AGENDA NODE] Nenhuma mensagem AI retornada. Voltando à recepção com erro.")
-            return {
-                "history": [AIMessage(content="[AGENDA_RESPONSE] Erro ao processar solicitação de agenda.")],
-                "agent": "recepcao",
-                "confirmed": False,
-            }
-
-        # Pega a última resposta da IA
-        last_response = ai_messages[-1].content.strip()
-        print(f"💬 [AGENDA NODE] Resposta da Aline Agenda: {last_response[:200]}...")
-
-        # Verificar se houve criação de evento (agendamento confirmado)
-        confirmed = "✅ Agendamento criado" in last_response or "✅ Consulta agendada" in last_response
-
-        if confirmed:
-            print("🎉 [AGENDA NODE] Agendamento confirmado na resposta.")
-        else:
-            print("📅 [AGENDA NODE] Resposta de consulta/verificação (não é confirmação de agendamento).")
-
-        # Define o próximo agente
-        next_agent = END if confirmed else "recepcao"
-
-        # Adiciona prefixo para que a recepção reconheça a origem
-        formatted_response = f"[AGENDA_RESPONSE] {last_response}"
-
-        print(f"🔚 [AGENDA NODE] Finalizando com agent={next_agent}")
-        return {
-            "history": [AIMessage(content=formatted_response)],
-            "agent": next_agent,
-            "confirmed": confirmed,
-        }
-
-    return agenda_node

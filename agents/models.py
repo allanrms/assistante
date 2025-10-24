@@ -253,7 +253,7 @@ class LongTermMemory(models.Model):
         verbose_name='Contato',
         help_text='Contato associado a esta memória de longo prazo'
     )
-    source = models.CharField(max_length=64, default="note")
+    conversation = models.OneToOneField(Conversation, on_delete=models.CASCADE)
     content = models.TextField()
     embedding = VectorField(dimensions=1536)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -76,9 +76,24 @@ def run_ai_turn(from_number, to_number, user_message, owner, evolution_instance=
     )
     print(f"👤 [Contact] {'Criado' if contact_created else 'Encontrado'}: {contact.phone_number}")
 
-    # 2. Obter ou criar Conversation
-    conversation, conv_created = Conversation.objects.get_or_create(contact=contact, evolution_instance=evolution_instance)
-    print(f"💬 [Conversation] {'Criada' if conv_created else 'Encontrada'}: #{conversation.id}")
+    # 2. Obter ou criar Conversation (excluindo conversas fechadas)
+    conversation = Conversation.objects.filter(
+        contact=contact,
+        evolution_instance=evolution_instance
+    ).exclude(status='closed').first()
+
+    conv_created = False
+    if not conversation:
+        conversation = Conversation.objects.create(
+            contact=contact,
+            evolution_instance=evolution_instance,
+            from_number=from_number,
+            to_number=to_number,
+            status='ai'
+        )
+        conv_created = True
+
+    print(f"💬 [Conversation] {'Criada' if conv_created else 'Encontrada'}: #{conversation.id} (status: {conversation.status})")
 
     # 3. Carregar ConversationSummary (se existir)
     summary_obj = ConversationSummary.objects.filter(conversation=conversation).first()

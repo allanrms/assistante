@@ -1,9 +1,15 @@
 from django.db import models
+from django.utils import timezone
 from pgvector.django import VectorField
 from common.models import BaseUUIDModel, HistoryBaseModel
+import uuid
 
 
 # Create your models here.
+
+def generate_unique_message_id():
+    """Generate a unique message ID"""
+    return str(uuid.uuid4())
 
 class AgentFile(BaseUUIDModel, HistoryBaseModel):
     """
@@ -200,6 +206,15 @@ class Conversation(models.Model):
         ("human", "Atendimento humano"),
         ("closed", "Encerrada"),
     )
+
+    evolution_instance = models.ForeignKey(
+        'whatsapp_connector.EvolutionInstance',
+        on_delete=models.CASCADE,
+        related_name='conversations',
+        blank=True,
+        null=True,
+        verbose_name='Instância Evolution'
+    )
     contact = models.ForeignKey(
         'core.Contact',
         on_delete=models.SET_NULL,
@@ -217,26 +232,167 @@ class Conversation(models.Model):
         default="ai",
         verbose_name="Status da sessão"
     )
+    contact_summary = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Resumo do contato",
+        help_text="Resumo das informações importantes sobre este contato, atualizado pela IA"
+    )
     created_at = models.DateTimeField('Criado em', auto_now_add=True)
     updated_at = models.DateTimeField('Atualizado em', auto_now=True)
 
+    class Meta:
+        verbose_name = "Conversação"
+        verbose_name_plural = "Conversações"
+        ordering = ["-id"]
+
+    @classmethod
+    def get_or_create_active_session(cls, contact, from_number, to_number, evolution_instance=None):
+        """
+        Busca uma sessão ativa (ai ou human) ou cria uma nova
+        IMPORTANTE: Considera a evolution_instance para evitar conflito entre instâncias diferentes
+
+        Args:
+            contact: Contato
+            from_number: Número de origem
+            to_number: Número de destino
+            evolution_instance: Instância Evolution (opcional)
+
+        Returns:
+            tuple: (Conversation, created)
+        """
+        # Buscar sessão ativa existente para este número E instância
+        query_filter = {
+            'from_number': from_number,
+            'status__in': ['ai', 'human']
+        }
+
+        # IMPORTANTE: Se evolution_instance for fornecido, filtrar por ele
+        # Isso garante que números usando diferentes instâncias tenham sessões separadas
+        if evolution_instance:
+            query_filter['evolution_instance'] = evolution_instance
+
+        active_session = cls.objects.filter(**query_filter).last()
+
+        if active_session:
+            print(f"♻️ Reutilizando sessão existente: {active_session.id} (instância: {active_session.evolution_instance})")
+            return active_session, False
+
+        # Criar nova sessão se não encontrar ativa
+        new_session = cls.objects.create(
+            contact=contact,
+            from_number=from_number,
+            to_number=to_number,
+            status='ai',  # Default para AI
+            evolution_instance=evolution_instance
+        )
+
+        print(f"✨ Nova sessão criada: {new_session.id} (instância: {evolution_instance})")
+        return new_session, True
+
+    def allows_ai_response(self):
+        """
+        Verifica se a sessão permite resposta automática do AI
+
+        Returns:
+            bool: True se o AI pode responder, False caso contrário
+        """
+        return self.status == 'ai'
+
+    def is_human_attended(self):
+        """
+        Verifica se a sessão está sendo atendida por humano
+
+        Returns:
+            bool: True se está em atendimento humano, False caso contrário
+        """
+        return self.status == 'human'
+
+    def is_closed(self):
+        """
+        Verifica se a sessão está encerrada
+
+        Returns:
+            bool: True se está encerrada, False caso contrário
+        """
+        return self.status == 'closed'
+
+    def __str__(self):
+        return f"Conversação {self.from_number} → {self.to_number} ({self.get_status_display()})"
+
 class Message(models.Model):
+    MESSAGE_TYPES = (
+        ('text', 'Text'),
+        ('image', 'Image'),
+        ('audio', 'Audio'),
+        ('video', 'Video'),
+        ('document', 'Document'),
+        ('extended_text', 'Extended Text'),
+    )
+
+    PROCESSING_STATUS = (
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    )
+
     conversation = models.ForeignKey(
         Conversation,
         on_delete=models.CASCADE,
         related_name='messages'
     )
-    content = models.TextField(verbose_name='Mensagem do usuário')
+    owner = models.ForeignKey(
+        'core.Client',
+        on_delete=models.CASCADE,
+        related_name='messages',
+        verbose_name='Cliente',
+        null=True,
+        blank=True
+    )
+    message_id = models.CharField(max_length=255, unique=True, verbose_name='ID da Mensagem', default=generate_unique_message_id)
+    message_type = models.CharField(max_length=20, choices=MESSAGE_TYPES, verbose_name='Tipo de Mensagem', default='text')
+    content = models.TextField(verbose_name='Mensagem do usuário', blank=True, null=True)
+    media_url = models.URLField(blank=True, null=True, verbose_name='URL da Mídia')
+    media_file = models.FileField(
+        upload_to='whatsapp_media/',
+        blank=True,
+        null=True,
+        verbose_name='Arquivo de Mídia'
+    )
     response = models.TextField(verbose_name='Resposta da IA', blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    processing_status = models.CharField(
+        max_length=20,
+        choices=PROCESSING_STATUS,
+        default='pending',
+        verbose_name='Status de Processamento'
+    )
+
+    # Additional fields from assistante integration
+    sender_name = models.CharField(max_length=255, blank=True, null=True, verbose_name='Nome do Remetente')
+    source = models.CharField(max_length=50, blank=True, null=True, verbose_name='Fonte')  # ios, android, etc
+    audio_transcription = models.TextField(blank=True, null=True, verbose_name='Transcrição de Áudio')
+    raw_data = models.JSONField(blank=True, null=True, verbose_name='Dados Brutos')  # Store original webhook data
+    received_while_inactive = models.BooleanField(
+        verbose_name='Recebida com instância inativa',
+        default=False,
+        help_text='Indica se a mensagem foi recebida enquanto a instância estava inativa'
+    )
+
+    created_at = models.DateTimeField(verbose_name='Criado em', auto_now_add=True)
+    updated_at = models.DateTimeField(verbose_name='Atualizado em', auto_now=True)
+    received_at = models.DateTimeField(
+        verbose_name='Recebido em',
+        default=timezone.now
+    )
 
     class Meta:
-        ordering = ['created_at']
+        ordering = ['-received_at']
         verbose_name = 'Mensagem'
         verbose_name_plural = 'Mensagens'
 
     def __str__(self):
-        return f"Message #{self.id} - Conversation #{self.conversation_id}"
+        return f"{self.message_type} from {self.conversation.from_number} - {self.message_id}"
 
 class ConversationSummary(models.Model):
     conversation = models.OneToOneField(Conversation, on_delete=models.CASCADE)

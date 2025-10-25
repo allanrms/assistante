@@ -8,7 +8,8 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from agents.langgraph.langgraph_app_runner import run_ai_turn
-from whatsapp_connector.models import MessageHistory, EvolutionInstance
+from agents.models import Message, Conversation
+from whatsapp_connector.models import EvolutionInstance
 from whatsapp_connector.services import ImageProcessingService, EvolutionAPIService
 from whatsapp_connector.utils import transcribe_audio_from_bytes, clean_number_whatsapp
 import logging
@@ -145,18 +146,16 @@ class EvolutionWebhookView(APIView):
             if client:
                 # Usar sistema multi-agent com LangGraph
                 try:
-                    response_msg, session = run_ai_turn(
-                        from_number=from_number,
-                        to_number=to_number,
-                        user_message=message_text,
-                        owner=client,
-                        evolution_instance=evolution_instance
-                    )
+                    # response_msg, session = run_ai_turn(
+                    #     from_number=from_number,
+                    #     to_number=to_number,
+                    #     user_message=message_text,
+                    #     owner=client,
+                    #     evolution_instance=evolution_instance
+                    # )
 
-                    # Atualizar a sessão do message_history se necessário
-                    if session and message_history.chat_session != session:
-                        message_history.chat_session = session
-                        message_history.save(update_fields=['chat_session'])
+                    response_msg, contact = run_ai_turn(from_number, to_number, message_text, client, evolution_instance)
+
 
                 except Exception as e:
                     error_details = str(e)
@@ -178,8 +177,10 @@ class EvolutionWebhookView(APIView):
 
             # Processar resposta estruturada ou simples - só se houver resposta
             result = False
+            print(f'response_msg {response_msg}')
+
             if response_msg:
-                result = self._send_response_to_whatsapp(evolution_api, message_history.chat_session.from_number, response_msg)
+                result = self._send_response_to_whatsapp(evolution_api, message_history.conversation.from_number, response_msg)
 
                 if result:
                     message_history.response = response_msg
@@ -189,7 +190,7 @@ class EvolutionWebhookView(APIView):
                 else:
                     message_history.processing_status = 'failed'
                     message_history.save()
-                    print(f"❌ Erro ao enviar resposta para {message_history.chat_session.from_number}")
+                    print(f"❌ Erro ao enviar resposta para {message_history.conversation.from_number}")
             else:
                 message_history.processing_status = 'completed'
                 message_history.save()
@@ -373,12 +374,12 @@ class EvolutionWebhookView(APIView):
         
         return None
 
-    def _save_message(self, message_data, evolution_instance=None) -> MessageHistory:
-        """Save message to database"""
-        from whatsapp_connector.models import ChatSession
+    def _save_message(self, message_data, evolution_instance=None):
+        """Save message to database using Conversation and Message from agents app"""
+        from agents.models import Conversation, Message
         from core.models import Contact
-        
-        # Get or create chat session first
+
+        # Get or create contact first
         from_number = clean_number_whatsapp(message_data['from_number'])
         to_number = clean_number_whatsapp(message_data.get('to_number', ''))
 
@@ -410,54 +411,55 @@ class EvolutionWebhookView(APIView):
                 contact.save(update_fields=['client'])
                 print(f"🔗 Cliente {evolution_instance.owner} vinculado ao contato {contact}")
 
-        # Buscar sessão ativa (ai ou human) ou criar nova com status 'ai'
-        chat_session, session_created = ChatSession.get_or_create_active_session(
+        # Buscar conversação ativa (ai ou human) ou criar nova com status 'ai'
+        conversation, session_created = Conversation.get_or_create_active_session(
+            contact=contact,
             from_number=from_number,
             to_number=to_number,
             evolution_instance=evolution_instance
         )
 
-        # Vincular contato à sessão se ainda não estiver vinculado
-        if not chat_session.contact:
-            chat_session.contact = contact
-            chat_session.save(update_fields=['contact'])
-            print(f"🔗 Contato {contact} vinculado à sessão {chat_session.id}")
+        # Vincular contato à conversação se ainda não estiver vinculado
+        if not conversation.contact:
+            conversation.contact = contact
+            conversation.save(update_fields=['contact'])
+            print(f"🔗 Contato {contact} vinculado à conversação {conversation.id}")
 
         if session_created:
-            print(f"✅ Nova sessão criada para {from_number} com status 'ai'")
+            print(f"✅ Nova conversação criada para {from_number} com status 'ai'")
         else:
-            print(f"ℹ️ Usando sessão existente para {from_number} (status: {chat_session.get_status_display()})")
+            print(f"ℹ️ Usando conversação existente para {from_number} (status: {conversation.get_status_display()})")
 
         # Extract data for database saving (remove helper fields)
         save_data = message_data.copy()
         save_data.pop('has_audio', None)
         save_data.pop('has_image', None)
-        save_data.pop('from_number', None)  # Remove since it's in chat_session
-        save_data.pop('to_number', None)    # Remove since it's in chat_session
-        
+        save_data.pop('from_number', None)  # Remove since it's in conversation
+        save_data.pop('to_number', None)    # Remove since it's in conversation
+
         # Check if instance is inactive and mark the message
         if evolution_instance and not evolution_instance.is_active:
             save_data['received_while_inactive'] = True
             print(f"🔴 Marcando mensagem como recebida com instância inativa: {evolution_instance.name}")
         else:
             save_data['received_while_inactive'] = False
-        
-        # Add chat_session
-        save_data['chat_session'] = chat_session
-        
+
+        # Add conversation
+        save_data['conversation'] = conversation
+
         # Add owner from evolution_instance
         if evolution_instance and hasattr(evolution_instance, 'owner'):
             save_data['owner'] = evolution_instance.owner
-        
-        # Set created_at from timestamp if available
+
+        # Set received_at from timestamp if available
         if 'timestamp' in save_data:
-            save_data['created_at'] = save_data.pop('timestamp')
-        
-        message_history, created = MessageHistory.objects.get_or_create(
+            save_data['received_at'] = save_data.pop('timestamp')
+
+        message, created = Message.objects.get_or_create(
             message_id=message_data['message_id'],
             defaults=save_data
         )
-        return message_history
+        return message
     
     def _process_audio_message(self, message, evolution_api, raw_data):
         """Process audio message and return the transcription text"""
@@ -481,7 +483,7 @@ class EvolutionWebhookView(APIView):
                 # Retornar apenas a transcrição
                 # message.processing_status = 'completed'
                 message.save()
-                print(f"✅ Áudio transcrito para {message.chat_session.from_number}")
+                print(f"✅ Áudio transcrito para {message.conversation.from_number}")
 
                 return message
             else:
@@ -493,11 +495,11 @@ class EvolutionWebhookView(APIView):
         except Exception as e:
             # Usar logger do Django para erro de processamento de áudio
             media_logger.error(
-                f"Erro processamento áudio - Usuário: {message.chat_session.from_number} | "
+                f"Erro processamento áudio - Usuário: {message.conversation.from_number} | "
                 f"Audio URL: {message.media_url} | Erro: {str(e)}",
                 exc_info=True,
                 extra={
-                    'usuario': message.chat_session.from_number,
+                    'usuario': message.conversation.from_number,
                     'media_url': message.media_url,
                     'tipo_media': 'audio',
                     'erro': str(e),
@@ -591,11 +593,11 @@ class EvolutionWebhookView(APIView):
         except Exception as e:
             # Usar logger do Django para erro de processamento de imagem
             media_logger.error(
-                f"Erro processamento imagem - Usuário: {message.chat_session.from_number} | "
+                f"Erro processamento imagem - Usuário: {message.conversation.from_number} | "
                 f"Image URL: {message.media_url} | Caption: {message.content} | Erro: {str(e)}",
                 exc_info=True,
                 extra={
-                    'usuario': message.chat_session.from_number,
+                    'usuario': message.conversation.from_number,
                     'media_url': message.media_url,
                     'caption': message.content,
                     'tipo_media': 'image',
@@ -641,7 +643,7 @@ class EvolutionWebhookView(APIView):
         Processa comandos administrativos enviados pelo próprio número da instância
         Retorna Response se comando foi processado, None caso contrário
         """
-        sender_number = message_history.chat_session.from_number
+        sender_number = message_history.conversation.from_number
 
         # Processar comandos administrativos
         message_content = message_history.content.strip().lower() if message_history.content else ""
@@ -689,7 +691,7 @@ class EvolutionWebhookView(APIView):
             return None
 
         message_content = message_history.content.strip()
-        sender_number = message_history.chat_session.from_number
+        sender_number = message_history.conversation.from_number
         evolution_api = EvolutionAPIService(evolution_instance)
 
         # Verificar se a mensagem contém palavras-chave relacionadas a calendário
@@ -880,10 +882,8 @@ CONTEXTO IMPORTANTE:
         Transfere a última sessão AI ativa desta instância para atendimento humano
         """
         try:
-            from whatsapp_connector.models import ChatSession
-
             # Buscar a última sessão AI ativa (exceto a do próprio sender)
-            ai_session_from_number = ChatSession.objects.filter(
+            ai_session_from_number = Conversation.objects.filter(
                 evolution_instance=evolution_instance,
                 from_number=sender_number
             ).update(status='human')
@@ -913,8 +913,6 @@ CONTEXTO IMPORTANTE:
         - '>>> +5511999999999' : transfere a sessão do número especificado
         """
         try:
-            from whatsapp_connector.models import ChatSession
-
             # Extrair número do comando (se fornecido)
             parts = message_content.strip().split()
             if len(parts) > 1:
@@ -925,7 +923,7 @@ CONTEXTO IMPORTANTE:
                 print(f"🔄 Retornando própria sessão para IA")
 
             # Atualizar sessão para 'ai'
-            updated_count = ChatSession.objects.filter(
+            updated_count = Conversation.objects.filter(
                 from_number=target_number,
                 evolution_instance=evolution_instance,
                 status='human'
@@ -967,8 +965,6 @@ CONTEXTO IMPORTANTE:
         - '[] +5511999999999' : encerra a sessão do número especificado
         """
         try:
-            from whatsapp_connector.models import ChatSession
-
             # Extrair número do comando (se fornecido)
             parts = message_content.strip().split()
             if len(parts) > 1:
@@ -979,7 +975,7 @@ CONTEXTO IMPORTANTE:
                 print(f"🔄 Encerrando própria sessão")
 
             # Atualizar sessão para 'closed'
-            updated_count = ChatSession.objects.filter(
+            updated_count = Conversation.objects.filter(
                 from_number=target_number,
                 evolution_instance=evolution_instance
             ).update(status='closed')
@@ -1083,17 +1079,18 @@ CONTEXTO IMPORTANTE:
 
 class MessageListView(APIView):
     permission_classes = (AllowAny,)
-    
+
     def get(self, request):
         """List all WhatsApp messages"""
-        messages = MessageHistory.objects.all()[:50]  # Last 50 messages
-        
+        from agents.models import Message
+        messages = Message.objects.all()[:50]  # Last 50 messages
+
         data = []
         for message in messages:
             data.append({
                 'message_id': message.message_id,
-                'from_number': message.chat_session.from_number if message.chat_session else None,
-                'to_number': message.chat_session.to_number if message.chat_session else None,
+                'from_number': message.conversation.from_number if message.conversation else None,
+                'to_number': message.conversation.to_number if message.conversation else None,
                 'message_type': message.message_type,
                 'content': message.content,
                 'timestamp': message.created_at,
@@ -1102,21 +1099,22 @@ class MessageListView(APIView):
                 'has_response': bool(message.response),
                 'received_while_inactive': message.received_while_inactive,
             })
-        
+
         return Response(data, status=status.HTTP_200_OK)
 
 class MessageDetailView(APIView):
     permission_classes = (AllowAny,)
-    
+
     def get(self, request, message_id):
         """Get detailed information about a specific message"""
+        from agents.models import Message
         try:
-            message = MessageHistory.objects.get(message_id=message_id)
-            
+            message = Message.objects.get(message_id=message_id)
+
             data = {
                 'message_id': message.message_id,
-                'from_number': message.chat_session.from_number if message.chat_session else None,
-                'to_number': message.chat_session.to_number if message.chat_session else None,
+                'from_number': message.conversation.from_number if message.conversation else None,
+                'to_number': message.conversation.to_number if message.conversation else None,
                 'message_type': message.message_type,
                 'content': message.content,
                 'media_url': message.media_url,
@@ -1126,12 +1124,12 @@ class MessageDetailView(APIView):
                 'response': message.response,
                 'received_while_inactive': message.received_while_inactive,
             }
-            
+
             return Response(data, status=status.HTTP_200_OK)
-            
-        except MessageHistory.DoesNotExist:
+
+        except Message.DoesNotExist:
             return Response(
-                {'error': 'Message not found'}, 
+                {'error': 'Message not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
 

@@ -71,12 +71,13 @@ def run_ai_turn(from_number, to_number, user_message, owner, evolution_instance=
     # 1. Obter ou criar contato
     contact, contact_created = Contact.get_or_create_from_whatsapp(
         phone_number=from_number,
-        client=owner
+        client=owner,
+
     )
     print(f"👤 [Contact] {'Criado' if contact_created else 'Encontrado'}: {contact.phone_number}")
 
     # 2. Obter ou criar Conversation
-    conversation, conv_created = Conversation.objects.get_or_create(contact=contact)
+    conversation, conv_created = Conversation.objects.get_or_create(contact=contact, evolution_instance=evolution_instance)
     print(f"💬 [Conversation] {'Criada' if conv_created else 'Encontrada'}: #{conversation.id}")
 
     # 3. Carregar ConversationSummary (se existir)
@@ -147,11 +148,14 @@ def run_ai_turn(from_number, to_number, user_message, owner, evolution_instance=
     last_ai_message = ai_messages[-1].content if ai_messages else "Erro ao processar"
 
     # 11. Salvar no banco (1 Message com content do usuário e response da IA)
-    Message.objects.create(
+    message = Message.objects.filter(
         conversation=conversation,
         content=user_message,
-        response=last_ai_message
-    )
+    ).last()
+    message.response = last_ai_message
+    message.save()
+
+
     print(f"💾 [Message] Salva no banco: user → AI")
 
     # 12. Criar/atualizar resumo e extrair fatos periodicamente

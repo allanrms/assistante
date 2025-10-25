@@ -148,12 +148,21 @@ def run_ai_turn(from_number, to_number, user_message, owner, evolution_instance=
     last_ai_message = ai_messages[-1].content if ai_messages else "Erro ao processar"
 
     # 11. Salvar no banco (1 Message com content do usuário e response da IA)
-    message = Message.objects.filter(
-        conversation=conversation,
-        content=user_message,
-    ).last()
-    message.response = last_ai_message
-    message.save()
+    if evolution_instance:
+        message = Message.objects.filter(
+            conversation=conversation,
+            content=user_message,
+        ).last()
+        message.response = last_ai_message
+        message.save()
+    else:
+        Message.objects.create(
+            conversation=conversation,
+            content=user_message,
+            response=last_ai_message
+        )
+
+
 
 
     print(f"💾 [Message] Salva no banco: user → AI")

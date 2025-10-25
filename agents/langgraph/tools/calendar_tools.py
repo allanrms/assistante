@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from uuid import UUID
-
+import traceback
+from django.core.mail import mail_admins
 from langchain_core.tools import tool
+from django.conf import settings
 
 from core.models import Contact
 from google_calendar.services import GoogleCalendarService
@@ -221,8 +223,13 @@ def create_calendar_tools(contact_id: UUID):
                     print(f"   🔑 Calendar Event ID: {appointment.calendar_event_id}")
 
                 except Exception as db_error:
+                    traceback.print_exc()
                     print(f"⚠️ [TOOL] Evento criado no Calendar, mas erro ao salvar no banco: {db_error}")
                     # Não falha a operação se o Calendar foi criado com sucesso
+                    if not settings.DEBUG:
+                        subject = "[TOOL] Evento criado no Calendar, mas erro ao salvar no banco"
+                        message = u'%s\n%s' % (traceback.format_exc(), locals())
+                        mail_admins(subject, message)
 
                 return f"""✅ Agendamento criado com sucesso!
 📅 Data: {data}
@@ -234,8 +241,11 @@ def create_calendar_tools(contact_id: UUID):
                 return f"❌ Erro ao criar evento: {result}"
         except Exception as e:
             print(f"❌ [TOOL] Exceção ao criar evento: {e}")
-            import traceback
             traceback.print_exc()
+            if not settings.DEBUG:
+                subject = "[TOOL] Exceção ao criar evento"
+                message = u'%s\n%s' % (traceback.format_exc(), locals())
+                mail_admins(subject, message)
             return f"❌ Erro: {str(e)}"
 
     return [listar_eventos, verificar_disponibilidade, buscar_proximas_datas, criar_evento]

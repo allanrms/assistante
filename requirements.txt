@@ -41,4 +41,7 @@ pgvector==0.4.1
 
 django-crontab==0.7.1
 
+pytz==2025.2
+
+
 

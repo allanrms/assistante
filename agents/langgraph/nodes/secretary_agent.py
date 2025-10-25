@@ -13,7 +13,7 @@ from uuid import UUID
 
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END
 
 from agents.langgraph.state import State
@@ -80,14 +80,21 @@ def create_recepcao_node():
         # Executar agente COM histórico
         result = secretary_agent.invoke({"messages": messages})
 
+        # Debug: mostrar todas as mensagens retornadas
+        print(f"🔍 [RECEPÇÃO NODE] Total de mensagens retornadas: {len(result['messages'])}")
+        for i, msg in enumerate(result["messages"]):
+            msg_type = type(msg).__name__
+            content_preview = str(msg.content)[:100] if hasattr(msg, 'content') else str(msg)[:100]
+            print(f"   [{i}] {msg_type}: {content_preview}...")
+
         # Extrair resposta das mensagens retornadas pelo agente
         ai_messages = [msg for msg in result["messages"] if isinstance(msg, AIMessage)]
         output = ai_messages[-1].content if ai_messages else "Erro ao processar mensagem"
 
-        print(f"💬 [RECEPÇÃO NODE] Resposta: {output[:200]}...")
+        print(f"💬 [RECEPÇÃO NODE] Resposta final: {output[:200]}...")
 
         # Verificar se identificou intenção de agenda
-        if "AGENDA" in output:
+        if "AGENDA_REQUEST" in output:
             print("🎯 [RECEPÇÃO NODE] Intenção de AGENDA detectada — roteando")
             return {
                 "history": [HumanMessage(content=state.user_message)],

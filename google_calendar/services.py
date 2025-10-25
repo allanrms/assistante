@@ -139,19 +139,37 @@ class GoogleCalendarService:
 
     def get_calendar_service(self, whatsapp_number):
         """
-        Retorna o serviço do Google Calendar para um número do WhatsApp
+        Retorna o serviço do Google Calendar para um contact_id (UUID)
+
+        Args:
+            whatsapp_number: UUID do Contact (apesar do nome, é um contact_id)
         """
         try:
-            print(f'🔑 [GoogleCalendarService.get_calendar_service] INICIADO para WhatsApp: {whatsapp_number}')
+            print(f'🔑 [GoogleCalendarService.get_calendar_service] INICIADO para Contact ID: {whatsapp_number}')
 
-            #todo PRECIS AJUSTAR AQUI
-            calendar_auth = GoogleCalendarAuth.objects.all().first()
-
-            if not calendar_auth:
-                print(f'❌ [GoogleCalendarService.get_calendar_service] FALHOU - Nenhuma autenticação encontrada')
+            # Buscar o Contact pelo ID
+            from core.models import Contact
+            try:
+                contact = Contact.objects.get(id=whatsapp_number)
+                print(f'✅ [GoogleCalendarService.get_calendar_service] Contact encontrado: {contact.phone_number}')
+            except Contact.DoesNotExist:
+                print(f'❌ [GoogleCalendarService.get_calendar_service] FALHOU - Contact não encontrado')
                 return None
 
-            print(f'✅ [GoogleCalendarService.get_calendar_service] Autenticação encontrada')
+            # Buscar o Client do Contact
+            client = contact.client
+            print(f'✅ [GoogleCalendarService.get_calendar_service] Client: {client.full_name}')
+
+            # Buscar o primeiro User desse Client que tenha GoogleCalendarAuth
+            calendar_auth = GoogleCalendarAuth.objects.filter(
+                user__client=client
+            ).first()
+
+            if not calendar_auth:
+                print(f'❌ [GoogleCalendarService.get_calendar_service] FALHOU - Nenhuma autenticação Google Calendar para o cliente {client.full_name}')
+                return None
+
+            print(f'✅ [GoogleCalendarService.get_calendar_service] Autenticação encontrada para usuário: {calendar_auth.user.username}')
 
             # Verifica se o token precisa ser renovado
             if timezone.now() >= calendar_auth.expires_at:

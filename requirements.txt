@@ -39,4 +39,6 @@ psycopg2-binary==2.9.9
 pgvector==0.4.1
 
 
+django-crontab==0.7.1
+
 

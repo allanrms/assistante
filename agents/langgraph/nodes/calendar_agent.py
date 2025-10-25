@@ -113,8 +113,12 @@ def create_agenda_node():
         # Define o próximo agente
         next_agent = END if confirmed else "recepcao"
 
-        # Adiciona prefixo para que a recepção reconheça a origem
-        formatted_response = f"[AGENDA_RESPONSE] {last_response}"
+        # Adiciona prefixo APENAS quando rotear de volta para recepção
+        # Quando vai para END, a mensagem vai direto ao usuário e não deve ter prefixo
+        if next_agent == "recepcao":
+            formatted_response = f"[AGENDA_RESPONSE] {last_response}"
+        else:
+            formatted_response = last_response
 
         print(f"🔚 [AGENDA NODE] Finalizando com agent={next_agent}")
         return {

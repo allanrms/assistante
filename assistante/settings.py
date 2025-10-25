@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'rest_framework',
     # 'django_ai_assistant',
+    'django_crontab',
     'core',
     'agents',
     'client_painel',
@@ -313,5 +314,10 @@ LOGGING = {
         },
     },
 }
+
+CRONJOBS = [
+    #Core
+    ('0 */4 * * *' 'google_calendar.cron.process_google_calendar_updates.run'),
+]
 
 

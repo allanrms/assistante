@@ -141,8 +141,8 @@ Fatos importantes:"""
             defaults={"embedding": embedding_vector, 'content':fact, 'contact': contact}
         )
         saved_facts.append(fact)
-        print(f"💾 [FACTS] Salvo fato #{memory.id}: {fact[:80]}...")
-
-    print(f"✅ [FACTS] Extraídos e salvos {len(saved_facts)} fatos para contato #{contact.id}")
+    #     print(f"💾 [FACTS] Salvo fato #{memory.id}: {fact[:80]}...")
+    #
+    # print(f"✅ [FACTS] Extraídos e salvos {len(saved_facts)} fatos para contato #{contact.id}")
 
     return saved_facts

@@ -35,24 +35,13 @@ def fix_invalid_references():
     print("=" * 60)
     print()
 
-    # Verificar se a coluna ainda se chama llm_config_id ou já foi renomeada para agent_id
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_name='whatsapp_connector_evolutioninstance'
-            AND (column_name='llm_config_id' OR column_name='agent_id');
-        """)
-        columns = cursor.fetchall()
+    # Detectar banco de dados
+    db_engine = connection.settings_dict['ENGINE']
+    is_postgres = 'postgresql' in db_engine
+    is_sqlite = 'sqlite' in db_engine
 
-        if not columns:
-            print("❌ Nenhuma coluna agent_id ou llm_config_id encontrada")
-            print("   Certifique-se de que as tabelas existem no banco de dados")
-            return False
-
-        column_name = columns[0][0]
-        print(f"📌 Coluna encontrada: {column_name}")
-        print()
+    print(f"🗄️  Banco de dados: {'PostgreSQL' if is_postgres else 'SQLite' if is_sqlite else 'Outro'}")
+    print()
 
     # Pegar todos os IDs válidos de agents
     valid_agent_ids = set(Agent.objects.values_list('id', flat=True))
@@ -89,23 +78,12 @@ def fix_invalid_references():
         response = input("Deseja corrigir essas instâncias definindo agent_id como NULL? (s/n): ")
 
         if response.lower() in ['s', 'sim', 'y', 'yes']:
-            # Executar correção diretamente no banco usando SQL
-            with connection.cursor() as cursor:
-                # Preparar lista de IDs inválidos
-                invalid_ids = [str(inst.id) for inst in invalid_instances]
-
-                if invalid_ids:
-                    cursor.execute(f"""
-                        UPDATE whatsapp_connector_evolutioninstance
-                        SET {column_name} = NULL
-                        WHERE id IN ({','.join("'" + id + "'" for id in invalid_ids)});
-                    """)
-
-                    affected = cursor.rowcount
-                    print()
-                    print(f"✅ {affected} instância(s) corrigida(s) com sucesso!")
-                    print()
-                    return True
+            # Executar correção usando ORM do Django (mais portável)
+            affected = invalid_instances.update(agent=None)
+            print()
+            print(f"✅ {affected} instância(s) corrigida(s) com sucesso!")
+            print()
+            return True
         else:
             print()
             print("❌ Operação cancelada pelo usuário")

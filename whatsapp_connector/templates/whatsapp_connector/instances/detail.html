@@ -372,6 +372,89 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Status badges - cores mais vibrantes e visíveis */
+    .badge.status-connected,
+    .badge.bg-success {
+        background-color: #059669 !important;
+        color: white !important;
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .badge.status-disconnected,
+    .badge.bg-danger {
+        background-color: #dc2626 !important;
+        color: white !important;
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .badge.status-connecting,
+    .badge.bg-warning {
+        background-color: #f59e0b !important;
+        color: white !important;
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .badge.status-error {
+        background-color: #b91c1c !important;
+        color: white !important;
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .badge.bg-primary {
+        background-color: #2563eb !important;
+        color: white !important;
+        font-weight: 600;
+    }
+
+    .badge.bg-secondary {
+        background-color: #64748b !important;
+        color: white !important;
+        font-weight: 600;
+    }
+
+    .badge.bg-info {
+        background-color: #0891b2 !important;
+        color: white !important;
+        font-weight: 600;
+    }
+
+    /* Melhorar contraste dos cards de stats */
+    .stats-card.success {
+        background: linear-gradient(135deg, #059669, #10b981) !important;
+        color: white;
+    }
+
+    .stats-card.info {
+        background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+        color: white;
+    }
+
+    /* Tabelas - melhorar legibilidade */
+    .table td.fw-semibold {
+        color: #1f2937;
+        min-width: 120px;
+    }
+
+    .table td {
+        padding: 0.75rem 0.5rem;
+        vertical-align: middle;
+    }
+
+    /* QR Code container */
+    .qr-code-container img {
+        max-width: 300px;
+        border-radius: 1rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        padding: 1rem;
+        background: white;
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}

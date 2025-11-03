@@ -1087,9 +1087,9 @@
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="{% url 'client_painel:agenda' %}" class="nav-link {% if 'agenda' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="bi bi-calendar-check"></i>
-                    <span class="nav-text">Consultas</span>
+                    <span class="nav-text">Agenda</span>
                 </a>
             </div>
             <div class="nav-item">
@@ -1146,12 +1146,6 @@
                 <a href="#" class="nav-link">
                     <i class="bi bi-headset"></i>
                     <span class="nav-text">Atendimentos</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#" class="nav-link">
-                    <i class="bi bi-calendar-event-fill"></i>
-                    <span class="nav-text">Agenda</span>
                 </a>
             </div>
             <div class="nav-item">

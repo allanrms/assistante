@@ -1,0 +1,1075 @@
+{% extends 'client_painel/base.html' %}
+{% load i18n %}
+{% load agenda_tags %}
+
+{% block title %}{% trans 'Agenda' %}{% endblock %}
+
+{% block page_title %}{% trans 'Agenda' %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-container {
+        background: var(--surface);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl);
+        padding: var(--spacing-xl);
+        overflow: hidden;
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-xl);
+        padding-bottom: var(--spacing-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .calendar-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+    }
+
+    .calendar-nav {
+        display: flex;
+        gap: var(--spacing-sm);
+        align-items: center;
+    }
+
+    .calendar-nav-btn {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-base);
+    }
+
+    .calendar-nav-btn:hover {
+        background: var(--border-light);
+        color: var(--text-primary);
+    }
+
+    .calendar-today-btn {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        padding: 0.625rem var(--spacing-lg);
+        color: var(--text-primary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all var(--transition-base);
+    }
+
+    .calendar-today-btn:hover {
+        background: var(--border-light);
+    }
+
+    .calendar-view-toggle {
+        display: flex;
+        gap: 0;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+
+    .view-toggle-btn {
+        background: var(--bg-tertiary);
+        border: none;
+        padding: 0.625rem var(--spacing-lg);
+        color: var(--text-secondary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all var(--transition-base);
+        border-right: 1px solid var(--border-light);
+    }
+
+    .view-toggle-btn:last-child {
+        border-right: none;
+    }
+
+    .view-toggle-btn:hover {
+        background: var(--border-light);
+    }
+
+    .view-toggle-btn.active {
+        background: var(--accent);
+        color: white;
+    }
+
+    /* Weekly Calendar Grid */
+    .calendar-week-grid {
+        display: grid;
+        grid-template-columns: 80px repeat(7, 1fr);
+        gap: 0;
+        overflow-x: auto;
+    }
+
+    .calendar-week-header {
+        display: contents;
+    }
+
+    .calendar-time-header {
+        grid-column: 1;
+        border-right: 1px solid var(--border-light);
+        border-bottom: 2px solid var(--border-light);
+        padding: var(--spacing-md);
+        text-align: center;
+        font-weight: 700;
+        color: var(--text-secondary);
+        background: var(--bg-tertiary);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .calendar-day-header {
+        border-right: 1px solid var(--border-light);
+        border-bottom: 2px solid var(--border-light);
+        padding: var(--spacing-md);
+        text-align: center;
+        background: var(--bg-tertiary);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .calendar-day-header:last-child {
+        border-right: none;
+    }
+
+    .day-name {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-tertiary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .day-date {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .day-date.today {
+        color: var(--accent);
+    }
+
+    /* Time Slots */
+    .calendar-time-slot {
+        grid-column: 1;
+        border-right: 1px solid var(--border-light);
+        border-bottom: 1px solid var(--border-light);
+        padding: var(--spacing-sm) var(--spacing-xs);
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        background: var(--bg-tertiary);
+        height: 80px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+    }
+
+    .calendar-day-slot {
+        border-right: 1px solid var(--border-light);
+        border-bottom: 1px solid var(--border-light);
+        position: relative;
+        min-height: 80px;
+        cursor: pointer;
+        transition: background var(--transition-base);
+    }
+
+    .calendar-day-slot:hover {
+        background: var(--bg-secondary);
+    }
+
+    .calendar-day-slot:last-child {
+        border-right: none;
+    }
+
+    /* Blocked slots */
+    .calendar-day-slot.blocked {
+        background: #f3f4f6;
+        cursor: not-allowed;
+    }
+
+    .calendar-day-slot.blocked:hover {
+        background: #f3f4f6;
+    }
+
+    /* Blocked label */
+    .blocked-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #9ca3af;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-align: center;
+        pointer-events: none;
+        z-index: 1;
+        width: 90%;
+    }
+
+    /* Events */
+    .calendar-event {
+        position: absolute;
+        left: 2px;
+        right: 2px;
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.75rem;
+        font-weight: 600;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all var(--transition-base);
+        border-left: 3px solid;
+    }
+
+    .calendar-event:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+        z-index: 5;
+    }
+
+    .calendar-event.event-blue {
+        background: rgba(14, 165, 233, 0.15);
+        color: #0ea5e9;
+        border-left-color: #0ea5e9;
+    }
+
+    .calendar-event.event-green {
+        background: rgba(5, 150, 105, 0.15);
+        color: #059669;
+        border-left-color: #059669;
+    }
+
+    .calendar-event.event-orange {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border-left-color: #d97706;
+    }
+
+    .calendar-event.event-purple {
+        background: rgba(139, 92, 246, 0.15);
+        color: #8b5cf6;
+        border-left-color: #8b5cf6;
+    }
+
+    .calendar-event.event-pink {
+        background: rgba(236, 72, 153, 0.15);
+        color: #ec4899;
+        border-left-color: #ec4899;
+    }
+
+    .event-time {
+        font-size: 0.7rem;
+        opacity: 0.8;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .event-title {
+        font-weight: 700;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Empty State */
+    .calendar-empty-state {
+        text-align: center;
+        padding: var(--spacing-2xl);
+        color: var(--text-secondary);
+    }
+
+    .calendar-empty-state i {
+        font-size: 3rem;
+        color: var(--text-tertiary);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    /* Agenda Layout */
+    .agenda-layout {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: var(--spacing-lg);
+        align-items: start;
+    }
+
+    /* Sidebar Esquerda */
+    .agenda-sidebar {
+        background: var(--surface);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+        position: sticky;
+        top: 100px;
+    }
+
+    .sidebar-section-header {
+        padding: var(--spacing-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .sidebar-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .sidebar-subtitle {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .search-patient {
+        padding: var(--spacing-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .search-patient input {
+        width: 100%;
+        padding: 0.625rem 0.875rem 0.625rem 2.5rem;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        font-size: 0.875rem;
+        background: var(--bg-tertiary);
+    }
+
+    .search-patient {
+        position: relative;
+    }
+
+    .search-patient i {
+        position: absolute;
+        left: var(--spacing-xl);
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-tertiary);
+        font-size: 0.875rem;
+    }
+
+    .search-patient input:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: var(--surface);
+    }
+
+    .patients-list {
+        max-height: 350px;
+        overflow-y: auto;
+    }
+
+    .patient-item {
+        padding: var(--spacing-md) var(--spacing-lg);
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        cursor: pointer;
+        transition: background var(--transition-base);
+    }
+
+    .patient-item:hover {
+        background: var(--bg-secondary);
+    }
+
+    .patient-item:last-child {
+        border-bottom: none;
+    }
+
+    .patient-time {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        min-width: 45px;
+    }
+
+    .patient-name {
+        flex: 1;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .patient-status {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .patient-status.confirmed {
+        background: var(--success);
+    }
+
+    .patient-status.pending {
+        background: var(--warning);
+    }
+
+    .agenda-actions {
+        padding: var(--spacing-lg);
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        border-top: 1px solid var(--border-light);
+    }
+
+    .action-btn {
+        width: 100%;
+        padding: 0.625rem var(--spacing-md);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-sm);
+        font-weight: 600;
+        font-size: 0.8125rem;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all var(--transition-base);
+        text-decoration: none;
+    }
+
+    .action-btn:hover {
+        background: var(--border-light);
+        color: var(--text-primary);
+    }
+
+    .action-btn.primary {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+    }
+
+    .action-btn.primary:hover {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: white;
+    }
+
+    .action-btn i {
+        font-size: 1rem;
+    }
+
+    @media (max-width: 1024px) {
+        .agenda-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .agenda-sidebar {
+            position: relative;
+            top: 0;
+            margin-bottom: var(--spacing-lg);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .calendar-week-grid {
+            overflow-x: scroll;
+        }
+
+        .calendar-nav {
+            flex-wrap: wrap;
+        }
+
+        .agenda-actions {
+            padding: var(--spacing-md);
+        }
+
+        .action-btn {
+            font-size: 0.75rem;
+            padding: 0.5rem var(--spacing-sm);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="agenda-layout">
+        <!-- Sidebar Esquerda -->
+        <div class="agenda-sidebar">
+            <!-- Pacientes do dia -->
+            <div class="sidebar-section-header">
+                <div class="sidebar-title">{% trans 'Pacientes do dia' %}</div>
+                <div class="sidebar-subtitle">{{ appointments_today.count }} {% trans 'paciente' %}{% if appointments_today.count != 1 %}s{% endif %}</div>
+            </div>
+
+            <!-- Busca de Paciente -->
+            <div class="search-patient">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="{% trans 'Busque um paciente' %}" id="searchPatientInput">
+            </div>
+
+            <!-- Lista de Pacientes -->
+            <div class="patients-list">
+                {% if appointments_today %}
+                    {% for appointment in appointments_today %}
+                    <div class="patient-item" data-appointment-id="{{ appointment.id }}">
+                        <div class="patient-time">{{ appointment.time|date:"H:i" }}</div>
+                        <div class="patient-name">{{ appointment.contact.name|default:appointment.contact.phone_number }}</div>
+                        <div class="patient-status confirmed"></div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="padding: var(--spacing-2xl); text-align: center; color: var(--text-secondary);">
+                        <i class="bi bi-calendar-x" style="font-size: 2rem; display: block; margin-bottom: var(--spacing-md);"></i>
+                        <p style="margin: 0; font-size: 0.875rem;">{% trans 'Nenhum paciente agendado para hoje' %}</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Ações -->
+            <div class="agenda-actions">
+                <button class="action-btn primary" onclick="window.openAppointmentModal()">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>{% trans 'Novo agendamento' %}</span>
+                </button>
+                <button class="action-btn">
+                    <i class="bi bi-list-ul"></i>
+                    <span>{% trans 'Lista de espera' %}</span>
+                </button>
+                <button class="action-btn">
+                    <i class="bi bi-chat-square-text"></i>
+                    <span>{% trans 'Observações' %}</span>
+                </button>
+                <button class="action-btn">
+                    <i class="bi bi-printer"></i>
+                    <span>{% trans 'Imprimir agenda' %}</span>
+                </button>
+                <a href="{% url 'client_painel:schedule_settings' %}" class="action-btn">
+                    <i class="bi bi-gear"></i>
+                    <span>{% trans 'Configurações' %}</span>
+                </a>
+            </div>
+        </div>
+
+    <!-- Calendar Container -->
+    <div class="calendar-container">
+        <!-- Calendar Header -->
+        <div class="calendar-header">
+            <div class="calendar-title">
+                <i class="bi bi-calendar-event"></i>
+                <span id="currentWeekText">{{ start_of_week|date:"d/m" }} a {{ end_of_week|date:"d/m" }}</span>
+            </div>
+
+            <div class="calendar-nav">
+                <button class="calendar-nav-btn" onclick="previousWeek()">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <button class="calendar-today-btn" onclick="goToToday()">
+                    {% trans 'HOJE' %}
+                </button>
+                <button class="calendar-nav-btn" onclick="nextWeek()">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+
+                <div class="calendar-view-toggle ms-3">
+                    <button class="view-toggle-btn" onclick="changeView('dia')">
+                        {% trans 'DIA' %}
+                    </button>
+                    <button class="view-toggle-btn active" onclick="changeView('semana')">
+                        {% trans 'SEMANA' %}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div class="calendar-week-grid" id="calendarGrid">
+            <!-- Headers -->
+            <div class="calendar-week-header">
+                <div class="calendar-time-header">Horário</div>
+                {% for i in "0123456" %}
+                    {% with day_date=start_of_week|add_days:i %}
+                    <div class="calendar-day-header">
+                        <div class="day-name">
+                            {% if forloop.counter0 == 0 %}Domingo
+                            {% elif forloop.counter0 == 1 %}Segunda
+                            {% elif forloop.counter0 == 2 %}Terça
+                            {% elif forloop.counter0 == 3 %}Quarta
+                            {% elif forloop.counter0 == 4 %}Quinta
+                            {% elif forloop.counter0 == 5 %}Sexta
+                            {% else %}Sábado{% endif %}
+                        </div>
+                        <div class="day-date {% if day_date == today %}today{% endif %}" id="day-{{ forloop.counter0 }}">
+                            {{ day_date.day }}
+                        </div>
+                    </div>
+                    {% endwith %}
+                {% endfor %}
+            </div>
+
+            <!-- Time Slots (8:00 - 18:00) -->
+            <script>
+                // Generate time slots and day columns
+                const hours = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+                const grid = document.getElementById('calendarGrid');
+
+                // Data da semana do backend
+                const startOfWeek = new Date('{{ start_of_week|date:"Y-m-d" }}T00:00:00');
+
+                // Schedule availability configuration (loaded from API)
+                let scheduleConfig = null;
+
+                // Load schedule configuration
+                async function loadScheduleConfig() {
+                    try {
+                        const response = await fetch('/agenda/api/availability/');
+                        if (response.ok) {
+                            scheduleConfig = await response.json();
+                            console.log('Schedule config loaded:', scheduleConfig);
+                            applyAvailabilityRestrictions();
+                        } else {
+                            console.error('Failed to load schedule config');
+                        }
+                    } catch (error) {
+                        console.error('Error loading schedule config:', error);
+                    }
+                }
+
+                // Apply availability restrictions to calendar slots
+                function applyAvailabilityRestrictions() {
+                    if (!scheduleConfig) return;
+
+                    const blockedDatesSet = new Set(
+                        scheduleConfig.blocked_days.map(bd => bd.date)
+                    );
+
+                    // Iterate through all day slots
+                    const daySlots = document.querySelectorAll('.calendar-day-slot');
+                    daySlots.forEach(slot => {
+                        const day = parseInt(slot.dataset.day);
+                        const hour = slot.dataset.hour;
+
+                        // Calculate the actual date for this slot
+                        const slotDate = new Date(startOfWeek);
+                        slotDate.setDate(startOfWeek.getDate() + day);
+                        const dateStr = slotDate.toISOString().split('T')[0];
+
+                        // Check if this date is blocked
+                        if (blockedDatesSet.has(dateStr)) {
+                            slot.classList.add('blocked');
+                            slot.onclick = function() {
+                                alert('Este dia está bloqueado para agendamentos.');
+                            };
+                            // Add blocked day label
+                            const blockedLabel = document.createElement('div');
+                            blockedLabel.className = 'blocked-label';
+                            blockedLabel.textContent = 'Dia bloqueado...';
+                            slot.appendChild(blockedLabel);
+                            return;
+                        }
+
+                        // Map calendar day (0=Sunday) to WorkingDay weekday (0=Monday)
+                        // Calendar: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+                        // WorkingDay: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+                        const weekdayMap = {
+                            0: 6, // Sunday -> 6
+                            1: 0, // Monday -> 0
+                            2: 1, // Tuesday -> 1
+                            3: 2, // Wednesday -> 2
+                            4: 3, // Thursday -> 3
+                            5: 4, // Friday -> 4
+                            6: 5  // Saturday -> 5
+                        };
+                        const workingDayWeekday = weekdayMap[day];
+
+                        const workingDay = scheduleConfig.working_days[workingDayWeekday];
+
+                        // Check if this day is not active
+                        if (!workingDay || !workingDay.is_active) {
+                            slot.classList.add('blocked');
+                            slot.onclick = function() {
+                                alert('Não há atendimento neste dia da semana.');
+                            };
+                            // Add blocked label
+                            const inactiveLabel = document.createElement('div');
+                            inactiveLabel.className = 'blocked-label';
+                            inactiveLabel.textContent = 'Dia bloqueado...';
+                            slot.appendChild(inactiveLabel);
+                            return;
+                        }
+
+                        // Check if this hour is lunch time
+                        if (workingDay.lunch_start_time && workingDay.lunch_end_time) {
+                            const currentHour = hour;
+                            const lunchStart = workingDay.lunch_start_time;
+                            const lunchEnd = workingDay.lunch_end_time;
+
+                            // Compare times (in format HH:MM)
+                            if (currentHour >= lunchStart && currentHour < lunchEnd) {
+                                slot.classList.add('blocked');
+                                slot.onclick = function() {
+                                    alert('Horário de almoço.');
+                                };
+                                // Add lunch label
+                                const lunchLabel = document.createElement('div');
+                                lunchLabel.className = 'blocked-label';
+                                lunchLabel.textContent = 'Horário de almoço';
+                                slot.appendChild(lunchLabel);
+                                return;
+                            }
+                        }
+
+                        // Check if this hour is within available times
+                        if (!workingDay.available_times.includes(hour)) {
+                            slot.classList.add('blocked');
+                            slot.onclick = function() {
+                                alert('Este horário não está disponível para agendamentos.');
+                            };
+                            return;
+                        }
+                    });
+                }
+
+                // Load config on page load
+                loadScheduleConfig();
+
+                hours.forEach(hour => {
+                    // Time label
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'calendar-time-slot';
+                    timeSlot.textContent = hour;
+                    grid.appendChild(timeSlot);
+
+                    // Day slots
+                    for (let day = 0; day < 7; day++) {
+                        const daySlot = document.createElement('div');
+                        daySlot.className = 'calendar-day-slot';
+                        daySlot.dataset.day = day;
+                        daySlot.dataset.hour = hour;
+                        daySlot.onclick = function() {
+                            createEvent(day, hour);
+                        };
+                        grid.appendChild(daySlot);
+                    }
+                });
+
+                // Load appointments from backend
+                const appointments = {{ appointments_json|safe }};
+
+                // Convert appointments to events format
+                const colors = ['blue', 'green', 'orange', 'purple', 'pink'];
+                let colorIndex = 0;
+
+                appointments.forEach(appointment => {
+
+                    // Usa o weekday calculado no backend (0=Domingo, 1=Segunda, etc.)
+                    const day = appointment.weekday;
+                    const startHour = appointment.time;
+
+                    const event = {
+                        id: appointment.id,  // UUID completo do backend
+                        day: day,
+                        startHour: startHour,
+                        duration: 1, // Default 1 hour
+                        title: appointment.contact_name,
+                        color: colors[colorIndex % colors.length],
+                        date: appointment.date  // Adiciona a data para referência
+                    };
+
+                    colorIndex++;
+                    renderEvent(event);
+                });
+
+                function renderEvent(event) {
+                    const hourIndex = hours.indexOf(event.startHour);
+                    if (hourIndex === -1) return;
+
+                    const slot = document.querySelector(`[data-day="${event.day}"][data-hour="${event.startHour}"]`);
+                    if (!slot) return;
+
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = `calendar-event event-${event.color}`;
+                    eventDiv.style.height = `${event.duration * 80 - 4}px`; // 80px per hour minus padding
+                    eventDiv.innerHTML = `
+                        <span class="event-time">${event.startHour}</span>
+                        <span class="event-title">${event.title}</span>
+                    `;
+                    eventDiv.onclick = function(e) {
+                        e.stopPropagation();
+                        editEvent(event);
+                    };
+                    eventDiv.dataset.appointmentId = event.id; // Armazena ID no elemento
+                    slot.appendChild(eventDiv);
+                }
+
+                function createEvent(day, hour) {
+                    // Check if the slot is blocked
+                    const slot = document.querySelector(`[data-day="${day}"][data-hour="${hour}"]`);
+                    if (slot && slot.classList.contains('blocked')) {
+                        // Event is already prevented by the slot's onclick, no need to do anything
+                        return;
+                    }
+
+                    // Calcula a data correta: start_of_week + day
+                    const selectedDate = new Date(startOfWeek);
+                    selectedDate.setDate(startOfWeek.getDate() + day);
+
+                    const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+                    // Abre o modal com os dados
+                    openAppointmentModal(null, dateStr, hour);
+                }
+
+                function editEvent(event) {
+                    // Usa a data do evento (já está no formato correto YYYY-MM-DD)
+                    const dateStr = event.date || (() => {
+                        // Fallback: calcula a data se não estiver disponível
+                        const selectedDate = new Date(startOfWeek);
+                        selectedDate.setDate(startOfWeek.getDate() + event.day);
+                        return selectedDate.toISOString().split('T')[0];
+                    })();
+
+                    // Abre o modal para editar
+                    openAppointmentModal(event.id, dateStr, event.startHour, event.title);
+                }
+
+                function previousWeek() {
+                    // TODO: Implement navigation logic (reload page with week parameter)
+                }
+
+                function nextWeek() {
+                    // TODO: Implement navigation logic (reload page with week parameter)
+                }
+
+                function goToToday() {
+                    window.location.reload();
+                }
+
+                function changeView(view) {
+                    // TODO: Implement view change logic
+                    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    event.target.classList.add('active');
+                }
+            </script>
+        </div>
+    </div> <!-- fim agenda-layout -->
+</div>
+
+<!-- Modal para Criar/Editar Appointment -->
+<div class="modal fade" id="appointmentModal" tabindex="-1" aria-labelledby="appointmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="appointmentModalLabel">{% trans 'Nova Consulta' %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="appointmentForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="appointmentId" name="appointment_id">
+
+                    <div class="mb-3">
+                        <label for="appointmentContact" class="form-label">{% trans 'Paciente' %}</label>
+                        <select class="form-select" id="appointmentContact" name="contact" required>
+                            <option value="">{% trans 'Selecione um paciente' %}</option>
+                            {% for contact in contacts %}
+                                <option value="{{ contact.id }}">{{ contact.name|default:contact.phone_number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="appointmentDate" class="form-label">{% trans 'Data' %}</label>
+                        <input type="date" class="form-control" id="appointmentDate" name="date" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="appointmentTime" class="form-label">{% trans 'Horário' %}</label>
+                        <input type="time" class="form-control" id="appointmentTime" name="time" required>
+                    </div>
+
+                    <div id="formErrors" class="alert alert-danger d-none"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans 'Cancelar' %}</button>
+                <button type="button" class="btn btn-danger" id="deleteAppointmentBtn" style="display: none;">{% trans 'Excluir' %}</button>
+                <button type="button" class="btn btn-primary" id="saveAppointmentBtn">{% trans 'Salvar' %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script para busca de pacientes -->
+<script>
+    // Funcionalidade de busca de pacientes
+    const searchInput = document.getElementById('searchPatientInput');
+    const patientItems = document.querySelectorAll('.patient-item');
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+
+        patientItems.forEach(item => {
+            const patientName = item.querySelector('.patient-name').textContent.toLowerCase();
+            const patientTime = item.querySelector('.patient-time').textContent.toLowerCase();
+
+            if (patientName.includes(searchTerm) || patientTime.includes(searchTerm)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    // Clique em paciente para destacar no calendário
+    patientItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const appointmentId = this.dataset.appointmentId;
+            // TODO: Destacar appointment no calendário ou abrir modal de edição
+        });
+    });
+
+    // Funções para o modal de appointment
+    function openAppointmentModal(appointmentId = null, date = '', time = '', contactName = '') {
+        const modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
+        const form = document.getElementById('appointmentForm');
+        const modalTitle = document.getElementById('appointmentModalLabel');
+        const deleteBtn = document.getElementById('deleteAppointmentBtn');
+
+        // Limpa o formulário
+        form.reset();
+        document.getElementById('formErrors').classList.add('d-none');
+
+        if (appointmentId) {
+            // Modo edição
+            modalTitle.textContent = '{% trans "Editar Consulta" %}';
+            deleteBtn.style.display = 'inline-block';
+            document.getElementById('appointmentId').value = appointmentId;
+
+            // Busca dados do appointment
+            fetch(`/appointments/${appointmentId}/`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('appointmentContact').value = data.contact_id;
+                document.getElementById('appointmentDate').value = data.date;
+                document.getElementById('appointmentTime').value = data.time;
+            })
+            .catch(error => {
+                console.error('Erro ao carregar appointment:', error);
+                alert('Erro ao carregar dados da consulta');
+            });
+        } else {
+            // Modo criação
+            modalTitle.textContent = '{% trans "Nova Consulta" %}';
+            deleteBtn.style.display = 'none';
+            document.getElementById('appointmentId').value = '';
+
+            // Preenche com os dados passados
+            if (date) document.getElementById('appointmentDate').value = date;
+            if (time) document.getElementById('appointmentTime').value = time;
+        }
+
+        modal.show();
+    }
+
+    // Salvar appointment
+    document.getElementById('saveAppointmentBtn').addEventListener('click', function() {
+        const form = document.getElementById('appointmentForm');
+        const formData = new FormData(form);
+        const appointmentId = document.getElementById('appointmentId').value;
+
+        const url = appointmentId
+            ? `/appointments/${appointmentId}/`
+            : '/appointments/create/';
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Fecha o modal
+                bootstrap.Modal.getInstance(document.getElementById('appointmentModal')).hide();
+
+                // Recarrega a página para mostrar o novo appointment
+                window.location.reload();
+            } else {
+                // Mostra erros
+                const errorsDiv = document.getElementById('formErrors');
+                errorsDiv.textContent = data.error || 'Erro ao salvar consulta';
+                errorsDiv.classList.remove('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            const errorsDiv = document.getElementById('formErrors');
+            errorsDiv.textContent = 'Erro ao comunicar com o servidor';
+            errorsDiv.classList.remove('d-none');
+        });
+    });
+
+    // Deletar appointment
+    document.getElementById('deleteAppointmentBtn').addEventListener('click', function() {
+        if (!confirm('{% trans "Tem certeza que deseja excluir esta consulta?" %}')) {
+            return;
+        }
+
+        const appointmentId = document.getElementById('appointmentId').value;
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(`/appointments/${appointmentId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('appointmentModal')).hide();
+                window.location.reload();
+            } else {
+                alert(data.error || 'Erro ao excluir consulta');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao comunicar com o servidor');
+        });
+    });
+
+    // Expor função globalmente para ser chamada pelo calendário
+    window.openAppointmentModal = openAppointmentModal;
+</script>
+{% endblock %}

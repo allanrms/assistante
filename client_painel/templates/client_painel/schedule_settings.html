@@ -1,0 +1,293 @@
+{% extends 'client_painel/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans 'Configurações da Agenda' %}{% endblock %}
+
+{% block page_title %}{% trans 'Configurações da Agenda' %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-container {
+        background: var(--surface);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl);
+        padding: var(--spacing-xl);
+    }
+
+    .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-xl);
+        padding-bottom: var(--spacing-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .settings-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+    }
+
+    .settings-section {
+        margin-bottom: var(--spacing-2xl);
+    }
+
+    .section-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-lg);
+        padding-bottom: var(--spacing-md);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .working-days-grid {
+        display: grid;
+        gap: var(--spacing-lg);
+    }
+
+    .working-day-card {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        display: grid;
+        grid-template-columns: 120px 100px 1fr 1fr 1fr 1fr;
+        gap: var(--spacing-md);
+        align-items: center;
+    }
+
+    .day-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .blocked-days-list {
+        display: grid;
+        gap: var(--spacing-md);
+    }
+
+    .blocked-day-item {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-md) var(--spacing-lg);
+        display: grid;
+        grid-template-columns: 150px 1fr auto;
+        gap: var(--spacing-md);
+        align-items: center;
+    }
+
+    .btn-add-blocked-day {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: 0.625rem var(--spacing-lg);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all var(--transition-base);
+    }
+
+    .btn-add-blocked-day:hover {
+        background: var(--border-light);
+    }
+
+    .btn-save {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 0.75rem var(--spacing-2xl);
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all var(--transition-base);
+    }
+
+    .btn-save:hover {
+        background: var(--danger);
+    }
+
+    .btn-back {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--border-light);
+        padding: 0.75rem var(--spacing-xl);
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: all var(--transition-base);
+    }
+
+    .btn-back:hover {
+        background: var(--border-light);
+        color: var(--text-primary);
+    }
+
+    .form-check-input:checked {
+        background-color: var(--accent);
+        border-color: var(--accent);
+    }
+
+    .delete-btn {
+        background: transparent;
+        border: none;
+        color: var(--danger);
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: var(--radius-sm);
+        transition: all var(--transition-base);
+    }
+
+    .delete-btn:hover {
+        background: rgba(220, 38, 38, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <form method="post" id="settingsForm">
+        {% csrf_token %}
+
+        <div class="settings-container">
+            <!-- Header -->
+            <div class="settings-header">
+                <div class="settings-title">
+                    <i class="bi bi-gear"></i>
+                    <span>{% trans 'Configurações da Agenda' %}</span>
+                </div>
+                <div>
+                    <a href="{% url 'client_painel:agenda' %}" class="btn-back">
+                        <i class="bi bi-arrow-left"></i> {% trans 'Voltar' %}
+                    </a>
+                    <button type="submit" class="btn-save ms-2">
+                        <i class="bi bi-check-circle"></i> {% trans 'Salvar Configurações' %}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Configuração Geral -->
+            <div class="settings-section">
+                <div class="section-title">{% trans 'Configuração Geral' %}</div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="{{ config_form.appointment_duration.id_for_label }}" class="form-label">
+                            {{ config_form.appointment_duration.label }}
+                        </label>
+                        {{ config_form.appointment_duration }}
+                        {% if config_form.appointment_duration.help_text %}
+                            <div class="form-text">{{ config_form.appointment_duration.help_text }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dias de Atendimento -->
+            <div class="settings-section">
+                <div class="section-title">{% trans 'Dias de Atendimento' %}</div>
+
+                {{ working_days_formset.management_form }}
+
+                <div class="working-days-grid">
+                    {% for form in working_days_formset %}
+                        <div class="working-day-card">
+                            {{ form.id }}
+
+                            <div class="day-name">
+                                {{ form.instance.get_weekday_display }}
+                                {{ form.weekday.as_hidden }}
+                            </div>
+
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    {% trans 'Ativo' %}
+                                </label>
+                            </div>
+
+                            <div>
+                                <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                    {% trans 'Início' %}
+                                </label>
+                                {{ form.start_time }}
+                            </div>
+
+                            <div>
+                                <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                    {% trans 'Término' %}
+                                </label>
+                                {{ form.end_time }}
+                            </div>
+
+                            <div>
+                                <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                    {% trans 'Almoço Início' %}
+                                </label>
+                                {{ form.lunch_start_time }}
+                            </div>
+
+                            <div>
+                                <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                    {% trans 'Almoço Fim' %}
+                                </label>
+                                {{ form.lunch_end_time }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Dias Bloqueados -->
+            <div class="settings-section">
+                <div class="section-title">
+                    {% trans 'Dias Bloqueados' %}
+                    <small class="text-muted">({% trans 'Feriados, Férias, etc' %})</small>
+                </div>
+
+                {{ blocked_days_formset.management_form }}
+
+                <div class="blocked-days-list">
+                    {% for form in blocked_days_formset %}
+                        <div class="blocked-day-item">
+                            {{ form.id }}
+
+                            <div>
+                                {{ form.date }}
+                            </div>
+
+                            <div>
+                                {{ form.reason }}
+                            </div>
+
+                            <div>
+                                {% if form.instance.pk %}
+                                    {{ form.DELETE }}
+                                    <label for="{{ form.DELETE.id_for_label }}" class="delete-btn">
+                                        <i class="bi bi-trash"></i>
+                                    </label>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Script para adicionar mais dias bloqueados dinamicamente (se necessário)
+    // Por enquanto, usa o formset padrão do Django
+</script>
+{% endblock %}

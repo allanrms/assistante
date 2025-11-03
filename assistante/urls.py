@@ -20,6 +20,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from client_painel.public_views import PublicAppointmentView, PublicAppointmentAvailabilityAPI
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -30,6 +31,11 @@ urlpatterns = [
     path('google-calendar/', include('google_calendar.urls')),  # Google Calendar integration URLs
     path('dialog-test/', include('dialog_test.urls')),  # Dialog Test URLs
     # path('ai-assistant/', include('django_ai_assistant.urls')),  # AI Assistant URLs
+
+    # Public appointment scheduling
+    path('agendar/<str:token>/', PublicAppointmentView.as_view(), name='public_appointment'),
+    path('agendar/<str:token>/availability/<str:date_str>/', PublicAppointmentAvailabilityAPI.as_view(), name='public_appointment_availability'),
+
     path('', include('client_painel.urls')),  # Client Painel como página inicial
 ]
 

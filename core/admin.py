@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.utils.html import format_html
-from .models import Client, Contact, Tag, Employee, Appointment
+from .models import Client, Contact, Tag, Employee, Appointment, ScheduleConfig, WorkingDay, BlockedDay
 
 User = get_user_model()
 
@@ -462,3 +462,228 @@ class AppointmentAdmin(admin.ModelAdmin):
             )
         return format_html('<span style="color: gray;">-</span>')
     calendar_event_link.short_description = 'Link do Evento'
+
+
+class WorkingDayInline(admin.TabularInline):
+    """
+    Inline para configurar dias de atendimento da semana.
+    """
+    model = WorkingDay
+    extra = 7  # Mostrar os 7 dias da semana por padrão
+    fields = ('weekday', 'is_active', 'start_time', 'end_time', 'lunch_start_time', 'lunch_end_time')
+    verbose_name = 'Dia de Atendimento'
+    verbose_name_plural = 'Dias de Atendimento'
+
+
+class BlockedDayInline(admin.TabularInline):
+    """
+    Inline para configurar dias bloqueados.
+    """
+    model = BlockedDay
+    extra = 1
+    fields = ('date', 'reason')
+    verbose_name = 'Dia Bloqueado'
+    verbose_name_plural = 'Dias Bloqueados'
+
+
+@admin.register(ScheduleConfig)
+class ScheduleConfigAdmin(admin.ModelAdmin):
+    """
+    Configuração do admin para o modelo ScheduleConfig.
+    """
+    list_display = [
+        'client',
+        'appointment_duration_display',
+        'active_days_count',
+        'blocked_days_count',
+        'created_at',
+    ]
+    list_filter = [
+        'appointment_duration',
+        'created_at',
+    ]
+    search_fields = [
+        'client__full_name',
+        'client__email',
+    ]
+    readonly_fields = [
+        'id',
+        'created_at',
+        'updated_at',
+        'active_days_count',
+        'blocked_days_count',
+    ]
+    raw_id_fields = ['client']
+    inlines = [WorkingDayInline, BlockedDayInline]
+
+    fieldsets = (
+        ('Informações da Agenda', {
+            'fields': (
+                'id',
+                'client',
+                'appointment_duration',
+            )
+        }),
+        ('Estatísticas', {
+            'fields': (
+                'active_days_count',
+                'blocked_days_count',
+            )
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at',
+                'updated_at',
+            )
+        }),
+    )
+
+    def get_queryset(self, request):
+        """
+        Otimiza queryset com select_related e prefetch.
+        """
+        qs = super().get_queryset(request)
+        return qs.select_related('client').prefetch_related('working_days', 'blocked_days')
+
+    def appointment_duration_display(self, obj):
+        """Exibe o tempo de consulta formatado"""
+        return f"{obj.appointment_duration} minutos"
+    appointment_duration_display.short_description = 'Tempo de Consulta'
+
+    def active_days_count(self, obj):
+        """Retorna o número de dias ativos na semana"""
+        return obj.working_days.filter(is_active=True).count()
+    active_days_count.short_description = 'Dias Ativos'
+
+    def blocked_days_count(self, obj):
+        """Retorna o número de dias bloqueados cadastrados"""
+        return obj.blocked_days.count()
+    blocked_days_count.short_description = 'Dias Bloqueados'
+
+
+@admin.register(WorkingDay)
+class WorkingDayAdmin(admin.ModelAdmin):
+    """
+    Configuração do admin para o modelo WorkingDay.
+    """
+    list_display = [
+        'schedule_config',
+        'weekday_display',
+        'is_active',
+        'start_time',
+        'end_time',
+        'has_lunch_break',
+        'created_at',
+    ]
+    list_filter = [
+        'weekday',
+        'is_active',
+        'schedule_config__client',
+    ]
+    search_fields = [
+        'schedule_config__client__full_name',
+        'schedule_config__client__email',
+    ]
+    readonly_fields = [
+        'id',
+        'created_at',
+        'updated_at',
+    ]
+    raw_id_fields = ['schedule_config']
+
+    fieldsets = (
+        ('Configuração do Dia', {
+            'fields': (
+                'id',
+                'schedule_config',
+                'weekday',
+                'is_active',
+            )
+        }),
+        ('Horários', {
+            'fields': (
+                'start_time',
+                'end_time',
+                'lunch_start_time',
+                'lunch_end_time',
+            )
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at',
+                'updated_at',
+            )
+        }),
+    )
+
+    def get_queryset(self, request):
+        """
+        Otimiza queryset com select_related.
+        """
+        qs = super().get_queryset(request)
+        return qs.select_related('schedule_config', 'schedule_config__client')
+
+    def weekday_display(self, obj):
+        """Exibe o nome do dia da semana"""
+        return dict(WorkingDay.WEEKDAY_CHOICES)[obj.weekday]
+    weekday_display.short_description = 'Dia da Semana'
+    weekday_display.admin_order_field = 'weekday'
+
+    def has_lunch_break(self, obj):
+        """Indica se o dia tem horário de almoço configurado"""
+        if obj.lunch_start_time and obj.lunch_end_time:
+            return format_html(
+                '<span style="color: green;">✓ {}-{}</span>',
+                obj.lunch_start_time.strftime('%H:%M'),
+                obj.lunch_end_time.strftime('%H:%M')
+            )
+        return format_html('<span style="color: gray;">✗ Sem intervalo</span>')
+    has_lunch_break.short_description = 'Horário de Almoço'
+
+
+@admin.register(BlockedDay)
+class BlockedDayAdmin(admin.ModelAdmin):
+    """
+    Configuração do admin para o modelo BlockedDay.
+    """
+    list_display = [
+        'schedule_config',
+        'date',
+        'reason',
+        'created_at',
+    ]
+    list_filter = [
+        'date',
+        'schedule_config__client',
+        'created_at',
+    ]
+    search_fields = [
+        'schedule_config__client__full_name',
+        'schedule_config__client__email',
+        'reason',
+    ]
+    readonly_fields = [
+        'id',
+        'created_at',
+        'updated_at',
+    ]
+    raw_id_fields = ['schedule_config']
+    date_hierarchy = 'date'
+    ordering = ['-date']
+
+    fieldsets = (
+        ('Informações do Bloqueio', {
+            'fields': (
+                'id',
+                'schedule_config',
+                'date',
+                'reason',
+            )
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at',
+                'updated_at',
+            )
+        }),
+    )

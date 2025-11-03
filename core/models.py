@@ -666,6 +666,15 @@ class Appointment(models.Model):
     """
     Represents a medical appointment linked to a WhatsApp contact.
     """
+
+    STATUS_CHOICES = [
+        ('draft', 'Rascunho'),
+        ('pending', 'Aguardando Confirmação'),
+        ('confirmed', 'Confirmado'),
+        ('cancelled', 'Cancelado'),
+        ('completed', 'Realizado'),
+    ]
+
     contact = models.ForeignKey(
         "core.Contact",
         on_delete=models.CASCADE,
@@ -674,10 +683,18 @@ class Appointment(models.Model):
     )
 
     # Appointment details
-    date = models.DateField(help_text="Data")
-    time = models.TimeField(help_text="Hora")
+    date = models.DateField(help_text="Data", blank=True, null=True)
+    time = models.TimeField(help_text="Hora", blank=True, null=True)
 
-    scheduled_for = models.DateTimeField(help_text="Agendado para")
+    scheduled_for = models.DateTimeField(help_text="Agendado para", blank=True, null=True)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft',
+        verbose_name="Status",
+        help_text="Status do agendamento"
+    )
 
     # Google Calendar integration
     calendar_event_id = models.CharField(
@@ -710,5 +727,295 @@ class Appointment(models.Model):
             self.time = self.scheduled_for.time()
         super().save(*args, **kwargs)
 
+
+class ScheduleConfig(models.Model):
+    """
+    Schedule configuration for the client.
+    Defines default appointment duration and other global settings.
+    """
+
+    APPOINTMENT_DURATION_CHOICES = [
+        (30, '30 minutos'),
+        (60, '1 hora'),
+        (90, '1 hora e 30 minutos'),
+        (120, '2 horas'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    client = models.OneToOneField(
+        Client,
+        on_delete=models.CASCADE,
+        related_name='schedule_config',
+        verbose_name=_('Cliente'),
+        help_text=_('Cliente proprietário desta configuração de agenda')
+    )
+
+    appointment_duration = models.IntegerField(
+        choices=APPOINTMENT_DURATION_CHOICES,
+        default=60,
+        verbose_name=_('Tempo de Consulta (minutos)'),
+        help_text=_('Duração padrão de cada consulta em minutos')
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Criado em')
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_('Atualizado em')
+    )
+
+    class Meta:
+        verbose_name = _('Configuração de Agenda')
+        verbose_name_plural = _('Configurações de Agenda')
+
+    def __str__(self):
+        return f"Agenda de {self.client.full_name}"
+
+
+class WorkingDay(models.Model):
+    """
+    Working hours configuration per weekday.
+    """
+
+    WEEKDAY_CHOICES = [
+        (0, 'Segunda-feira'),
+        (1, 'Terça-feira'),
+        (2, 'Quarta-feira'),
+        (3, 'Quinta-feira'),
+        (4, 'Sexta-feira'),
+        (5, 'Sábado'),
+        (6, 'Domingo'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    schedule_config = models.ForeignKey(
+        ScheduleConfig,
+        on_delete=models.CASCADE,
+        related_name='working_days',
+        verbose_name=_('Configuração de Agenda')
+    )
+
+    weekday = models.IntegerField(
+        choices=WEEKDAY_CHOICES,
+        verbose_name=_('Dia da Semana'),
+        help_text=_('Dia da semana (0=Segunda, 6=Domingo)')
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('Ativo'),
+        help_text=_('Se desativado, não haverá atendimento neste dia')
+    )
+
+    start_time = models.TimeField(
+        verbose_name=_('Horário de Início'),
+        help_text=_('Horário de início do expediente')
+    )
+
+    end_time = models.TimeField(
+        verbose_name=_('Horário de Término'),
+        help_text=_('Horário de término do expediente')
+    )
+
+    lunch_start_time = models.TimeField(
+        blank=True,
+        null=True,
+        verbose_name=_('Horário de Início do Almoço'),
+        help_text=_('Horário de início do intervalo de almoço (opcional)')
+    )
+
+    lunch_end_time = models.TimeField(
+        blank=True,
+        null=True,
+        verbose_name=_('Horário de Término do Almoço'),
+        help_text=_('Horário de término do intervalo de almoço (opcional)')
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Criado em')
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_('Atualizado em')
+    )
+
+    class Meta:
+        verbose_name = _('Dia de Atendimento')
+        verbose_name_plural = _('Dias de Atendimento')
+        ordering = ['weekday']
+        # Each schedule config can have only one configuration per weekday
+        unique_together = [['schedule_config', 'weekday']]
+        indexes = [
+            models.Index(fields=['schedule_config', 'weekday']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        day_name = dict(self.WEEKDAY_CHOICES)[self.weekday]
+        status = "Ativo" if self.is_active else "Inativo"
+        return f"{day_name} - {self.start_time} às {self.end_time} ({status})"
+
+    def get_available_times(self, date=None):
+        """
+        Returns list of available times for this day, considering
+        the configured appointment duration.
+
+        Args:
+            date (date, optional): Specific date to check availability
+
+        Returns:
+            list: List of available times (time objects)
+        """
+        from datetime import datetime, timedelta
+
+        if not self.is_active:
+            return []
+
+        times = []
+        duration = self.schedule_config.appointment_duration
+
+        # Convert times to datetime for calculations
+        start = datetime.combine(datetime.today(), self.start_time)
+        end = datetime.combine(datetime.today(), self.end_time)
+
+        lunch_start = None
+        lunch_end = None
+        if self.lunch_start_time and self.lunch_end_time:
+            lunch_start = datetime.combine(datetime.today(), self.lunch_start_time)
+            lunch_end = datetime.combine(datetime.today(), self.lunch_end_time)
+
+        # Generate available times
+        current_time = start
+        while current_time + timedelta(minutes=duration) <= end:
+            # Check if not in lunch time
+            if lunch_start and lunch_end:
+                if not (lunch_start <= current_time < lunch_end):
+                    times.append(current_time.time())
+            else:
+                times.append(current_time.time())
+
+            # Move to next time slot
+            current_time += timedelta(minutes=duration)
+
+        return times
+
+
+class BlockedDay(models.Model):
+    """
+    Specific blocked dates (holidays, vacation, etc).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    schedule_config = models.ForeignKey(
+        ScheduleConfig,
+        on_delete=models.CASCADE,
+        related_name='blocked_days',
+        verbose_name=_('Configuração de Agenda')
+    )
+
+    date = models.DateField(
+        verbose_name=_('Data'),
+        help_text=_('Data bloqueada para atendimento')
+    )
+
+    reason = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name=_('Motivo'),
+        help_text=_('Motivo do bloqueio (ex: Feriado, Férias, etc)')
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Criado em')
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_('Atualizado em')
+    )
+
+    class Meta:
+        verbose_name = _('Dia Bloqueado')
+        verbose_name_plural = _('Dias Bloqueados')
+        ordering = ['date']
+        # Each schedule config can have only one block per date
+        unique_together = [['schedule_config', 'date']]
+        indexes = [
+            models.Index(fields=['schedule_config', 'date']),
+            models.Index(fields=['date']),
+        ]
+
+    def __str__(self):
+        reason_text = f" - {self.reason}" if self.reason else ""
+        return f"{self.date.strftime('%d/%m/%Y')}{reason_text}"
+
+
+class AppointmentToken(models.Model):
+    """
+    Token for public appointment scheduling link.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    appointment = models.OneToOneField(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name='token',
+        verbose_name=_('Agendamento'),
+        help_text=_('Agendamento associado a este token')
+    )
+
+    token = models.CharField(
+        max_length=64,
+        unique=True,
+        verbose_name=_('Token'),
+        help_text=_('Token único para acesso público')
+    )
+
+    expires_at = models.DateTimeField(
+        verbose_name=_('Expira em'),
+        help_text=_('Data e hora de expiração do link')
+    )
+
+    is_used = models.BooleanField(
+        default=False,
+        verbose_name=_('Utilizado'),
+        help_text=_('Se o link já foi utilizado para confirmar agendamento')
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Criado em')
+    )
+
+    class Meta:
+        verbose_name = _('Token de Agendamento')
+        verbose_name_plural = _('Tokens de Agendamento')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['token']),
+            models.Index(fields=['expires_at']),
+        ]
+
+    def __str__(self):
+        return f"Token para {self.appointment.contact.name or self.appointment.contact.phone_number}"
+
+    def is_valid(self):
+        """Verifica se o token ainda é válido"""
+        from django.utils import timezone
+        return not self.is_used and self.expires_at > timezone.now()
+
+    def get_public_url(self, base_url):
+        """Retorna a URL pública do agendamento"""
+        return f"{base_url}/agendar/{self.token}/"
 
 

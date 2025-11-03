@@ -167,4 +167,66 @@ O agendamento foi removido do sistema."""
             traceback.print_exc()
             return f"❌ Erro ao cancelar agendamento: {str(e)}"
 
-    return [consultar_agendamentos, cancelar_agendamento]
+    @tool
+    def gerar_link_agendamento() -> str:
+        """
+        Gera um link de auto-agendamento para o paciente escolher dia e horário da consulta.
+        O link é válido por 48 horas e permite que o paciente selecione entre os horários disponíveis.
+        Retorna o link que deve ser enviado ao paciente.
+        """
+        print(f"🔧 [TOOL CALL] gerar_link_agendamento (contact_id={contact_id})")
+        try:
+            from datetime import datetime, timedelta
+            from django.utils import timezone
+            from core.models import Appointment, AppointmentToken
+            from django.conf import settings
+            import secrets
+
+            contact = Contact.objects.get(id=contact_id)
+
+            # Cria um appointment em rascunho (sem data/hora definida)
+            appointment = Appointment.objects.create(
+                contact=contact,
+                status='draft'
+            )
+            print(f"✅ [TOOL] Appointment #{appointment.id} criado com status=draft")
+
+            # Gera token único
+            token = secrets.token_urlsafe(32)
+
+            # Define expiração para 48 horas
+            expires_at = timezone.now() + timedelta(hours=48)
+
+            # Cria o token de agendamento
+            appointment_token = AppointmentToken.objects.create(
+                appointment=appointment,
+                token=token,
+                expires_at=expires_at
+            )
+            print(f"✅ [TOOL] Token criado: {token}")
+
+            # Gera a URL pública
+            base_url = settings.BACKEND_BASE_URL.rstrip('/')
+            public_url = f"{base_url}/agendar/{token}/"
+
+            print(f"📤 [TOOL] Link gerado: {public_url}")
+
+            expires_formatted = expires_at.strftime('%d/%m/%Y às %H:%M')
+
+            return f"""✅ Link de agendamento gerado com sucesso!
+
+Acesse o link abaixo para escolher o melhor dia e horário:
+
+{public_url}
+
+⏰ Válido até: {expires_formatted}
+
+Você poderá ver todos os horários disponíveis e escolher o que for melhor para você!"""
+
+        except Exception as e:
+            print(f"❌ [TOOL] Erro ao gerar link de agendamento: {e}")
+            import traceback
+            traceback.print_exc()
+            return f"❌ Erro ao gerar link de agendamento: {str(e)}"
+
+    return [consultar_agendamentos, cancelar_agendamento, gerar_link_agendamento]

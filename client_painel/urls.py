@@ -20,6 +20,16 @@ urlpatterns = [
     # Perfil do usuário
     path('perfil/', views.profile_view, name='profile'),
 
+    # Agenda
+    path('agenda/', views.AgendaView.as_view(), name='agenda'),
+    path('agenda/configuracoes/', views.ScheduleSettingsView.as_view(), name='schedule_settings'),
+    path('agenda/api/availability/', views.ScheduleAvailabilityView.as_view(), name='schedule_availability'),
+
+    # Appointments (CRUD)
+    path('appointments/create/', views.AppointmentCreateView.as_view(), name='appointment_create'),
+    path('appointments/<int:appointment_id>/', views.AppointmentUpdateView.as_view(), name='appointment_update'),
+    path('appointments/<int:appointment_id>/delete/', views.AppointmentDeleteView.as_view(), name='appointment_delete'),
+
     # API endpoints para idioma
     path('api/languages/', views.get_available_languages, name='api_available_languages'),
     path('api/language/', views.get_user_language, name='api_get_user_language'),

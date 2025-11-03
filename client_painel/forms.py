@@ -6,7 +6,8 @@ Implementa validações e interface de usuário para gerenciamento de instância
 from django import forms
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
-from core.models import Client
+from core.models import Client, Contact, Appointment, ScheduleConfig, WorkingDay, BlockedDay
+from django.forms import inlineformset_factory
 
 User = get_user_model()
 
@@ -179,3 +180,163 @@ class ChangePasswordForm(forms.Form):
             raise forms.ValidationError(_('As senhas não conferem.'))
 
         return cleaned_data
+
+
+class AppointmentForm(forms.ModelForm):
+    """
+    Formulário para criação e edição de consultas/appointments.
+    """
+    # Campo extra para buscar/criar contato por telefone ou nome
+    contact_search = forms.CharField(
+        label=_('Paciente'),
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nome ou telefone do paciente',
+            'id': 'contactSearch'
+        }),
+        help_text=_('Digite o nome ou telefone do paciente')
+    )
+
+    class Meta:
+        model = Appointment
+        fields = ['contact', 'date', 'time']
+        widgets = {
+            'contact': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'contactSelect'
+            }),
+            'date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time'
+            })
+        }
+        labels = {
+            'contact': _('Paciente'),
+            'date': _('Data'),
+            'time': _('Horário')
+        }
+
+    def __init__(self, *args, client=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filtra contatos por cliente
+        if client:
+            self.fields['contact'].queryset = Contact.objects.filter(client=client)
+
+        # Se está editando, preenche o contact_search com o nome do contato
+        if self.instance and self.instance.pk and self.instance.contact:
+            self.fields['contact_search'].initial = (
+                self.instance.contact.name or self.instance.contact.phone_number
+            )
+
+
+class ScheduleConfigForm(forms.ModelForm):
+    """
+    Formulário para configuração geral da agenda.
+    """
+    class Meta:
+        model = ScheduleConfig
+        fields = ['appointment_duration']
+        widgets = {
+            'appointment_duration': forms.Select(attrs={
+                'class': 'form-select'
+            })
+        }
+        labels = {
+            'appointment_duration': _('Duração Padrão das Consultas')
+        }
+
+
+class WorkingDayForm(forms.ModelForm):
+    """
+    Formulário para configuração de dias de atendimento.
+    """
+    class Meta:
+        model = WorkingDay
+        fields = ['weekday', 'is_active', 'start_time', 'end_time', 'lunch_start_time', 'lunch_end_time']
+        widgets = {
+            'weekday': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'start_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time'
+            }),
+            'end_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time'
+            }),
+            'lunch_start_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time'
+            }),
+            'lunch_end_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time'
+            })
+        }
+        labels = {
+            'weekday': _('Dia da Semana'),
+            'is_active': _('Ativo'),
+            'start_time': _('Horário de Início'),
+            'end_time': _('Horário de Término'),
+            'lunch_start_time': _('Início do Almoço'),
+            'lunch_end_time': _('Término do Almoço')
+        }
+        help_texts = {
+            'is_active': _('Se desativado, não haverá atendimento neste dia'),
+            'lunch_start_time': _('Opcional'),
+            'lunch_end_time': _('Opcional')
+        }
+
+
+class BlockedDayForm(forms.ModelForm):
+    """
+    Formulário para bloqueio de dias específicos.
+    """
+    class Meta:
+        model = BlockedDay
+        fields = ['date', 'reason']
+        widgets = {
+            'date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'reason': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: Feriado, Férias, etc.'
+            })
+        }
+        labels = {
+            'date': _('Data'),
+            'reason': _('Motivo')
+        }
+
+
+# Formset para WorkingDays (permite editar múltiplos dias de uma vez)
+WorkingDayFormSet = inlineformset_factory(
+    ScheduleConfig,
+    WorkingDay,
+    form=WorkingDayForm,
+    extra=0,
+    can_delete=True,
+    min_num=0,
+    max_num=7  # Máximo 7 dias da semana
+)
+
+# Formset para BlockedDays
+BlockedDayFormSet = inlineformset_factory(
+    ScheduleConfig,
+    BlockedDay,
+    form=BlockedDayForm,
+    extra=1,
+    can_delete=True
+)

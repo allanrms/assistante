@@ -12,6 +12,8 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext_lazy as _
 from datetime import timedelta
 from django.conf import settings
+from django.views import View
+from django.contrib.auth.mixins import LoginRequiredMixin
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
@@ -20,7 +22,12 @@ from rest_framework import status
 
 from whatsapp_connector.models import EvolutionInstance, MessageHistory
 from google_calendar.models import GoogleCalendarAuth
-from .forms import LoginForm, UserProfileForm, ClientProfileForm, ChangePasswordForm
+from core.models import Appointment, Contact, ScheduleConfig, WorkingDay, BlockedDay
+from .forms import (
+    LoginForm, UserProfileForm, ClientProfileForm, ChangePasswordForm,
+    AppointmentForm, ScheduleConfigForm, WorkingDayFormSet, BlockedDayFormSet
+)
+from django.http import JsonResponse
 
 
 def login_view(request):
@@ -323,3 +330,486 @@ def profile_view(request):
     }
 
     return render(request, 'client_painel/profile.html', context)
+
+
+class AgendaView(LoginRequiredMixin, View):
+    """
+    View da página de Agenda com visualização semanal
+    """
+    login_url = 'client_painel:login'
+
+    def get(self, request):
+        if not request.user.client:
+            messages.warning(request, 'Você precisa completar seu cadastro de cliente.')
+            return redirect('core:register')
+
+        client = request.user.client
+
+        # Busca Appointments da semana atual (filtrados por cliente através dos contatos)
+        # Obter semana atual (Domingo = 0, Segunda = 1, ...)
+        today = timezone.now().date()
+
+        # Calcular início da semana (Domingo)
+        days_since_sunday = (today.weekday() + 1) % 7
+        start_of_week = today - timedelta(days=days_since_sunday)
+        end_of_week = start_of_week + timedelta(days=6)
+
+        # Busca appointments da semana para o calendário
+        appointments_week = Appointment.objects.filter(
+            contact__client=client,
+            date__gte=start_of_week,
+            date__lte=end_of_week
+        ).select_related('contact').order_by('date', 'time')
+
+        # Busca appointments do dia para a sidebar "Pacientes do dia"
+        appointments_today = Appointment.objects.filter(
+            contact__client=client,
+            date=today
+        ).select_related('contact').order_by('time')
+
+        # Serializa appointments para JSON (para uso no JavaScript)
+        import json
+        appointments_data = []
+        for appointment in appointments_week:
+            # Calcula o dia da semana: 0=Domingo, 1=Segunda, ..., 6=Sábado
+            # Python weekday() retorna 0=Segunda, mas precisamos 0=Domingo para o grid
+            weekday = (appointment.date.weekday() + 1) % 7
+
+            appointments_data.append({
+                'id': appointment.id,  # ID como int (não precisa converter para string)
+                'contact_name': appointment.contact.name or appointment.contact.phone_number,
+                'date': appointment.date.isoformat(),
+                'time': appointment.time.strftime('%H:%M'),
+                'weekday': weekday,  # Dia da semana calculado no backend
+                'scheduled_for': appointment.scheduled_for.isoformat() if appointment.scheduled_for else None,
+            })
+
+        # Busca todos os contatos do cliente para o select do modal
+        contacts = Contact.objects.filter(client=client).order_by('name')
+
+        context = {
+            'appointments_week': appointments_week,
+            'appointments_today': appointments_today,
+            'appointments_json': json.dumps(appointments_data),
+            'contacts': contacts,
+            'start_of_week': start_of_week,
+            'end_of_week': end_of_week,
+            'today': today,
+        }
+
+        return render(request, 'client_painel/agenda.html', context)
+
+
+class AppointmentCreateView(LoginRequiredMixin, View):
+    """
+    View para criar um novo appointment
+    """
+    login_url = 'client_painel:login'
+
+    def post(self, request):
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        client = request.user.client
+        form = AppointmentForm(request.POST, client=client)
+
+        if form.is_valid():
+            appointment = form.save(commit=False)
+
+            # Define scheduled_for baseado em date e time
+            from datetime import datetime
+            appointment.scheduled_for = datetime.combine(
+                appointment.date,
+                appointment.time
+            )
+
+            # Validar disponibilidade do horário
+            validation_error = self._validate_appointment_availability(client, appointment.date, appointment.time)
+            if validation_error:
+                return JsonResponse({'error': validation_error}, status=400)
+
+            appointment.save()
+
+            return JsonResponse({
+                'success': True,
+                'appointment': {
+                    'id': appointment.id,  # ID como int
+                    'contact_name': appointment.contact.name or appointment.contact.phone_number,
+                    'date': appointment.date.isoformat(),
+                    'time': appointment.time.strftime('%H:%M'),
+                    'weekday': (appointment.date.weekday() + 1) % 7
+                }
+            })
+        else:
+            return JsonResponse({
+                'error': 'Erro ao criar consulta',
+                'errors': form.errors
+            }, status=400)
+
+    def _validate_appointment_availability(self, client, date, time):
+        """
+        Valida se o horário está disponível para agendamento.
+        Retorna mensagem de erro se não estiver disponível, None caso contrário.
+        """
+        # Busca configuração da agenda
+        try:
+            schedule_config = ScheduleConfig.objects.get(client=client)
+        except ScheduleConfig.DoesNotExist:
+            return None  # Se não há configuração, permite agendar
+
+        # 1. Verifica se o dia está bloqueado
+        if schedule_config.blocked_days.filter(date=date).exists():
+            blocked_day = schedule_config.blocked_days.get(date=date)
+            reason = blocked_day.reason or 'sem motivo especificado'
+            return f'Este dia está bloqueado para agendamentos ({reason}).'
+
+        # 2. Verifica se o dia da semana está ativo
+        # Python weekday: 0=Monday, 6=Sunday
+        # WorkingDay weekday: 0=Monday, 6=Sunday
+        weekday = date.weekday()
+
+        try:
+            working_day = schedule_config.working_days.get(weekday=weekday)
+        except WorkingDay.DoesNotExist:
+            return 'Não há configuração de atendimento para este dia da semana.'
+
+        if not working_day.is_active:
+            return 'Não há atendimento neste dia da semana.'
+
+        # 3. Verifica se está no horário de almoço
+        if working_day.lunch_start_time and working_day.lunch_end_time:
+            if working_day.lunch_start_time <= time < working_day.lunch_end_time:
+                return 'Este horário corresponde ao intervalo de almoço.'
+
+        # 4. Verifica se está dentro do horário de expediente
+        if time < working_day.start_time or time >= working_day.end_time:
+            return f'Este horário está fora do expediente ({working_day.start_time.strftime("%H:%M")} - {working_day.end_time.strftime("%H:%M")}).'
+
+        # 5. Verifica se o horário está na lista de horários disponíveis
+        available_times = working_day.get_available_times()
+        time_str = time.strftime('%H:%M')
+        available_times_str = [t.strftime('%H:%M') for t in available_times]
+
+        if time_str not in available_times_str:
+            return 'Este horário não está disponível para agendamentos.'
+
+        return None  # Horário disponível
+
+
+class AppointmentUpdateView(LoginRequiredMixin, View):
+    """
+    View para editar um appointment existente
+    """
+    login_url = 'client_painel:login'
+
+    def get(self, request, appointment_id):
+        """Retorna os dados do appointment para edição"""
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        try:
+            appointment = Appointment.objects.select_related('contact').get(
+                id=appointment_id,
+                contact__client=request.user.client
+            )
+
+            return JsonResponse({
+                'id': appointment.id,  # ID como int
+                'contact_id': str(appointment.contact.id),  # UUID do contact mantém como string
+                'contact_name': appointment.contact.name or appointment.contact.phone_number,
+                'date': appointment.date.isoformat(),
+                'time': appointment.time.strftime('%H:%M'),
+            })
+        except Appointment.DoesNotExist:
+            return JsonResponse({'error': 'Consulta não encontrada'}, status=404)
+
+    def post(self, request, appointment_id):
+        """Atualiza o appointment"""
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        try:
+            appointment = Appointment.objects.get(
+                id=appointment_id,
+                contact__client=request.user.client
+            )
+
+            form = AppointmentForm(request.POST, instance=appointment, client=request.user.client)
+
+            if form.is_valid():
+                appointment = form.save(commit=False)
+
+                # Atualiza scheduled_for
+                from datetime import datetime
+                appointment.scheduled_for = datetime.combine(
+                    appointment.date,
+                    appointment.time
+                )
+
+                # Validar disponibilidade do horário
+                validation_error = self._validate_appointment_availability(
+                    request.user.client,
+                    appointment.date,
+                    appointment.time
+                )
+                if validation_error:
+                    return JsonResponse({'error': validation_error}, status=400)
+
+                appointment.save()
+
+                return JsonResponse({
+                    'success': True,
+                    'appointment': {
+                        'id': appointment.id,  # ID como int
+                        'contact_name': appointment.contact.name or appointment.contact.phone_number,
+                        'date': appointment.date.isoformat(),
+                        'time': appointment.time.strftime('%H:%M'),
+                        'weekday': (appointment.date.weekday() + 1) % 7
+                    }
+                })
+            else:
+                return JsonResponse({
+                    'error': 'Erro ao atualizar consulta',
+                    'errors': form.errors
+                }, status=400)
+
+        except Appointment.DoesNotExist:
+            return JsonResponse({'error': 'Consulta não encontrada'}, status=404)
+
+    def _validate_appointment_availability(self, client, date, time):
+        """
+        Valida se o horário está disponível para agendamento.
+        Retorna mensagem de erro se não estiver disponível, None caso contrário.
+        """
+        # Busca configuração da agenda
+        try:
+            schedule_config = ScheduleConfig.objects.get(client=client)
+        except ScheduleConfig.DoesNotExist:
+            return None  # Se não há configuração, permite agendar
+
+        # 1. Verifica se o dia está bloqueado
+        if schedule_config.blocked_days.filter(date=date).exists():
+            blocked_day = schedule_config.blocked_days.get(date=date)
+            reason = blocked_day.reason or 'sem motivo especificado'
+            return f'Este dia está bloqueado para agendamentos ({reason}).'
+
+        # 2. Verifica se o dia da semana está ativo
+        # Python weekday: 0=Monday, 6=Sunday
+        # WorkingDay weekday: 0=Monday, 6=Sunday
+        weekday = date.weekday()
+
+        try:
+            working_day = schedule_config.working_days.get(weekday=weekday)
+        except WorkingDay.DoesNotExist:
+            return 'Não há configuração de atendimento para este dia da semana.'
+
+        if not working_day.is_active:
+            return 'Não há atendimento neste dia da semana.'
+
+        # 3. Verifica se está no horário de almoço
+        if working_day.lunch_start_time and working_day.lunch_end_time:
+            if working_day.lunch_start_time <= time < working_day.lunch_end_time:
+                return 'Este horário corresponde ao intervalo de almoço.'
+
+        # 4. Verifica se está dentro do horário de expediente
+        if time < working_day.start_time or time >= working_day.end_time:
+            return f'Este horário está fora do expediente ({working_day.start_time.strftime("%H:%M")} - {working_day.end_time.strftime("%H:%M")}).'
+
+        # 5. Verifica se o horário está na lista de horários disponíveis
+        available_times = working_day.get_available_times()
+        time_str = time.strftime('%H:%M')
+        available_times_str = [t.strftime('%H:%M') for t in available_times]
+
+        if time_str not in available_times_str:
+            return 'Este horário não está disponível para agendamentos.'
+
+        return None  # Horário disponível
+
+
+class AppointmentDeleteView(LoginRequiredMixin, View):
+    """
+    View para deletar um appointment
+    """
+    login_url = 'client_painel:login'
+
+    def post(self, request, appointment_id):
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        try:
+            appointment = Appointment.objects.get(
+                id=appointment_id,
+                contact__client=request.user.client
+            )
+
+            appointment.delete()
+
+            return JsonResponse({'success': True})
+
+        except Appointment.DoesNotExist:
+            return JsonResponse({'error': 'Consulta não encontrada'}, status=404)
+
+
+class ScheduleSettingsView(LoginRequiredMixin, View):
+    """
+    View para configuração da agenda (horários, dias bloqueados, etc).
+    """
+    login_url = 'client_painel:login'
+
+    def get(self, request):
+        if not request.user.client:
+            messages.warning(request, 'Você precisa completar seu cadastro de cliente.')
+            return redirect('core:register')
+
+        client = request.user.client
+
+        # Busca ou cria a configuração da agenda do cliente
+        schedule_config, created = ScheduleConfig.objects.get_or_create(
+            client=client,
+            defaults={'appointment_duration': 60}
+        )
+
+        # Se foi criado, vamos criar os 7 dias da semana com configurações padrão
+        if created:
+            # Segunda a Sexta: 08:00-18:00 com almoço 12:00-13:00
+            for weekday in range(5):  # 0-4 (Seg-Sex)
+                WorkingDay.objects.create(
+                    schedule_config=schedule_config,
+                    weekday=weekday,
+                    is_active=True,
+                    start_time='08:00',
+                    end_time='18:00',
+                    lunch_start_time='12:00',
+                    lunch_end_time='13:00'
+                )
+            # Sábado: 08:00-12:00 sem almoço
+            WorkingDay.objects.create(
+                schedule_config=schedule_config,
+                weekday=5,
+                is_active=False,
+                start_time='08:00',
+                end_time='12:00'
+            )
+            # Domingo: desativado
+            WorkingDay.objects.create(
+                schedule_config=schedule_config,
+                weekday=6,
+                is_active=False,
+                start_time='08:00',
+                end_time='12:00'
+            )
+
+        # Formulário de configuração principal
+        config_form = ScheduleConfigForm(instance=schedule_config)
+
+        # Formsets para dias de trabalho e dias bloqueados
+        working_days_formset = WorkingDayFormSet(
+            instance=schedule_config,
+            queryset=schedule_config.working_days.all().order_by('weekday')
+        )
+        blocked_days_formset = BlockedDayFormSet(
+            instance=schedule_config,
+            queryset=schedule_config.blocked_days.all().order_by('-date')
+        )
+
+        context = {
+            'config_form': config_form,
+            'working_days_formset': working_days_formset,
+            'blocked_days_formset': blocked_days_formset,
+            'schedule_config': schedule_config,
+        }
+
+        return render(request, 'client_painel/schedule_settings.html', context)
+
+    def post(self, request):
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        client = request.user.client
+
+        # Busca a configuração existente
+        try:
+            schedule_config = ScheduleConfig.objects.get(client=client)
+        except ScheduleConfig.DoesNotExist:
+            return JsonResponse({'error': 'Configuração não encontrada'}, status=404)
+
+        # Processa os formulários
+        config_form = ScheduleConfigForm(request.POST, instance=schedule_config)
+        working_days_formset = WorkingDayFormSet(
+            request.POST,
+            instance=schedule_config
+        )
+        blocked_days_formset = BlockedDayFormSet(
+            request.POST,
+            instance=schedule_config
+        )
+
+        if config_form.is_valid() and working_days_formset.is_valid() and blocked_days_formset.is_valid():
+            # Salva a configuração principal
+            config_form.save()
+
+            # Salva os dias de trabalho
+            working_days_formset.save()
+
+            # Salva os dias bloqueados
+            blocked_days_formset.save()
+
+            messages.success(request, 'Configurações da agenda atualizadas com sucesso!')
+            return redirect('client_painel:schedule_settings')
+        else:
+            # Retorna para a página com os erros
+            messages.error(request, 'Erro ao salvar configurações. Verifique os campos.')
+
+            context = {
+                'config_form': config_form,
+                'working_days_formset': working_days_formset,
+                'blocked_days_formset': blocked_days_formset,
+                'schedule_config': schedule_config,
+            }
+
+            return render(request, 'client_painel/schedule_settings.html', context)
+
+
+class ScheduleAvailabilityView(LoginRequiredMixin, View):
+    """
+    API endpoint to get schedule availability configuration (working days, blocked days, etc).
+    """
+    login_url = 'client_painel:login'
+
+    def get(self, request):
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        client = request.user.client
+
+        # Get or create schedule config
+        schedule_config, _ = ScheduleConfig.objects.get_or_create(
+            client=client,
+            defaults={'appointment_duration': 60}
+        )
+
+        # Get working days
+        working_days = {}
+        for working_day in schedule_config.working_days.all():
+            working_days[working_day.weekday] = {
+                'is_active': working_day.is_active,
+                'start_time': working_day.start_time.strftime('%H:%M') if working_day.start_time else None,
+                'end_time': working_day.end_time.strftime('%H:%M') if working_day.end_time else None,
+                'lunch_start_time': working_day.lunch_start_time.strftime('%H:%M') if working_day.lunch_start_time else None,
+                'lunch_end_time': working_day.lunch_end_time.strftime('%H:%M') if working_day.lunch_end_time else None,
+                'available_times': [t.strftime('%H:%M') for t in working_day.get_available_times()]
+            }
+
+        # Get blocked days
+        blocked_days = []
+        for blocked_day in schedule_config.blocked_days.all():
+            blocked_days.append({
+                'date': blocked_day.date.isoformat(),
+                'reason': blocked_day.reason
+            })
+
+        return JsonResponse({
+            'appointment_duration': schedule_config.appointment_duration,
+            'working_days': working_days,
+            'blocked_days': blocked_days
+        })

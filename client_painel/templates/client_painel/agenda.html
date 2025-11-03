@@ -593,6 +593,132 @@
         }
     }
 
+    /* Monthly Calendar Grid */
+    .calendar-month-grid {
+        display: none;
+    }
+
+    .calendar-month-grid.active {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 1px;
+        background: var(--border-light);
+        border: 1px solid var(--border-light);
+    }
+
+    .month-day-header {
+        background: var(--bg-tertiary);
+        padding: var(--spacing-md);
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+
+    .month-day-cell {
+        background: var(--surface);
+        min-height: 120px;
+        padding: var(--spacing-sm);
+        position: relative;
+        cursor: pointer;
+        transition: background var(--transition-base);
+    }
+
+    .month-day-cell:hover {
+        background: var(--bg-secondary);
+    }
+
+    .month-day-cell.other-month {
+        background: var(--bg-tertiary);
+        opacity: 0.5;
+    }
+
+    .month-day-cell.today {
+        background: rgba(220, 38, 38, 0.05);
+        border: 2px solid var(--accent);
+    }
+
+    .month-day-cell.blocked {
+        background: repeating-linear-gradient(
+            45deg,
+            #f9fafb,
+            #f9fafb 10px,
+            #f3f4f6 10px,
+            #f3f4f6 20px
+        );
+        cursor: not-allowed;
+        position: relative;
+    }
+
+    .month-day-cell.blocked::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.3);
+        pointer-events: none;
+    }
+
+    .month-day-cell.blocked .month-day-number {
+        color: #9ca3af;
+    }
+
+    .month-day-cell.blocked .month-events {
+        opacity: 0.6;
+    }
+
+    .month-day-cell.blocked:not(:has(.month-event-item))::after {
+        content: 'Bloqueado';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #9ca3af;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-align: center;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .month-day-number {
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .month-day-cell.today .month-day-number {
+        color: var(--accent);
+    }
+
+    .month-events {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .month-event-item {
+        background: rgba(14, 165, 233, 0.15);
+        border-left: 3px solid #0ea5e9;
+        padding: 2px 4px;
+        border-radius: 2px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #0ea5e9;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .month-event-item:hover {
+        background: rgba(14, 165, 233, 0.25);
+    }
+
     @media (max-width: 768px) {
         .calendar-week-grid {
             overflow-x: scroll;
@@ -609,6 +735,10 @@
         .action-btn {
             font-size: 0.75rem;
             padding: 0.5rem var(--spacing-sm);
+        }
+
+        .month-day-cell {
+            min-height: 80px;
         }
     }
 </style>
@@ -724,17 +854,20 @@
                 </button>
 
                 <div class="calendar-view-toggle ms-3">
-                    <button class="view-toggle-btn" onclick="changeView('dia')">
+                    <button class="view-toggle-btn" data-view="dia" onclick="changeView('dia')">
                         {% trans 'DIA' %}
                     </button>
-                    <button class="view-toggle-btn active" onclick="changeView('semana')">
+                    <button class="view-toggle-btn active" data-view="semana" onclick="changeView('semana')">
                         {% trans 'SEMANA' %}
+                    </button>
+                    <button class="view-toggle-btn" data-view="mes" onclick="changeView('mes')">
+                        {% trans 'MÊS' %}
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Calendar Grid -->
+        <!-- Weekly Calendar Grid -->
         <div class="calendar-week-grid" id="calendarGrid">
             <!-- Headers -->
             <div class="calendar-week-header">
@@ -882,6 +1015,13 @@
                 // Load config on page load
                 loadScheduleConfig();
 
+                // Check if view parameter is set and activate appropriate view
+                const urlParams = new URLSearchParams(window.location.search);
+                const requestedView = urlParams.get('view');
+                if (requestedView === 'mes') {
+                    changeView('mes');
+                }
+
                 hours.forEach(hour => {
                     // Time label
                     const timeSlot = document.createElement('div');
@@ -983,25 +1123,219 @@
                 }
 
                 function previousWeek() {
-                    const currentOffset = {% if week_offset is not None %}{{ week_offset }}{% else %}0{% endif %};
-                    window.location.href = '{% url "client_painel:agenda" %}?week_offset=' + (currentOffset - 1);
+                    if (currentView === 'mes') {
+                        // Navigate to previous month
+                        const currentMonth = new Date(startOfWeek);
+                        currentMonth.setMonth(currentMonth.getMonth() - 1);
+                        const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                        const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+                        window.location.href = `{% url "client_painel:agenda" %}?start_date=${firstDay.toISOString().split('T')[0]}&end_date=${lastDay.toISOString().split('T')[0]}&view=mes`;
+                    } else {
+                        const currentOffset = {% if week_offset is not None %}{{ week_offset }}{% else %}0{% endif %};
+                        window.location.href = '{% url "client_painel:agenda" %}?week_offset=' + (currentOffset - 1);
+                    }
                 }
 
                 function nextWeek() {
-                    const currentOffset = {% if week_offset is not None %}{{ week_offset }}{% else %}0{% endif %};
-                    window.location.href = '{% url "client_painel:agenda" %}?week_offset=' + (currentOffset + 1);
+                    if (currentView === 'mes') {
+                        // Navigate to next month
+                        const currentMonth = new Date(startOfWeek);
+                        currentMonth.setMonth(currentMonth.getMonth() + 1);
+                        const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                        const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+                        window.location.href = `{% url "client_painel:agenda" %}?start_date=${firstDay.toISOString().split('T')[0]}&end_date=${lastDay.toISOString().split('T')[0]}&view=mes`;
+                    } else {
+                        const currentOffset = {% if week_offset is not None %}{{ week_offset }}{% else %}0{% endif %};
+                        window.location.href = '{% url "client_painel:agenda" %}?week_offset=' + (currentOffset + 1);
+                    }
                 }
 
                 function goToToday() {
                     window.location.href = '{% url "client_painel:agenda" %}';
                 }
 
+                let currentView = 'semana';
+
                 function changeView(view) {
-                    // TODO: Implement view change logic
+                    // Update active button
                     document.querySelectorAll('.view-toggle-btn').forEach(btn => {
                         btn.classList.remove('active');
+                        if (btn.dataset.view === view) {
+                            btn.classList.add('active');
+                        }
                     });
-                    event.target.classList.add('active');
+
+                    // Toggle grids
+                    const weekGrid = document.getElementById('calendarGrid');
+                    const monthGrid = document.getElementById('monthCalendarGrid');
+
+                    if (view === 'mes') {
+                        weekGrid.style.display = 'none';
+                        monthGrid.classList.add('active');
+                        renderMonthCalendar();
+                        currentView = 'mes';
+                    } else if (view === 'semana') {
+                        weekGrid.style.display = 'grid';
+                        monthGrid.classList.remove('active');
+                        currentView = 'semana';
+                    } else if (view === 'dia') {
+                        // TODO: Implement day view
+                        alert('Visualização por dia em desenvolvimento');
+                    }
+                }
+
+                // Expor funções globalmente para onclick
+                window.changeView = changeView;
+
+                function renderMonthCalendar() {
+                    const monthGrid = document.getElementById('monthCalendarGrid');
+
+                    // Remove existing day cells
+                    const existingCells = monthGrid.querySelectorAll('.month-day-cell');
+                    existingCells.forEach(cell => cell.remove());
+
+                    // Calculate month to display (from start_of_week)
+                    const monthDate = new Date(startOfWeek);
+                    const year = monthDate.getFullYear();
+                    const month = monthDate.getMonth();
+
+                    // Update title
+                    const monthNames = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+                                       'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+                    document.getElementById('currentWeekText').textContent = `${monthNames[month]} de ${year}`;
+
+                    // Get first and last day of month
+                    const firstDay = new Date(year, month, 1);
+                    const lastDay = new Date(year, month + 1, 0);
+
+                    // Get the starting day (previous month days to fill the grid)
+                    const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday
+                    const startDate = new Date(firstDay);
+                    startDate.setDate(startDate.getDate() - startingDayOfWeek);
+
+                    // Calculate total days to show (6 weeks = 42 days)
+                    const totalDays = 42;
+
+                    const today = new Date('{{ today|date:"Y-m-d" }}');
+                    today.setHours(0, 0, 0, 0);
+
+                    // Create blocked dates lookup from scheduleConfig
+                    const blockedDatesSet = new Set();
+                    if (scheduleConfig && scheduleConfig.blocked_days) {
+                        scheduleConfig.blocked_days.forEach(bd => {
+                            blockedDatesSet.add(bd.date);
+                        });
+                    }
+
+                    // Create appointment lookup by date
+                    const appointmentsByDate = {};
+                    appointments.forEach(apt => {
+                        if (!appointmentsByDate[apt.date]) {
+                            appointmentsByDate[apt.date] = [];
+                        }
+                        appointmentsByDate[apt.date].push(apt);
+                    });
+
+                    // Generate day cells
+                    for (let i = 0; i < totalDays; i++) {
+                        const currentDate = new Date(startDate);
+                        currentDate.setDate(startDate.getDate() + i);
+
+                        const dayCell = document.createElement('div');
+                        dayCell.className = 'month-day-cell';
+
+                        // Get date string for checking
+                        const dateStr = currentDate.toISOString().split('T')[0];
+
+                        // Check if day is blocked
+                        let isBlocked = false;
+                        let blockReason = '';
+
+                        // Check if date is in blocked_days
+                        if (blockedDatesSet.has(dateStr)) {
+                            isBlocked = true;
+                            const blockedDay = scheduleConfig.blocked_days.find(bd => bd.date === dateStr);
+                            blockReason = blockedDay && blockedDay.reason ? blockedDay.reason : 'Dia bloqueado';
+                        }
+
+                        // Check if weekday is not active
+                        if (scheduleConfig && scheduleConfig.working_days) {
+                            // Map calendar day to WorkingDay weekday
+                            const weekdayMap = {
+                                0: 6, // Sunday -> 6
+                                1: 0, // Monday -> 0
+                                2: 1, // Tuesday -> 1
+                                3: 2, // Wednesday -> 2
+                                4: 3, // Thursday -> 3
+                                5: 4, // Friday -> 4
+                                6: 5  // Saturday -> 5
+                            };
+                            const workingDayWeekday = weekdayMap[currentDate.getDay()];
+                            const workingDay = scheduleConfig.working_days[workingDayWeekday];
+
+                            if (!workingDay || !workingDay.is_active) {
+                                isBlocked = true;
+                                if (!blockReason) {
+                                    blockReason = 'Não há atendimento neste dia da semana';
+                                }
+                            }
+                        }
+
+                        if (isBlocked) {
+                            dayCell.classList.add('blocked');
+                        }
+
+                        // Check if day is in current month
+                        if (currentDate.getMonth() !== month) {
+                            dayCell.classList.add('other-month');
+                        }
+
+                        // Check if today
+                        const cellDate = new Date(currentDate);
+                        cellDate.setHours(0, 0, 0, 0);
+                        if (cellDate.getTime() === today.getTime()) {
+                            dayCell.classList.add('today');
+                        }
+
+                        // Day number
+                        const dayNumber = document.createElement('div');
+                        dayNumber.className = 'month-day-number';
+                        dayNumber.textContent = currentDate.getDate();
+                        dayCell.appendChild(dayNumber);
+
+                        // Events container
+                        const eventsContainer = document.createElement('div');
+                        eventsContainer.className = 'month-events';
+
+                        // Get appointments for this date (dateStr já foi declarado acima)
+                        const dayAppointments = appointmentsByDate[dateStr] || [];
+
+                        dayAppointments.forEach(apt => {
+                            const eventItem = document.createElement('div');
+                            eventItem.className = 'month-event-item';
+                            eventItem.textContent = `${apt.time} - ${apt.contact_name}`;
+                            eventItem.onclick = (e) => {
+                                e.stopPropagation();
+                                openAppointmentModal(apt.id, apt.date, apt.time, apt.contact_name);
+                            };
+                            eventsContainer.appendChild(eventItem);
+                        });
+
+                        dayCell.appendChild(eventsContainer);
+
+                        // Click to create new appointment (only if not blocked)
+                        if (isBlocked) {
+                            dayCell.onclick = () => {
+                                alert(`Este dia está bloqueado para agendamentos.\nMotivo: ${blockReason}`);
+                            };
+                        } else {
+                            dayCell.onclick = () => {
+                                openAppointmentModal(null, dateStr, '09:00');
+                            };
+                        }
+
+                        monthGrid.appendChild(dayCell);
+                    }
                 }
 
                 // Date Range Picker functionality
@@ -1043,6 +1377,20 @@
                 }
             </script>
         </div>
+
+        <!-- Monthly Calendar Grid -->
+        <div class="calendar-month-grid" id="monthCalendarGrid">
+            <!-- Headers -->
+            <div class="month-day-header">DOM</div>
+            <div class="month-day-header">SEG</div>
+            <div class="month-day-header">TER</div>
+            <div class="month-day-header">QUA</div>
+            <div class="month-day-header">QUI</div>
+            <div class="month-day-header">SEX</div>
+            <div class="month-day-header">SÁB</div>
+            <!-- Days will be generated by JavaScript -->
+        </div>
+    </div> <!-- fim calendar-container -->
     </div> <!-- fim agenda-layout -->
 </div>
 
@@ -1122,14 +1470,28 @@
 
     // Funções para o modal de appointment
     function openAppointmentModal(appointmentId = null, date = '', time = '', contactName = '') {
-        const modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
+        const modalElement = document.getElementById('appointmentModal');
+        if (!modalElement) {
+            console.error('Modal element not found');
+            return;
+        }
+
+        const modal = new bootstrap.Modal(modalElement);
         const form = document.getElementById('appointmentForm');
         const modalTitle = document.getElementById('appointmentModalLabel');
         const deleteBtn = document.getElementById('deleteAppointmentBtn');
 
+        if (!form || !modalTitle || !deleteBtn) {
+            console.error('Required modal elements not found');
+            return;
+        }
+
         // Limpa o formulário
         form.reset();
-        document.getElementById('formErrors').classList.add('d-none');
+        const formErrors = document.getElementById('formErrors');
+        if (formErrors) {
+            formErrors.classList.add('d-none');
+        }
 
         if (appointmentId) {
             // Modo edição
@@ -1173,7 +1535,9 @@
     }
 
     // Salvar appointment
-    document.getElementById('saveAppointmentBtn').addEventListener('click', function() {
+    const saveAppointmentBtn = document.getElementById('saveAppointmentBtn');
+    if (saveAppointmentBtn) {
+        saveAppointmentBtn.addEventListener('click', function() {
         const form = document.getElementById('appointmentForm');
         const formData = new FormData(form);
         const appointmentId = document.getElementById('appointmentId').value;
@@ -1203,20 +1567,31 @@
             } else {
                 // Mostra erros
                 const errorsDiv = document.getElementById('formErrors');
-                errorsDiv.textContent = data.error || 'Erro ao salvar consulta';
-                errorsDiv.classList.remove('d-none');
+                if (errorsDiv) {
+                    errorsDiv.textContent = data.error || 'Erro ao salvar consulta';
+                    errorsDiv.classList.remove('d-none');
+                } else {
+                    alert(data.error || 'Erro ao salvar consulta');
+                }
             }
         })
         .catch(error => {
             console.error('Erro:', error);
             const errorsDiv = document.getElementById('formErrors');
-            errorsDiv.textContent = 'Erro ao comunicar com o servidor';
-            errorsDiv.classList.remove('d-none');
+            if (errorsDiv) {
+                errorsDiv.textContent = 'Erro ao comunicar com o servidor';
+                errorsDiv.classList.remove('d-none');
+            } else {
+                alert('Erro ao comunicar com o servidor');
+            }
         });
-    });
+        });
+    }
 
     // Deletar appointment
-    document.getElementById('deleteAppointmentBtn').addEventListener('click', function() {
+    const deleteAppointmentBtn = document.getElementById('deleteAppointmentBtn');
+    if (deleteAppointmentBtn) {
+        deleteAppointmentBtn.addEventListener('click', function() {
         if (!confirm('{% trans "Tem certeza que deseja excluir esta consulta?" %}')) {
             return;
         }
@@ -1244,7 +1619,8 @@
             console.error('Erro:', error);
             alert('Erro ao comunicar com o servidor');
         });
-    });
+        });
+    }
 
     // Expor função globalmente para ser chamada pelo calendário
     window.openAppointmentModal = openAppointmentModal;

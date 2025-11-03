@@ -383,12 +383,31 @@ class AgendaView(LoginRequiredMixin, View):
             start_of_week = today - timedelta(days=days_since_sunday) + timedelta(weeks=week_offset)
             end_of_week = start_of_week + timedelta(days=6)
 
-        # Busca appointments da semana para o calendário
-        appointments_week = Appointment.objects.filter(
-            contact__client=client,
-            date__gte=start_of_week,
-            date__lte=end_of_week
-        ).select_related('contact').order_by('date', 'time')
+        # Verifica se está na visualização mensal para buscar appointments do mês inteiro
+        view_param = request.GET.get('view')
+        if view_param == 'mes' or (start_date_param and end_date_param and (end_of_week - start_of_week).days > 7):
+            # Se for visualização mensal, busca o mês completo incluindo dias do mês anterior/posterior
+            # que aparecem no calendário (até 42 dias = 6 semanas)
+            first_day_of_month = start_of_week.replace(day=1)
+            last_day_of_month = (first_day_of_month.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+
+            # Calcula o início do grid (pode incluir dias do mês anterior)
+            start_of_grid = first_day_of_month - timedelta(days=first_day_of_month.weekday() + 1 if first_day_of_month.weekday() != 6 else 0)
+            # Calcula o fim do grid (pode incluir dias do mês seguinte)
+            end_of_grid = start_of_grid + timedelta(days=41)
+
+            appointments_week = Appointment.objects.filter(
+                contact__client=client,
+                date__gte=start_of_grid,
+                date__lte=end_of_grid
+            ).select_related('contact').order_by('date', 'time')
+        else:
+            # Busca appointments da semana para o calendário
+            appointments_week = Appointment.objects.filter(
+                contact__client=client,
+                date__gte=start_of_week,
+                date__lte=end_of_week
+            ).select_related('contact').order_by('date', 'time')
 
         # Busca appointments do dia para a sidebar "Pacientes do dia"
         appointments_today = Appointment.objects.filter(

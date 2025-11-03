@@ -34,6 +34,112 @@
         gap: var(--spacing-md);
     }
 
+    .date-range-container {
+        position: relative;
+    }
+
+    .date-display-btn {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        padding: 0.625rem var(--spacing-lg);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all var(--transition-base);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+
+    .date-display-btn:hover {
+        background: var(--border-light);
+        border-color: var(--accent);
+    }
+
+    .date-range-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        background: var(--surface);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        box-shadow: var(--shadow-lg);
+        z-index: 1000;
+        min-width: 320px;
+        display: none;
+    }
+
+    .date-range-dropdown.show {
+        display: block;
+    }
+
+    .date-range-inputs {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .date-input-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .date-input-group label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .date-input-group input {
+        padding: 0.625rem;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        font-size: 0.875rem;
+    }
+
+    .date-range-actions {
+        display: flex;
+        gap: var(--spacing-sm);
+        justify-content: flex-end;
+        padding-top: var(--spacing-md);
+        border-top: 1px solid var(--border-light);
+    }
+
+    .btn-cancel, .btn-apply {
+        padding: 0.5rem var(--spacing-lg);
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all var(--transition-base);
+    }
+
+    .btn-cancel {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        color: var(--text-primary);
+    }
+
+    .btn-cancel:hover {
+        background: var(--border-light);
+    }
+
+    .btn-apply {
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        color: white;
+    }
+
+    .btn-apply:hover {
+        background: var(--danger);
+        border-color: var(--danger);
+    }
+
     .calendar-nav {
         display: flex;
         gap: var(--spacing-sm);
@@ -164,6 +270,11 @@
 
     .day-date.today {
         color: var(--accent);
+    }
+
+    .calendar-day-header.today-header {
+        background: rgba(220, 38, 38, 0.05);
+        border-color: var(--accent);
     }
 
     /* Time Slots */
@@ -569,7 +680,36 @@
         <div class="calendar-header">
             <div class="calendar-title">
                 <i class="bi bi-calendar-event"></i>
-                <span id="currentWeekText">{{ start_of_week|date:"d/m" }} a {{ end_of_week|date:"d/m" }}</span>
+                <div class="date-range-container">
+                    <button class="date-display-btn" id="dateRangeToggle">
+                        <span id="currentWeekText">
+                            {% if start_of_week.month == end_of_week.month %}
+                                {{ start_of_week|date:"d" }} a {{ end_of_week|date:"d" }} de {{ start_of_week|month_name }} de {{ start_of_week|date:"Y" }}
+                            {% else %}
+                                {{ start_of_week|date:"d/m" }} a {{ end_of_week|date:"d/m/Y" }}
+                            {% endif %}
+                        </span>
+                        <i class="bi bi-chevron-down ms-2"></i>
+                    </button>
+
+                    <!-- Date Range Picker Dropdown -->
+                    <div class="date-range-dropdown" id="dateRangeDropdown">
+                        <div class="date-range-inputs">
+                            <div class="date-input-group">
+                                <label>Data inicial</label>
+                                <input type="date" id="startDateInput" class="form-control" value="{{ start_of_week|date:'Y-m-d' }}">
+                            </div>
+                            <div class="date-input-group">
+                                <label>Data final</label>
+                                <input type="date" id="endDateInput" class="form-control" value="{{ end_of_week|date:'Y-m-d' }}">
+                            </div>
+                        </div>
+                        <div class="date-range-actions">
+                            <button class="btn-cancel" onclick="closeDateRangePicker()">Cancelar</button>
+                            <button class="btn-apply" onclick="applyDateRange()">Aplicar</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="calendar-nav">
@@ -601,18 +741,15 @@
                 <div class="calendar-time-header">Horário</div>
                 {% for i in "0123456" %}
                     {% with day_date=start_of_week|add_days:i %}
-                    <div class="calendar-day-header">
+                    <div class="calendar-day-header {% if day_date == today %}today-header{% endif %}">
                         <div class="day-name">
-                            {% if forloop.counter0 == 0 %}Domingo
-                            {% elif forloop.counter0 == 1 %}Segunda
-                            {% elif forloop.counter0 == 2 %}Terça
-                            {% elif forloop.counter0 == 3 %}Quarta
-                            {% elif forloop.counter0 == 4 %}Quinta
-                            {% elif forloop.counter0 == 5 %}Sexta
-                            {% else %}Sábado{% endif %}
+                            {{ day_date|weekday_name }}
+                            {% if day_date == today %}
+                                <span style="color: var(--accent); font-weight: 700; margin-left: 4px;">HOJE</span>
+                            {% endif %}
                         </div>
                         <div class="day-date {% if day_date == today %}today{% endif %}" id="day-{{ forloop.counter0 }}">
-                            {{ day_date.day }}
+                            {{ day_date|date:"d" }}
                         </div>
                     </div>
                     {% endwith %}
@@ -846,15 +983,17 @@
                 }
 
                 function previousWeek() {
-                    // TODO: Implement navigation logic (reload page with week parameter)
+                    const currentOffset = {% if week_offset is not None %}{{ week_offset }}{% else %}0{% endif %};
+                    window.location.href = '{% url "client_painel:agenda" %}?week_offset=' + (currentOffset - 1);
                 }
 
                 function nextWeek() {
-                    // TODO: Implement navigation logic (reload page with week parameter)
+                    const currentOffset = {% if week_offset is not None %}{{ week_offset }}{% else %}0{% endif %};
+                    window.location.href = '{% url "client_painel:agenda" %}?week_offset=' + (currentOffset + 1);
                 }
 
                 function goToToday() {
-                    window.location.reload();
+                    window.location.href = '{% url "client_painel:agenda" %}';
                 }
 
                 function changeView(view) {
@@ -863,6 +1002,44 @@
                         btn.classList.remove('active');
                     });
                     event.target.classList.add('active');
+                }
+
+                // Date Range Picker functionality
+                const dateRangeToggle = document.getElementById('dateRangeToggle');
+                const dateRangeDropdown = document.getElementById('dateRangeDropdown');
+
+                dateRangeToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dateRangeDropdown.classList.toggle('show');
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!dateRangeDropdown.contains(e.target) && e.target !== dateRangeToggle) {
+                        dateRangeDropdown.classList.remove('show');
+                    }
+                });
+
+                function closeDateRangePicker() {
+                    dateRangeDropdown.classList.remove('show');
+                }
+
+                function applyDateRange() {
+                    const startDate = document.getElementById('startDateInput').value;
+                    const endDate = document.getElementById('endDateInput').value;
+
+                    if (!startDate || !endDate) {
+                        alert('Por favor, selecione ambas as datas.');
+                        return;
+                    }
+
+                    if (new Date(startDate) > new Date(endDate)) {
+                        alert('A data inicial não pode ser maior que a data final.');
+                        return;
+                    }
+
+                    // Redireciona para a agenda com as datas customizadas
+                    window.location.href = `{% url "client_painel:agenda" %}?start_date=${startDate}&end_date=${endDate}`;
                 }
             </script>
         </div>
@@ -917,13 +1094,13 @@
 <!-- Script para busca de pacientes -->
 <script>
     // Funcionalidade de busca de pacientes
-    const searchInput = document.getElementById('searchPatientInput');
-    const patientItems = document.querySelectorAll('.patient-item');
+    const patientSearchInput = document.getElementById('searchPatientInput');
+    const patientListItems = document.querySelectorAll('.patient-item');
 
-    searchInput.addEventListener('input', function() {
+    patientSearchInput.addEventListener('input', function() {
         const searchTerm = this.value.toLowerCase();
 
-        patientItems.forEach(item => {
+        patientListItems.forEach(item => {
             const patientName = item.querySelector('.patient-name').textContent.toLowerCase();
             const patientTime = item.querySelector('.patient-time').textContent.toLowerCase();
 
@@ -936,7 +1113,7 @@
     });
 
     // Clique em paciente para destacar no calendário
-    patientItems.forEach(item => {
+    patientListItems.forEach(item => {
         item.addEventListener('click', function() {
             const appointmentId = this.dataset.appointmentId;
             // TODO: Destacar appointment no calendário ou abrir modal de edição

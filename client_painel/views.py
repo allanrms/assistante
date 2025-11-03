@@ -349,10 +349,39 @@ class AgendaView(LoginRequiredMixin, View):
         # Obter semana atual (Domingo = 0, Segunda = 1, ...)
         today = timezone.now().date()
 
-        # Calcular início da semana (Domingo)
-        days_since_sunday = (today.weekday() + 1) % 7
-        start_of_week = today - timedelta(days=days_since_sunday)
-        end_of_week = start_of_week + timedelta(days=6)
+        # Suporta 3 modos de visualização:
+        # 1. Intervalo customizado via start_date e end_date
+        # 2. Navegação de semanas via week_offset
+        # 3. Semana atual (padrão)
+
+        start_date_param = request.GET.get('start_date')
+        end_date_param = request.GET.get('end_date')
+
+        if start_date_param and end_date_param:
+            # Modo 1: Intervalo customizado
+            try:
+                from datetime import datetime
+                start_of_week = datetime.strptime(start_date_param, '%Y-%m-%d').date()
+                end_of_week = datetime.strptime(end_date_param, '%Y-%m-%d').date()
+
+                # Para manter o grid de 7 dias, ajustamos o end_of_week para ser sempre 6 dias após o start
+                # Mas vamos buscar appointments no intervalo real selecionado
+                # O grid sempre mostrará 7 dias começando pelo start_of_week
+                week_offset = None  # Não aplicável neste modo
+            except ValueError:
+                # Se as datas forem inválidas, volta para semana atual
+                days_since_sunday = (today.weekday() + 1) % 7
+                start_of_week = today - timedelta(days=days_since_sunday)
+                end_of_week = start_of_week + timedelta(days=6)
+                week_offset = 0
+        else:
+            # Modo 2 ou 3: week_offset ou semana atual
+            week_offset = int(request.GET.get('week_offset', 0))
+
+            # Calcular início da semana (Domingo) com offset
+            days_since_sunday = (today.weekday() + 1) % 7
+            start_of_week = today - timedelta(days=days_since_sunday) + timedelta(weeks=week_offset)
+            end_of_week = start_of_week + timedelta(days=6)
 
         # Busca appointments da semana para o calendário
         appointments_week = Appointment.objects.filter(
@@ -395,6 +424,7 @@ class AgendaView(LoginRequiredMixin, View):
             'start_of_week': start_of_week,
             'end_of_week': end_of_week,
             'today': today,
+            'week_offset': week_offset,
         }
 
         return render(request, 'client_painel/agenda.html', context)

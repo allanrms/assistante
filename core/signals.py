@@ -1,11 +1,14 @@
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from datetime import time
-
-from agents.models import Conversation
-from agents.tasks import create_conversation_summary
-
+import logging
+from datetime import datetime, timedelta
+from django.db.models.signals import pre_delete
+from django.utils import timezone
+from google_calendar.services import GoogleCalendarService
 from core.models import Appointment, ScheduleConfig, WorkingDay
+logger = logging.getLogger(__name__)
+
 
 
 # @receiver(post_save, sender=Appointment, weak=False)
@@ -110,13 +113,6 @@ def create_default_working_days(sender, instance, created, **kwargs):
 # Google Calendar Sync Signals
 # =============================================================================
 
-import logging
-from datetime import datetime, timedelta
-from django.db.models.signals import pre_delete
-from django.utils import timezone
-from google_calendar.services import GoogleCalendarService
-
-logger = logging.getLogger(__name__)
 
 
 def should_sync_to_calendar(appointment):

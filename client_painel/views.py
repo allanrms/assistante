@@ -535,7 +535,7 @@ class AppointmentCreateView(LoginRequiredMixin, View):
             return f'Este horário está fora do expediente ({working_day.start_time.strftime("%H:%M")} - {working_day.end_time.strftime("%H:%M")}).'
 
         # 5. Verifica se o horário está na lista de horários disponíveis
-        available_times = working_day.get_available_times()
+        available_times = working_day.get_available_times(date)
         time_str = time.strftime('%H:%M')
         available_times_str = [t.strftime('%H:%M') for t in available_times]
 
@@ -665,7 +665,7 @@ class AppointmentUpdateView(LoginRequiredMixin, View):
             return f'Este horário está fora do expediente ({working_day.start_time.strftime("%H:%M")} - {working_day.end_time.strftime("%H:%M")}).'
 
         # 5. Verifica se o horário está na lista de horários disponíveis
-        available_times = working_day.get_available_times()
+        available_times = working_day.get_available_times(date)
         time_str = time.strftime('%H:%M')
         available_times_str = [t.strftime('%H:%M') for t in available_times]
 

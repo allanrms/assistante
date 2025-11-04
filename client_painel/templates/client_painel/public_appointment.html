@@ -3,232 +3,589 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agendar Consulta</title>
+    <title>Agende sua consulta</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         :root {
-            --primary-color: #0ea5e9;
-            --success-color: #10b981;
-            --danger-color: #ef4444;
+            --primary-blue: #0ea5e9;
+            --gray-100: #f5f5f5;
+            --gray-200: #e5e7eb;
+            --gray-400: #9ca3af;
+            --gray-700: #374151;
+            --gray-900: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        .container-fluid {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background-color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0;
+        }
+
+        .header p {
+            font-size: 0.875rem;
+            color: var(--gray-400);
+            margin: 5px 0 0 0;
+        }
+
+        /* Main Content Layout */
+        .main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Left Sidebar - Filters */
+        .filters-sidebar {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .filter-group {
+            margin-bottom: 25px;
+        }
+
+        .filter-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .filter-button {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            background-color: white;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .filter-button:hover {
+            border-color: var(--primary-blue);
+            background-color: #f0f9ff;
+        }
+
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background-color: var(--gray-100);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            margin-top: 8px;
+        }
+
+        .filter-chip .remove-btn {
+            cursor: pointer;
+            color: var(--gray-400);
+            transition: color 0.2s;
+        }
+
+        .filter-chip .remove-btn:hover {
+            color: var(--gray-700);
+        }
+
+        /* Calendar Section */
+        .calendar-section {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .date-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .date-navigation h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin: 0;
+        }
+
+        .date-nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date-picker-input {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .date-picker-input:hover {
+            border-color: var(--primary-blue);
+        }
+
+        .date-picker-input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        }
+
+        .date-nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            background-color: white;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            transition: all 0.2s;
         }
 
-        .appointment-card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 900px;
-            width: 100%;
-            overflow: hidden;
+        .nav-btn:hover {
+            background-color: var(--gray-100);
+            border-color: var(--gray-400);
         }
 
-        .card-header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #0284c7 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
-        .card-header h1 {
-            margin: 0;
-            font-size: 1.8rem;
-            font-weight: 700;
-        }
-
-        .card-header p {
-            margin: 10px 0 0 0;
-            opacity: 0.9;
-        }
-
-        .card-body {
-            padding: 40px;
-        }
-
-        .date-selector {
+        /* Calendar Grid */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
             margin-bottom: 30px;
         }
 
-        .date-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
+        .day-column {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 15px 10px;
+            background-color: white;
         }
 
-        .date-card {
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 15px;
+        .day-header {
             text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: white;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--gray-200);
         }
 
-        .date-card:hover {
-            border-color: var(--primary-color);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
-        }
-
-        .date-card.selected {
-            border-color: var(--primary-color);
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .date-card .weekday {
+        .day-name {
             font-size: 0.75rem;
+            color: var(--gray-400);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            opacity: 0.7;
-        }
-
-        .date-card .day {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin: 5px 0;
-        }
-
-        .date-card .month {
-            font-size: 0.875rem;
-        }
-
-        .time-selector {
-            margin-top: 30px;
-            display: none;
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        .time-selector.show {
             display: block;
-            opacity: 1;
-            transform: translateY(0);
+            margin-bottom: 4px;
         }
 
-        .time-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        .day-date {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .time-slots {
+            display: flex;
+            flex-direction: column;
             gap: 10px;
-            margin-top: 20px;
         }
 
-        .time-card {
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 12px;
+        .time-slot {
+            padding: 10px;
+            border-radius: 6px;
+            background-color: white;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
-            background: white;
-            font-weight: 600;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-200);
         }
 
-        .time-card:hover {
-            border-color: var(--success-color);
-            background: #f0fdf4;
-        }
-
-        .time-card.selected {
-            border-color: var(--success-color);
-            background: var(--success-color);
+        .time-slot:hover {
+            background-color: var(--primary-blue);
             color: white;
+            border-color: var(--primary-blue);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
         }
 
-        .section-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 10px;
+        .time-slot.selected {
+            background-color: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        .time-slot.booked {
+            background-color: var(--gray-100);
+            color: var(--gray-400);
+            cursor: not-allowed;
+            border-color: var(--gray-200);
+        }
+
+        .time-slot.booked:hover {
+            background-color: var(--gray-100);
+            color: var(--gray-400);
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Location Section */
+        .location-section {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .location-header {
             display: flex;
             align-items: center;
             gap: 10px;
+            margin-bottom: 15px;
         }
 
-        .confirm-btn {
+        .location-header i {
+            color: var(--primary-blue);
+            font-size: 1.25rem;
+        }
+
+        .location-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0;
+        }
+
+        .location-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 8px;
+        }
+
+        .location-address {
+            font-size: 0.875rem;
+            color: var(--gray-700);
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .location-map {
             width: 100%;
-            padding: 15px;
-            font-size: 1.125rem;
-            font-weight: 700;
-            border-radius: 12px;
-            margin-top: 30px;
-            display: none;
+            height: 250px;
+            border-radius: 8px;
+            background-color: var(--gray-200);
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="rgb(156,163,175)" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>');
+            background-size: 50px;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
         }
 
-        .alert {
+        .map-placeholder {
+            font-size: 0.875rem;
+            color: var(--gray-400);
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Confirmation Modal */
+        .modal-content {
             border-radius: 12px;
             border: none;
         }
 
-        .expires-warning {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 15px;
-            border-radius: 12px;
+        .modal-header {
+            border-bottom: 1px solid var(--gray-200);
+            padding: 20px 25px;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--gray-200);
+            padding: 15px 25px;
+        }
+
+        .appointment-summary {
+            background-color: var(--gray-100);
+            padding: 20px;
+            border-radius: 8px;
             margin-bottom: 20px;
+        }
+
+        .summary-item {
             display: flex;
             align-items: center;
             gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .summary-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .summary-item i {
+            color: var(--primary-blue);
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .calendar-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .calendar-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray-400);
+        }
+
+        .spinner {
+            border: 3px solid var(--gray-200);
+            border-top: 3px solid var(--primary-blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Alert Styles */
+        .alert {
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="appointment-card">
-        <div class="card-header">
-            <i class="bi bi-calendar-check" style="font-size: 3rem;"></i>
-            <h1>Agendar Consulta</h1>
-            <p>Olá, {{ contact.name|default:contact.phone_number }}! Escolha o melhor dia e horário para sua consulta.</p>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="bi bi-calendar-check me-2"></i> Agende sua consulta</h1>
+            <p>Agende sua consulta em 3 cliques</p>
         </div>
 
-        <div class="card-body">
-            <div class="expires-warning">
-                <i class="bi bi-clock-history" style="font-size: 1.5rem;"></i>
-                <div>
-                    <strong>Este link expira em:</strong> {{ expires_at|date:"d/m/Y às H:i" }}
+        <div id="alertContainer"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Sidebar - Filters -->
+            <div class="filters-sidebar">
+                <div class="filter-group">
+                    <label class="filter-label">Tipo de consulta</label>
+                    <button class="filter-button" id="consultaTypeBtn">
+                        Presencial
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Clínica</label>
+                    <button class="filter-button" id="clinicaBtn">
+                        Teto Office
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Especialista</label>
+                    <div class="filter-chip">
+                        Particular
+                        <span class="remove-btn" onclick="removeFilter('especialista')">
+                            <i class="bi bi-x"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Procedimento</label>
+                    <div class="filter-chip">
+                        Consulta
+                        <span class="remove-btn" onclick="removeFilter('procedimento')">
+                            <i class="bi bi-x"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <div id="alertContainer"></div>
-
-            <!-- Seletor de Data -->
-            <div class="date-selector">
-                <div class="section-title">
-                    <i class="bi bi-calendar3"></i>
-                    Escolha o dia
+            <!-- Calendar Section -->
+            <div class="calendar-section">
+                <div class="date-navigation">
+                    <h3>Data da consulta</h3>
+                    <div class="date-nav-controls">
+                        <input type="date" class="date-picker-input" id="datePicker" title="Selecionar data">
+                        <div class="date-nav-buttons">
+                            <button class="nav-btn" id="prevWeekBtn" onclick="navigateWeek(-1)" title="Semana anterior">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <button class="nav-btn" id="nextWeekBtn" onclick="navigateWeek(1)" title="Próxima semana">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="date-grid" id="dateGrid"></div>
-            </div>
 
-            <!-- Seletor de Horário (oculto inicialmente) -->
-            <div class="time-selector" id="timeSelector">
-                <div class="section-title">
-                    <i class="bi bi-clock"></i>
-                    Escolha o horário
+                <!-- Calendar Grid -->
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- Will be populated by JavaScript -->
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Carregando horários disponíveis...</p>
+                    </div>
                 </div>
-                <div class="time-grid" id="timeGrid"></div>
             </div>
+        </div>
 
-            <!-- Mensagem quando nenhuma data selecionada -->
-            <div class="alert alert-info mt-4" id="noDateSelected" style="display: block;">
-                <i class="bi bi-info-circle"></i>
-                Selecione um dia acima para ver os horários disponíveis
+        <!-- Location Section -->
+        <div class="location-section">
+            <div class="location-header">
+                <i class="bi bi-geo-alt-fill"></i>
+                <h3>Localização</h3>
             </div>
+            <div class="location-name">Teto Office</div>
+            <div class="location-address">
+                Av. Gov. Agamenon Magalhães, 1350 - Sala 401, Alto da Boa Vista, Recife-Preto - SP
+            </div>
+            <div class="location-map" id="locationMap">
+                <div class="map-placeholder">
+                    <i class="bi bi-map" style="font-size: 3rem; color: var(--gray-400);"></i>
+                    <p>Mapa do local</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            <!-- Botão de Confirmação -->
-            <button class="btn btn-success btn-lg confirm-btn" id="confirmBtn">
-                <i class="bi bi-check-circle"></i> Confirmar Agendamento
-            </button>
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-calendar-check me-2"></i>
+                        Confirmar Agendamento
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="appointment-summary">
+                        <div class="summary-item">
+                            <i class="bi bi-person-fill"></i>
+                            <strong>Paciente:</strong>
+                            <span id="modalPatientName">{{ contact.name|default:contact.phone_number }}</span>
+                        </div>
+                        <div class="summary-item">
+                            <i class="bi bi-calendar3"></i>
+                            <strong>Data:</strong>
+                            <span id="modalDate"></span>
+                        </div>
+                        <div class="summary-item">
+                            <i class="bi bi-clock"></i>
+                            <strong>Horário:</strong>
+                            <span id="modalTime"></span>
+                        </div>
+                        <div class="summary-item">
+                            <i class="bi bi-geo-alt-fill"></i>
+                            <strong>Local:</strong>
+                            <span>Teto Office</span>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        Você receberá uma confirmação no WhatsApp após agendar.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmAppointmentBtn">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Confirmar
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -236,141 +593,176 @@
     <script>
         const availableDates = {{ available_dates|safe }};
         const token = '{{ token }}';
-        let selectedDate = null;
-        let selectedTime = null;
+        let currentStartIndex = 0;
+        let selectedSlot = null;
+        const daysPerPage = 5;
 
-        // Mapear nomes dos dias da semana
-        const weekdayMap = {
-            'Monday': 'Seg',
-            'Tuesday': 'Ter',
-            'Wednesday': 'Qua',
-            'Thursday': 'Qui',
-            'Friday': 'Sex',
-            'Saturday': 'Sáb',
-            'Sunday': 'Dom'
-        };
+        // Initialize calendar and date picker
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set min date to today
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            document.getElementById('datePicker').min = todayStr;
+            document.getElementById('datePicker').value = todayStr;
 
-        // Renderizar datas disponíveis
-        const dateGrid = document.getElementById('dateGrid');
+            // Add event listener to date picker
+            document.getElementById('datePicker').addEventListener('change', function() {
+                const selectedDate = this.value;
+                jumpToDate(selectedDate);
+            });
 
-        availableDates.forEach(dateInfo => {
-            const dateObj = new Date(dateInfo.date + 'T00:00:00');
-            const day = dateObj.getDate();
-            const month = dateObj.toLocaleDateString('pt-BR', { month: 'short' });
-            const weekday = weekdayMap[dateInfo.weekday] || dateInfo.weekday.substring(0, 3);
-
-            const dateCard = document.createElement('div');
-            dateCard.className = 'date-card';
-            dateCard.dataset.date = dateInfo.date;
-            dateCard.dataset.times = JSON.stringify(dateInfo.times);
-            dateCard.innerHTML = `
-                <div class="weekday">${weekday}</div>
-                <div class="day">${day}</div>
-                <div class="month">${month}</div>
-            `;
-
-            dateCard.addEventListener('click', () => selectDate(dateCard, dateInfo));
-            dateGrid.appendChild(dateCard);
+            renderCalendar();
         });
 
-        async function selectDate(dateCard, dateInfo) {
-            // Remove seleção anterior
-            document.querySelectorAll('.date-card').forEach(card => {
-                card.classList.remove('selected');
-            });
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
 
-            // Seleciona novo
-            dateCard.classList.add('selected');
-            selectedDate = dateInfo.date;
+            if (!availableDates || availableDates.length === 0) {
+                grid.innerHTML = '<div class="loading"><p>Nenhum horário disponível no momento.</p></div>';
+                updateNavigationButtons();
+                return;
+            }
 
-            // Esconde mensagem "Selecione um dia"
-            document.getElementById('noDateSelected').style.display = 'none';
+            // Get current slice of days to show
+            const daysToShow = availableDates.slice(currentStartIndex, currentStartIndex + daysPerPage);
 
-            // Mostra loading nos horários
-            const timeSelector = document.getElementById('timeSelector');
-            const timeGrid = document.getElementById('timeGrid');
-            timeGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;"><span class="spinner-border spinner-border-sm"></span> Carregando horários...</div>';
-            timeSelector.style.display = 'block';
-            timeSelector.offsetHeight;
-            timeSelector.classList.add('show');
+            if (daysToShow.length === 0) {
+                grid.innerHTML = '<div class="loading"><p>Não há mais horários disponíveis.</p></div>';
+                updateNavigationButtons();
+                return;
+            }
 
-            // Consulta horários disponíveis em tempo real
-            try {
-                const response = await fetch(`/agendar/${token}/availability/${dateInfo.date}/`);
-                const data = await response.json();
+            grid.innerHTML = '';
 
-                if (response.ok && data.available_times) {
-                    renderTimes(data.available_times);
-                } else {
-                    timeGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #ef4444;">${data.message || data.error || 'Erro ao carregar horários.'}</div>`;
+            daysToShow.forEach(dateInfo => {
+                const dateObj = new Date(dateInfo.date + 'T00:00:00');
+                const dayName = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' });
+                const dayDate = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+
+                const dayColumn = document.createElement('div');
+                dayColumn.className = 'day-column';
+
+                let timeSlotsHTML = '';
+                const times = dateInfo.times || [];
+
+                // Show ALL time slots
+                times.forEach(time => {
+                    timeSlotsHTML += `
+                        <div class="time-slot" onclick="selectSlot('${dateInfo.date}', '${time}', '${dayDate}')">
+                            ${time}
+                        </div>
+                    `;
+                });
+
+                if (times.length === 0) {
+                    timeSlotsHTML = '<div style="text-align: center; color: var(--gray-400); padding: 10px;">Sem horários</div>';
                 }
-            } catch (error) {
-                console.error('Erro ao buscar horários:', error);
-                // Fallback para dados pré-carregados
-                renderTimes(dateInfo.times);
-            }
 
-            // Scroll suave até os horários
-            setTimeout(() => {
-                timeSelector.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 100);
+                dayColumn.innerHTML = `
+                    <div class="day-header">
+                        <span class="day-name">${dayName}</span>
+                        <div class="day-date">${dayDate}</div>
+                    </div>
+                    <div class="time-slots">
+                        ${timeSlotsHTML}
+                    </div>
+                `;
 
-            // Esconde botão de confirmar
-            document.getElementById('confirmBtn').style.display = 'none';
-            selectedTime = null;
+                grid.appendChild(dayColumn);
+            });
+
+            updateNavigationButtons();
         }
 
-        function renderTimes(times) {
-            const timeGrid = document.getElementById('timeGrid');
-            timeGrid.innerHTML = '';
+        function updateNavigationButtons() {
+            const prevBtn = document.getElementById('prevWeekBtn');
+            const nextBtn = document.getElementById('nextWeekBtn');
 
-            if (!times || times.length === 0) {
-                timeGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #6b7280;">Nenhum horário disponível para este dia.</div>';
+            // Disable prev button if at start
+            prevBtn.disabled = currentStartIndex === 0;
+
+            // Disable next button if at end
+            nextBtn.disabled = currentStartIndex + daysPerPage >= availableDates.length;
+        }
+
+        function navigateWeek(direction) {
+            const newIndex = currentStartIndex + (direction * daysPerPage);
+
+            // Prevent going before start
+            if (newIndex < 0) {
                 return;
             }
 
-            times.forEach(time => {
-                const timeCard = document.createElement('div');
-                timeCard.className = 'time-card';
-                // Suporta tanto string quanto objeto
-                const timeStr = typeof time === 'string' ? time : time;
-                timeCard.textContent = timeStr;
-                timeCard.dataset.time = timeStr;
-
-                timeCard.addEventListener('click', () => selectTime(timeCard, timeStr));
-                timeGrid.appendChild(timeCard);
-            });
-        }
-
-        function selectTime(timeCard, time) {
-            // Remove seleção anterior
-            document.querySelectorAll('.time-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-
-            // Seleciona novo
-            timeCard.classList.add('selected');
-            selectedTime = time;
-
-            // Mostra botão de confirmar
-            document.getElementById('confirmBtn').style.display = 'block';
-        }
-
-        // Confirmar agendamento
-        document.getElementById('confirmBtn').addEventListener('click', async () => {
-            if (!selectedDate || !selectedTime) {
-                showAlert('Por favor, selecione data e horário.', 'warning');
+            // Prevent going past end
+            if (newIndex >= availableDates.length) {
                 return;
             }
 
-            const btn = document.getElementById('confirmBtn');
+            currentStartIndex = newIndex;
+            renderCalendar();
+        }
+
+        function jumpToDate(dateStr) {
+            // Find the index of the selected date in availableDates
+            const index = availableDates.findIndex(d => d.date === dateStr);
+
+            if (index !== -1) {
+                // Found the date, jump to it
+                currentStartIndex = index;
+                renderCalendar();
+            } else {
+                // Date not found in available dates
+                showAlert('Não há horários disponíveis para a data selecionada.', 'warning');
+
+                // Find the next available date after the selected one
+                const nextIndex = availableDates.findIndex(d => d.date > dateStr);
+                if (nextIndex !== -1) {
+                    currentStartIndex = nextIndex;
+                    renderCalendar();
+                    showAlert('Mostrando o próximo dia disponível.', 'info');
+                }
+            }
+        }
+
+        function selectSlot(date, time, dateFormatted) {
+            selectedSlot = { date, time, dateFormatted };
+
+            // Remove previous selection
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+
+            // Mark as selected
+            event.target.classList.add('selected');
+
+            // Update modal
+            document.getElementById('modalDate').textContent = dateFormatted;
+            document.getElementById('modalTime').textContent = time;
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
+        }
+
+        function removeFilter(filterType) {
+            showAlert(`Filtro "${filterType}" removido`, 'info');
+        }
+
+        // Confirm appointment
+        document.getElementById('confirmAppointmentBtn').addEventListener('click', async function() {
+            if (!selectedSlot) {
+                showAlert('Por favor, selecione um horário.', 'warning');
+                return;
+            }
+
+            const btn = this;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processando...';
 
             try {
                 const formData = new FormData();
-                formData.append('date', selectedDate);
-                formData.append('time', selectedTime);
+                formData.append('date', selectedSlot.date);
+                formData.append('time', selectedSlot.time);
                 formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
                 const response = await fetch(`/agendar/${token}/`, {
@@ -382,28 +774,31 @@
 
                 if (data.success) {
                     showAlert(`✅ ${data.message}`, 'success');
+
+                    // Close modal
+                    bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+
+                    // Show success message
                     setTimeout(() => {
-                        document.querySelector('.appointment-card').innerHTML = `
-                            <div class="card-header">
-                                <i class="bi bi-check-circle" style="font-size: 4rem;"></i>
-                                <h1>Agendamento Confirmado!</h1>
-                            </div>
-                            <div class="card-body text-center">
-                                <h3>📅 ${data.date}</h3>
-                                <h3>🕐 ${data.time}</h3>
-                                <p class="mt-4">Você receberá uma confirmação em breve no WhatsApp.</p>
+                        document.querySelector('.container-fluid').innerHTML = `
+                            <div class="header text-center py-5">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                                <h1 class="mt-3">Agendamento Confirmado!</h1>
+                                <p class="lead mt-2">📅 ${data.date} às ${data.time}</p>
+                                <p class="text-muted">Você receberá uma confirmação no WhatsApp em breve.</p>
                             </div>
                         `;
-                    }, 2000);
+                    }, 1000);
                 } else {
-                    showAlert(data.error, 'danger');
+                    showAlert(data.error || 'Erro ao agendar. Tente novamente.', 'danger');
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar Agendamento';
+                    btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Confirmar';
                 }
             } catch (error) {
+                console.error('Error:', error);
                 showAlert('Erro ao processar agendamento. Tente novamente.', 'danger');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar Agendamento';
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Confirmar';
             }
         });
 
@@ -415,6 +810,14 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             `;
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = alertContainer.querySelector('.alert');
+                if (alert) {
+                    bootstrap.Alert.getInstance(alert)?.close();
+                }
+            }, 5000);
         }
     </script>
 </body>

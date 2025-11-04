@@ -874,6 +874,7 @@ class WorkingDay(models.Model):
             list: List of available times (time objects)
         """
         from datetime import datetime, timedelta
+        from django.utils import timezone
 
         if not self.is_active:
             return []
@@ -891,14 +892,25 @@ class WorkingDay(models.Model):
             lunch_start = datetime.combine(datetime.today(), self.lunch_start_time)
             lunch_end = datetime.combine(datetime.today(), self.lunch_end_time)
 
+        # Get current time if checking for today
+        now = timezone.localtime(timezone.now())
+        is_today = date and date == now.date()
+
         # Generate available times
         current_time = start
         while current_time + timedelta(minutes=duration) <= end:
             # Check if not in lunch time
+            in_lunch = False
             if lunch_start and lunch_end:
-                if not (lunch_start <= current_time < lunch_end):
-                    times.append(current_time.time())
-            else:
+                in_lunch = lunch_start <= current_time < lunch_end
+
+            # Check if time hasn't passed yet (only for today)
+            time_has_passed = False
+            if is_today:
+                time_has_passed = current_time.time() <= now.time()
+
+            # Add time if it's not in lunch and hasn't passed yet
+            if not in_lunch and not time_has_passed:
                 times.append(current_time.time())
 
             # Move to next time slot

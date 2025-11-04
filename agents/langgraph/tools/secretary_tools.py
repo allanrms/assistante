@@ -213,15 +213,9 @@ O agendamento foi removido do sistema."""
 
             expires_formatted = expires_at.strftime('%d/%m/%Y às %H:%M')
 
-            return f"""✅ Link de agendamento gerado com sucesso!
-
-Acesse o link abaixo para escolher o melhor dia e horário:
-
-{public_url}
-
-⏰ Válido até: {expires_formatted}
-
-Você poderá ver todos os horários disponíveis e escolher o que for melhor para você!"""
+            # Retorna apenas as informações essenciais para o agent formatar a mensagem
+            return f"""Link: {public_url}
+Válido até: {expires_formatted}"""
 
         except Exception as e:
             print(f"❌ [TOOL] Erro ao gerar link de agendamento: {e}")

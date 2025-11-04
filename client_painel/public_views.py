@@ -8,8 +8,13 @@ from django.utils import timezone
 from django.views import View
 from datetime import datetime, timedelta, date
 import json
+import logging
 
 from core.models import Appointment, AppointmentToken, ScheduleConfig, WorkingDay, BlockedDay
+from whatsapp_connector.services import EvolutionAPIService
+from whatsapp_connector.models import EvolutionInstance
+
+logger = logging.getLogger(__name__)
 
 
 class PublicAppointmentAvailabilityAPI(View):
@@ -215,6 +220,52 @@ class PublicAppointmentView(View):
         # Marca o token como usado
         appointment_token.is_used = True
         appointment_token.save()
+
+        # Envia confirmação via WhatsApp
+        try:
+            client = appointment.contact.client
+
+            # Busca uma instância ativa do Evolution para este cliente
+            evolution_instance = EvolutionInstance.objects.filter(
+                owner=client,
+                is_active=True,
+                status='connected'
+            ).first()
+
+            if evolution_instance:
+                # Cria o serviço da Evolution API
+                evolution_service = EvolutionAPIService(evolution_instance)
+
+                # Monta a mensagem de confirmação
+                contact_name = appointment.contact.name or "Paciente"
+                response_msg = f"""✅ *Agendamento Confirmado!*
+
+Olá {contact_name}!
+
+Seu agendamento foi confirmado com sucesso:
+
+📅 *Data:* {date_obj.strftime('%d/%m/%Y')}
+🕐 *Horário:* {time_obj.strftime('%H:%M')}
+
+Você receberá lembretes antes da consulta.
+
+_Caso precise reagendar ou cancelar, entre em contato conosco._"""
+
+                print(evolution_instance)
+                print(evolution_service)
+
+                # Envia a mensagem
+                evolution_service.send_text_message(
+                    appointment.contact.phone_number,
+                    response_msg
+                )
+                logger.info(f"✅ Mensagem de confirmação enviada para {appointment.contact.phone_number}")
+            else:
+                logger.warning(f"⚠️ Nenhuma instância Evolution ativa encontrada para o cliente {client.full_name}")
+
+        except Exception as e:
+            # Log do erro, mas não falha o agendamento
+            logger.error(f"❌ Erro ao enviar mensagem de confirmação: {str(e)}", exc_info=True)
 
         return JsonResponse({
             'success': True,

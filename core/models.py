@@ -718,7 +718,7 @@ class Appointment(models.Model):
 
     def __str__(self):
         contact_name = self.contact.name or self.contact.phone_number
-        return f"{contact_name} - {self.date.strftime('%Y-%m-%d')} {self.time.strftime('%H:%M')}"
+        return f"{contact_name} "
 
     def save(self, *args, **kwargs):
         # Auto-sincroniza date/time ao salvar
@@ -1029,5 +1029,287 @@ class AppointmentToken(models.Model):
     def get_public_url(self, base_url):
         """Retorna a URL pública do agendamento"""
         return f"{base_url}/agendar/{self.token}/"
+
+
+class Service(models.Model):
+    """
+    Modelo de Serviço para o sistema Assistante.
+    Representa um serviço oferecido pelo cliente (ex: consulta, exame, procedimento).
+    """
+
+    SERVICE_TYPE_CHOICES = [
+        ('particular', _('Particular')),
+        ('convenio', _('Convênio')),
+        ('sus', _('SUS')),
+    ]
+
+    # Identificação
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Relacionamento com cliente (multi-tenant)
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name='services',
+        verbose_name=_('Cliente'),
+        help_text=_('Cliente proprietário deste serviço')
+    )
+
+    # Dados Básicos
+    name = models.CharField(
+        max_length=255,
+        verbose_name=_('Nome do Serviço'),
+        help_text=_('Nome completo do serviço (ex: Consulta Clínica Geral)')
+    )
+
+    slug = models.SlugField(
+        max_length=100,
+        blank=True,
+        verbose_name=_('Sigla'),
+        help_text=_('Sigla ou código do serviço (ex: CCG)')
+    )
+
+    description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name=_('Descrição'),
+        help_text=_('Descrição detalhada do serviço')
+    )
+
+    duration = models.IntegerField(
+        verbose_name=_('Duração (minutos)'),
+        help_text=_('Duração do serviço em minutos')
+    )
+
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name=_('Valor (R$)'),
+        help_text=_('Valor do serviço em reais')
+    )
+
+    service_type = models.CharField(
+        max_length=20,
+        choices=SERVICE_TYPE_CHOICES,
+        default='particular',
+        verbose_name=_('Tipo'),
+        help_text=_('Tipo de serviço')
+    )
+
+    # AutoAgendamento
+    auto_scheduling_enabled = models.BooleanField(
+        default=False,
+        verbose_name=_('AutoAgendamento Ativo'),
+        help_text=_('Permite que clientes agendem este serviço online')
+    )
+
+    scheduling_link_token = models.CharField(
+        max_length=64,
+        unique=True,
+        blank=True,
+        null=True,
+        verbose_name=_('Token do Link'),
+        help_text=_('Token único para link público de agendamento')
+    )
+
+    # Configurações de Escassez
+    scarcity_enabled = models.BooleanField(
+        default=False,
+        verbose_name=_('Ativar Escassez'),
+        help_text=_('Mostra mensagens de escassez (ex: "Apenas 2 vagas restantes")')
+    )
+
+    show_adjacent_slots_only = models.BooleanField(
+        default=False,
+        verbose_name=_('Mostrar Apenas Horários Adjacentes'),
+        help_text=_('Mostrar apenas horários próximos ao horário atual')
+    )
+
+    max_daily_options = models.IntegerField(
+        default=10,
+        verbose_name=_('Máximo de Opções por Dia'),
+        help_text=_('Número máximo de horários a mostrar por dia')
+    )
+
+    # Status
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('Ativo'),
+        help_text=_('Serviço está disponível para agendamento')
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Criado em')
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_('Atualizado em')
+    )
+
+    class Meta:
+        verbose_name = _('Serviço')
+        verbose_name_plural = _('Serviços')
+        ordering = ['name']
+        unique_together = [['client', 'slug']]
+        indexes = [
+            models.Index(fields=['client', 'is_active']),
+            models.Index(fields=['slug']),
+            models.Index(fields=['auto_scheduling_enabled']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.slug})"
+
+    def save(self, *args, **kwargs):
+        """Gera token automático para link de agendamento se não existir"""
+        import secrets
+        if self.auto_scheduling_enabled and not self.scheduling_link_token:
+            self.scheduling_link_token = secrets.token_urlsafe(32)
+        super().save(*args, **kwargs)
+
+    def get_public_scheduling_url(self, base_url):
+        """Retorna a URL pública de agendamento"""
+        if self.auto_scheduling_enabled and self.scheduling_link_token:
+            return f"{base_url}/agendar/{self.scheduling_link_token}/"
+        return None
+
+    def get_available_days_of_week(self):
+        """Retorna os dias da semana em que o serviço está disponível"""
+        return self.availabilities.filter(is_active=True).values_list('weekday', flat=True).distinct()
+
+    def has_availability_on_date(self, target_date):
+        """Verifica se o serviço está disponível em uma data específica"""
+        weekday = target_date.weekday()
+        return self.availabilities.filter(weekday=weekday, is_active=True).exists()
+
+
+class ServiceAvailability(models.Model):
+    """
+    Disponibilidade semanal do serviço por dia da semana.
+    Permite múltiplos períodos por dia (ex: manhã e tarde).
+    """
+
+    WEEKDAY_CHOICES = [
+        (0, 'Segunda-feira'),
+        (1, 'Terça-feira'),
+        (2, 'Quarta-feira'),
+        (3, 'Quinta-feira'),
+        (4, 'Sexta-feira'),
+        (5, 'Sábado'),
+        (6, 'Domingo'),
+    ]
+
+    # Identificação
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Relacionamento com serviço
+    service = models.ForeignKey(
+        Service,
+        on_delete=models.CASCADE,
+        related_name='availabilities',
+        verbose_name=_('Serviço')
+    )
+
+    # Dia da Semana
+    weekday = models.IntegerField(
+        choices=WEEKDAY_CHOICES,
+        verbose_name=_('Dia da Semana'),
+        help_text=_('Dia da semana (0=Segunda, 6=Domingo)')
+    )
+
+    # Horários
+    start_time = models.TimeField(
+        verbose_name=_('Horário de Início'),
+        help_text=_('Horário de início da disponibilidade')
+    )
+
+    end_time = models.TimeField(
+        verbose_name=_('Horário de Término'),
+        help_text=_('Horário de término da disponibilidade')
+    )
+
+    # Status
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('Ativo'),
+        help_text=_('Período está ativo para agendamento')
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Criado em')
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_('Atualizado em')
+    )
+
+    class Meta:
+        verbose_name = _('Disponibilidade do Serviço')
+        verbose_name_plural = _('Disponibilidades dos Serviços')
+        ordering = ['weekday', 'start_time']
+        indexes = [
+            models.Index(fields=['service', 'weekday']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        day_name = dict(self.WEEKDAY_CHOICES)[self.weekday]
+        return f"{self.service.name} - {day_name}: {self.start_time} às {self.end_time}"
+
+    def get_available_time_slots(self, date=None):
+        """
+        Retorna lista de horários disponíveis para este período,
+        considerando a duração do serviço.
+
+        Args:
+            date (date, optional): Data específica para verificar disponibilidade
+
+        Returns:
+            list: Lista de horários disponíveis (time objects)
+        """
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+
+        if not self.is_active:
+            return []
+
+        slots = []
+        duration = self.service.duration
+
+        # Converter horários para datetime para cálculos
+        start = datetime.combine(datetime.today(), self.start_time)
+        end = datetime.combine(datetime.today(), self.end_time)
+
+        # Obter horário atual se for para verificar hoje
+        now = timezone.localtime(timezone.now())
+        is_today = date and date == now.date()
+
+        # Gerar slots disponíveis
+        current_time = start
+        while current_time + timedelta(minutes=duration) <= end:
+            # Verificar se o horário já passou (apenas para hoje)
+            time_has_passed = False
+            if is_today:
+                time_has_passed = current_time.time() <= now.time()
+
+            # Adicionar slot se não passou
+            if not time_has_passed:
+                slots.append(current_time.time())
+
+            # Mover para próximo slot
+            current_time += timedelta(minutes=duration)
+
+        return slots
+
+    def clean(self):
+        """Validação customizada"""
+        from django.core.exceptions import ValidationError
+
+        if self.start_time >= self.end_time:
+            raise ValidationError(_('Horário de início deve ser anterior ao horário de término'))
 
 

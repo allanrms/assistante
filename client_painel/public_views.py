@@ -125,11 +125,11 @@ class PublicAppointmentView(View):
                 'error': 'Configuração de agenda não encontrada.'
             })
 
-        # Gera próximos 30 dias de disponibilidade
+        # Gera próximos 90 dias de disponibilidade (aproximadamente 3 meses)
         today = date.today()
         available_dates = []
 
-        for days_ahead in range(30):
+        for days_ahead in range(90):
             check_date = today + timedelta(days=days_ahead)
 
             # Verifica se o dia não está bloqueado

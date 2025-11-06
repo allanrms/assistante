@@ -12,16 +12,18 @@ from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DetailView, UpdateView
 from django.db import transaction
-from rest_framework import status, generics
+from rest_framework import status, generics, viewsets, filters
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
-from drf_spectacular.utils import extend_schema, OpenApiResponse
-from .models import Client
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.decorators import action
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from .models import Client, Service, ServiceAvailability
 from .serializers import (
     ClientRegistrationSerializer,
     ClientSerializer,
-    EmailConfirmationSerializer
+    EmailConfirmationSerializer,
 )
 from .forms import ClientRegistrationForm, OTPVerificationForm
 

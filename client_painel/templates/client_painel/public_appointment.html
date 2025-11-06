@@ -30,7 +30,7 @@
 
         .container-fluid {
             padding: 20px;
-            max-width: 1400px;
+            max-width: 900px;
             margin: 0 auto;
         }
 
@@ -56,129 +56,33 @@
             margin: 5px 0 0 0;
         }
 
-        /* Main Content Layout */
-        .main-content {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        /* Left Sidebar - Filters */
-        .filters-sidebar {
+        /* Calendar Container */
+        .calendar-container {
             background-color: white;
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            height: fit-content;
+            margin-bottom: 20px;
         }
 
-        .filter-group {
-            margin-bottom: 25px;
-        }
-
-        .filter-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .filter-label {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--gray-700);
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        .filter-button {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            background-color: white;
-            text-align: left;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.9rem;
-        }
-
-        .filter-button:hover {
-            border-color: var(--primary-blue);
-            background-color: #f0f9ff;
-        }
-
-        .filter-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background-color: var(--gray-100);
-            border-radius: 6px;
-            font-size: 0.875rem;
-            margin-top: 8px;
-        }
-
-        .filter-chip .remove-btn {
-            cursor: pointer;
-            color: var(--gray-400);
-            transition: color 0.2s;
-        }
-
-        .filter-chip .remove-btn:hover {
-            color: var(--gray-700);
-        }
-
-        /* Calendar Section */
-        .calendar-section {
-            background-color: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .date-navigation {
+        /* Month Navigation */
+        .month-navigation {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 20px;
-            gap: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--gray-200);
         }
 
-        .date-navigation h3 {
-            font-size: 0.875rem;
+        .month-title {
+            font-size: 1rem;
             font-weight: 600;
-            color: var(--gray-700);
-            margin: 0;
+            color: var(--gray-900);
+            text-transform: capitalize;
         }
 
-        .date-nav-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .date-picker-input {
-            padding: 8px 12px;
-            border: 1px solid var(--gray-200);
-            border-radius: 6px;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .date-picker-input:hover {
-            border-color: var(--primary-blue);
-        }
-
-        .date-picker-input:focus {
-            outline: none;
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-        }
-
-        .date-nav-buttons {
+        .month-nav-buttons {
             display: flex;
             gap: 10px;
         }
@@ -207,51 +111,116 @@
         }
 
         /* Calendar Grid */
-        .calendar-grid {
+        .calendar-weekdays {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 15px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
         }
 
-        .day-column {
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            padding: 15px 10px;
-            background-color: white;
-        }
-
-        .day-header {
+        .calendar-weekday {
             text-align: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .day-name {
             font-size: 0.75rem;
+            font-weight: 600;
             color: var(--gray-400);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            display: block;
-            margin-bottom: 4px;
+            padding: 8px 0;
         }
 
-        .day-date {
-            font-size: 1rem;
-            font-weight: 600;
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .calendar-day.other-month {
+            color: var(--gray-400);
+            cursor: default;
+        }
+
+        .calendar-day.current-month {
             color: var(--gray-900);
         }
 
-        .time-slots {
-            display: flex;
-            flex-direction: column;
+        .calendar-day.has-slots {
+            background-color: var(--gray-100);
+        }
+
+        .calendar-day.has-slots:hover {
+            background-color: var(--primary-blue);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .calendar-day.selected {
+            background-color: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        .calendar-day.today {
+            border-color: var(--primary-blue);
+        }
+
+        .calendar-day.no-slots {
+            color: var(--gray-400);
+            cursor: not-allowed;
+        }
+
+        /* Available indicator */
+        .calendar-day.has-slots::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            width: 4px;
+            height: 4px;
+            background-color: var(--primary-blue);
+            border-radius: 50%;
+        }
+
+        .calendar-day.has-slots:hover::after,
+        .calendar-day.selected::after {
+            background-color: white;
+        }
+
+        /* Time Slots Section */
+        .time-slots-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .time-slots-header {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 15px;
+        }
+
+        .time-slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
             gap: 10px;
         }
 
         .time-slot {
-            padding: 10px;
-            border-radius: 6px;
+            padding: 12px;
+            border-radius: 8px;
             background-color: white;
             text-align: center;
             cursor: pointer;
@@ -266,8 +235,8 @@
             background-color: var(--primary-blue);
             color: white;
             border-color: var(--primary-blue);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
         }
 
         .time-slot.selected {
@@ -276,18 +245,16 @@
             border-color: var(--primary-blue);
         }
 
-        .time-slot.booked {
-            background-color: var(--gray-100);
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
             color: var(--gray-400);
-            cursor: not-allowed;
-            border-color: var(--gray-200);
         }
 
-        .time-slot.booked:hover {
-            background-color: var(--gray-100);
-            color: var(--gray-400);
-            transform: none;
-            box-shadow: none;
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
         }
 
         /* Location Section */
@@ -396,23 +363,6 @@
             color: var(--primary-blue);
         }
 
-        /* Responsive */
-        @media (max-width: 992px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-
-            .calendar-grid {
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            }
-        }
-
-        @media (max-width: 768px) {
-            .calendar-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
         /* Loading State */
         .loading {
             text-align: center;
@@ -440,6 +390,67 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container-fluid {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .calendar-container {
+                padding: 15px;
+            }
+
+            .month-navigation {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .calendar-weekday {
+                font-size: 0.65rem;
+            }
+
+            .calendar-day {
+                font-size: 0.8rem;
+            }
+
+            .time-slots-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            }
+
+            .location-section {
+                padding: 15px;
+            }
+
+            .location-map {
+                height: 200px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 15px 20px;
+            }
+
+            .calendar-container {
+                padding: 10px;
+            }
+
+            .calendar-day {
+                font-size: 0.75rem;
+                border-radius: 6px;
+            }
+
+            .time-slot {
+                padding: 10px 8px;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -452,71 +463,42 @@
 
         <div id="alertContainer"></div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Left Sidebar - Filters -->
-            <div class="filters-sidebar">
-                <div class="filter-group">
-                    <label class="filter-label">Tipo de consulta</label>
-                    <button class="filter-button" id="consultaTypeBtn">
-                        Presencial
-                        <i class="bi bi-chevron-down"></i>
+        <!-- Calendar Container -->
+        <div class="calendar-container">
+            <!-- Month Navigation -->
+            <div class="month-navigation">
+                <div class="month-title" id="monthTitle">novembro 2025</div>
+                <div class="month-nav-buttons">
+                    <button class="nav-btn" id="prevMonthBtn" onclick="navigateMonth(-1)" title="Mês anterior">
+                        <i class="bi bi-chevron-left"></i>
                     </button>
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">Clínica</label>
-                    <button class="filter-button" id="clinicaBtn">
-                        Teto Office
+                    <button class="nav-btn" id="nextMonthBtn" onclick="navigateMonth(1)" title="Próximo mês">
                         <i class="bi bi-chevron-right"></i>
                     </button>
                 </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">Especialista</label>
-                    <div class="filter-chip">
-                        Particular
-                        <span class="remove-btn" onclick="removeFilter('especialista')">
-                            <i class="bi bi-x"></i>
-                        </span>
-                    </div>
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">Procedimento</label>
-                    <div class="filter-chip">
-                        Consulta
-                        <span class="remove-btn" onclick="removeFilter('procedimento')">
-                            <i class="bi bi-x"></i>
-                        </span>
-                    </div>
-                </div>
             </div>
 
-            <!-- Calendar Section -->
-            <div class="calendar-section">
-                <div class="date-navigation">
-                    <h3>Data da consulta</h3>
-                    <div class="date-nav-controls">
-                        <input type="date" class="date-picker-input" id="datePicker" title="Selecionar data">
-                        <div class="date-nav-buttons">
-                            <button class="nav-btn" id="prevWeekBtn" onclick="navigateWeek(-1)" title="Semana anterior">
-                                <i class="bi bi-chevron-left"></i>
-                            </button>
-                            <button class="nav-btn" id="nextWeekBtn" onclick="navigateWeek(1)" title="Próxima semana">
-                                <i class="bi bi-chevron-right"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            <!-- Weekday Headers -->
+            <div class="calendar-weekdays">
+                <div class="calendar-weekday">dom</div>
+                <div class="calendar-weekday">seg</div>
+                <div class="calendar-weekday">ter</div>
+                <div class="calendar-weekday">qua</div>
+                <div class="calendar-weekday">qui</div>
+                <div class="calendar-weekday">sex</div>
+                <div class="calendar-weekday">sáb</div>
+            </div>
 
-                <!-- Calendar Grid -->
-                <div class="calendar-grid" id="calendarGrid">
-                    <!-- Will be populated by JavaScript -->
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        <p>Carregando horários disponíveis...</p>
-                    </div>
+            <!-- Calendar Grid -->
+            <div class="calendar-grid" id="calendarGrid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+
+            <!-- Time Slots Section -->
+            <div class="time-slots-section" id="timeSlotsSection" style="display: none;">
+                <div class="time-slots-header" id="timeSlotsHeader">Horários disponíveis</div>
+                <div class="time-slots-grid" id="timeSlotsGrid">
+                    <!-- Will be populated when a day is selected -->
                 </div>
             </div>
         </div>
@@ -593,139 +575,135 @@
     <script>
         const availableDates = {{ available_dates|safe }};
         const token = '{{ token }}';
-        let currentStartIndex = 0;
+        let currentDate = new Date();
+        let selectedDay = null;
         let selectedSlot = null;
-        const daysPerPage = 5;
 
-        // Initialize calendar and date picker
+        // Create a map for quick date lookups
+        const availabilityMap = {};
+        availableDates.forEach(dateInfo => {
+            availabilityMap[dateInfo.date] = dateInfo.times || [];
+        });
+
+        // Initialize calendar
         document.addEventListener('DOMContentLoaded', function() {
-            // Set min date to today
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-            document.getElementById('datePicker').min = todayStr;
-            document.getElementById('datePicker').value = todayStr;
-
-            // Add event listener to date picker
-            document.getElementById('datePicker').addEventListener('change', function() {
-                const selectedDate = this.value;
-                jumpToDate(selectedDate);
-            });
-
             renderCalendar();
         });
 
         function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            // Update month title
+            const monthNames = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+                'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+            document.getElementById('monthTitle').textContent = `${monthNames[month]} ${year}`;
+
+            // Get first day of month and number of days
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday
+
             const grid = document.getElementById('calendarGrid');
-
-            if (!availableDates || availableDates.length === 0) {
-                grid.innerHTML = '<div class="loading"><p>Nenhum horário disponível no momento.</p></div>';
-                updateNavigationButtons();
-                return;
-            }
-
-            // Get current slice of days to show
-            const daysToShow = availableDates.slice(currentStartIndex, currentStartIndex + daysPerPage);
-
-            if (daysToShow.length === 0) {
-                grid.innerHTML = '<div class="loading"><p>Não há mais horários disponíveis.</p></div>';
-                updateNavigationButtons();
-                return;
-            }
-
             grid.innerHTML = '';
 
-            daysToShow.forEach(dateInfo => {
-                const dateObj = new Date(dateInfo.date + 'T00:00:00');
-                const dayName = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' });
-                const dayDate = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-                const dayColumn = document.createElement('div');
-                dayColumn.className = 'day-column';
+            // Add empty cells for days before month starts
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day other-month';
+                grid.appendChild(emptyDay);
+            }
 
-                let timeSlotsHTML = '';
-                const times = dateInfo.times || [];
+            // Add days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateStr = date.toISOString().split('T')[0];
 
-                // Show ALL time slots
-                times.forEach(time => {
-                    timeSlotsHTML += `
-                        <div class="time-slot" onclick="selectSlot('${dateInfo.date}', '${time}', '${dayDate}')">
-                            ${time}
-                        </div>
-                    `;
-                });
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day current-month';
+                dayElement.textContent = day;
 
-                if (times.length === 0) {
-                    timeSlotsHTML = '<div style="text-align: center; color: var(--gray-400); padding: 10px;">Sem horários</div>';
+                // Check if today
+                const dateOnly = new Date(date);
+                dateOnly.setHours(0, 0, 0, 0);
+                if (dateOnly.getTime() === today.getTime()) {
+                    dayElement.classList.add('today');
                 }
 
-                dayColumn.innerHTML = `
-                    <div class="day-header">
-                        <span class="day-name">${dayName}</span>
-                        <div class="day-date">${dayDate}</div>
-                    </div>
-                    <div class="time-slots">
-                        ${timeSlotsHTML}
-                    </div>
-                `;
+                // Check if date has available slots
+                const hasSlots = availabilityMap[dateStr] && availabilityMap[dateStr].length > 0;
 
-                grid.appendChild(dayColumn);
-            });
+                if (hasSlots) {
+                    dayElement.classList.add('has-slots');
+                    dayElement.onclick = () => selectDay(dateStr, day);
+                } else {
+                    dayElement.classList.add('no-slots');
+                }
+
+                // Check if selected
+                if (selectedDay === dateStr) {
+                    dayElement.classList.add('selected');
+                }
+
+                grid.appendChild(dayElement);
+            }
 
             updateNavigationButtons();
         }
 
-        function updateNavigationButtons() {
-            const prevBtn = document.getElementById('prevWeekBtn');
-            const nextBtn = document.getElementById('nextWeekBtn');
+        function selectDay(dateStr, day) {
+            selectedDay = dateStr;
+            selectedSlot = null;
 
-            // Disable prev button if at start
-            prevBtn.disabled = currentStartIndex === 0;
-
-            // Disable next button if at end
-            nextBtn.disabled = currentStartIndex + daysPerPage >= availableDates.length;
-        }
-
-        function navigateWeek(direction) {
-            const newIndex = currentStartIndex + (direction * daysPerPage);
-
-            // Prevent going before start
-            if (newIndex < 0) {
-                return;
-            }
-
-            // Prevent going past end
-            if (newIndex >= availableDates.length) {
-                return;
-            }
-
-            currentStartIndex = newIndex;
+            // Re-render calendar to update selected state
             renderCalendar();
-        }
 
-        function jumpToDate(dateStr) {
-            // Find the index of the selected date in availableDates
-            const index = availableDates.findIndex(d => d.date === dateStr);
+            // Show time slots
+            const times = availabilityMap[dateStr] || [];
+            const timeSlotsSection = document.getElementById('timeSlotsSection');
+            const timeSlotsHeader = document.getElementById('timeSlotsHeader');
+            const timeSlotsGrid = document.getElementById('timeSlotsGrid');
 
-            if (index !== -1) {
-                // Found the date, jump to it
-                currentStartIndex = index;
-                renderCalendar();
+            if (times.length > 0) {
+                const date = new Date(dateStr + 'T00:00:00');
+                const formattedDate = date.toLocaleDateString('pt-BR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                });
+
+                timeSlotsHeader.textContent = `Horários disponíveis - ${formattedDate}`;
+                timeSlotsSection.style.display = 'block';
+
+                timeSlotsGrid.innerHTML = '';
+                times.forEach(time => {
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'time-slot';
+                    timeSlot.textContent = time;
+                    timeSlot.onclick = () => selectTimeSlot(dateStr, time);
+                    timeSlotsGrid.appendChild(timeSlot);
+                });
+
+                // Scroll to time slots
+                timeSlotsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             } else {
-                // Date not found in available dates
-                showAlert('Não há horários disponíveis para a data selecionada.', 'warning');
-
-                // Find the next available date after the selected one
-                const nextIndex = availableDates.findIndex(d => d.date > dateStr);
-                if (nextIndex !== -1) {
-                    currentStartIndex = nextIndex;
-                    renderCalendar();
-                    showAlert('Mostrando o próximo dia disponível.', 'info');
-                }
+                timeSlotsSection.style.display = 'none';
             }
         }
 
-        function selectSlot(date, time, dateFormatted) {
-            selectedSlot = { date, time, dateFormatted };
+        function selectTimeSlot(dateStr, time) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const dateFormatted = date.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+
+            selectedSlot = { date: dateStr, time, dateFormatted };
 
             // Remove previous selection
             document.querySelectorAll('.time-slot').forEach(slot => {
@@ -744,8 +722,24 @@
             modal.show();
         }
 
-        function removeFilter(filterType) {
-            showAlert(`Filtro "${filterType}" removido`, 'info');
+        function navigateMonth(direction) {
+            currentDate.setMonth(currentDate.getMonth() + direction);
+            renderCalendar();
+
+            // Hide time slots when changing months
+            document.getElementById('timeSlotsSection').style.display = 'none';
+            selectedDay = null;
+        }
+
+        function updateNavigationButtons() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const firstOfCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const firstOfThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+            // Disable prev button if showing current month or earlier
+            document.getElementById('prevMonthBtn').disabled = firstOfCurrentMonth <= firstOfThisMonth;
         }
 
         // Confirm appointment

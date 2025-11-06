@@ -34,4 +34,10 @@ urlpatterns = [
     path('api/languages/', views.get_available_languages, name='api_available_languages'),
     path('api/language/', views.get_user_language, name='api_get_user_language'),
     path('api/language/set/', views.set_user_language, name='api_set_user_language'),
+
+    # Services (CRUD) - usando django.views.generic
+    path('servicos/', views.ServiceListView.as_view(), name='service_list'),
+    path('servicos/create/', views.ServiceCreateView.as_view(), name='service_create'),
+    path('servicos/<uuid:service_id>/', views.ServiceUpdateView.as_view(), name='service_edit'),
+    path('servicos/<uuid:service_id>/delete/', views.ServiceDeleteView.as_view(), name='service_delete'),
 ]

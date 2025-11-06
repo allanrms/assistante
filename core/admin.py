@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.utils.html import format_html
-from .models import Client, Contact, Tag, Employee, Appointment, ScheduleConfig, WorkingDay, BlockedDay
+from .models import (
+    Client, Contact, Tag, Employee, Appointment, ScheduleConfig,
+    WorkingDay, BlockedDay, Service, ServiceAvailability
+)
 
 User = get_user_model()
 
@@ -687,3 +690,270 @@ class BlockedDayAdmin(admin.ModelAdmin):
             )
         }),
     )
+
+
+class ServiceAvailabilityInline(admin.TabularInline):
+    """
+    Inline para configurar disponibilidade semanal do serviço.
+    """
+    model = ServiceAvailability
+    extra = 1
+    fields = ('weekday', 'is_active', 'start_time', 'end_time')
+    verbose_name = 'Disponibilidade'
+    verbose_name_plural = 'Disponibilidades Semanais'
+
+
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+    """
+    Configuração do admin para o modelo Service.
+    """
+    list_display = [
+        'name',
+        'slug_badge',
+        'service_type_badge',
+        'client',
+        'duration_display',
+        'price_display',
+        'auto_scheduling_badge',
+        'is_active',
+        'availabilities_count',
+        'created_at',
+    ]
+    list_filter = [
+        'service_type',
+        'is_active',
+        'auto_scheduling_enabled',
+        'client',
+        'created_at',
+    ]
+    search_fields = [
+        'name',
+        'slug',
+        'description',
+        'client__full_name',
+        'client__email',
+    ]
+    readonly_fields = [
+        'id',
+        'scheduling_link_token',
+        'public_scheduling_url',
+        'created_at',
+        'updated_at',
+        'availabilities_count',
+    ]
+    raw_id_fields = ['client']
+    inlines = [ServiceAvailabilityInline]
+
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': (
+                'id',
+                'client',
+                'name',
+                'slug',
+                'description',
+            )
+        }),
+        ('Configurações do Serviço', {
+            'fields': (
+                'service_type',
+                'duration',
+                'price',
+                'is_active',
+            )
+        }),
+        ('AutoAgendamento', {
+            'fields': (
+                'auto_scheduling_enabled',
+                'scheduling_link_token',
+                'public_scheduling_url',
+            )
+        }),
+        ('Configurações de Escassez', {
+            'fields': (
+                'scarcity_enabled',
+                'show_adjacent_slots_only',
+                'max_daily_options',
+            ),
+            'classes': ('collapse',),
+        }),
+        ('Estatísticas', {
+            'fields': (
+                'availabilities_count',
+            )
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at',
+                'updated_at',
+            )
+        }),
+    )
+
+    def get_queryset(self, request):
+        """
+        Otimiza queryset com select_related e prefetch.
+        """
+        qs = super().get_queryset(request)
+        return qs.select_related('client').prefetch_related('availabilities')
+
+    def slug_badge(self, obj):
+        """Exibe a sigla do serviço com badge"""
+        if obj.slug:
+            return format_html(
+                '<span style="display: inline-block; padding: 3px 10px; border-radius: 6px; '
+                'background-color: #6B7280; color: white; font-size: 11px; font-weight: 600;">{}</span>',
+                obj.slug.upper()
+            )
+        return format_html('<span style="color: gray;">-</span>')
+    slug_badge.short_description = 'Sigla'
+    slug_badge.admin_order_field = 'slug'
+
+    def service_type_badge(self, obj):
+        """Exibe o tipo de serviço com badge colorido"""
+        colors = {
+            'particular': '#3B82F6',  # Azul
+            'convenio': '#F59E0B',    # Laranja
+            'sus': '#10B981',         # Verde
+        }
+        color = colors.get(obj.service_type, '#6B7280')
+        label = obj.get_service_type_display()
+
+        return format_html(
+            '<span style="display: inline-block; padding: 3px 10px; border-radius: 6px; '
+            'background-color: {}; color: white; font-size: 11px; font-weight: 500;">{}</span>',
+            color,
+            label
+        )
+    service_type_badge.short_description = 'Tipo'
+    service_type_badge.admin_order_field = 'service_type'
+
+    def duration_display(self, obj):
+        """Exibe a duração formatada"""
+        return f"{obj.duration} min"
+    duration_display.short_description = 'Duração'
+    duration_display.admin_order_field = 'duration'
+
+    def price_display(self, obj):
+        """Exibe o preço formatado"""
+        return f"R$ {obj.price:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    price_display.short_description = 'Valor'
+    price_display.admin_order_field = 'price'
+
+    def auto_scheduling_badge(self, obj):
+        """Indica se o auto-agendamento está ativo"""
+        if obj.auto_scheduling_enabled:
+            return format_html(
+                '<span style="color: green; font-weight: 600;">✓ Ativo</span>'
+            )
+        return format_html(
+            '<span style="color: gray;">✗ Inativo</span>'
+        )
+    auto_scheduling_badge.short_description = 'AutoAgendamento'
+    auto_scheduling_badge.admin_order_field = 'auto_scheduling_enabled'
+
+    def availabilities_count(self, obj):
+        """Retorna o número de disponibilidades configuradas"""
+        total = obj.availabilities.count()
+        active = obj.availabilities.filter(is_active=True).count()
+        return format_html('{} ({} ativas)', total, active)
+    availabilities_count.short_description = 'Disponibilidades'
+
+    def public_scheduling_url(self, obj):
+        """Exibe a URL pública de agendamento"""
+        from django.conf import settings
+        if obj.auto_scheduling_enabled and obj.scheduling_link_token:
+            base_url = getattr(settings, 'BACKEND_BASE_URL', 'http://localhost:8000')
+            url = obj.get_public_scheduling_url(base_url)
+            return format_html(
+                '<a href="{}" target="_blank" style="color: #1a73e8;">🔗 {}</a><br>'
+                '<small style="color: gray;">Clique para copiar</small>',
+                url, url
+            )
+        return format_html('<span style="color: gray;">Auto-agendamento desativado</span>')
+    public_scheduling_url.short_description = 'Link Público'
+
+
+@admin.register(ServiceAvailability)
+class ServiceAvailabilityAdmin(admin.ModelAdmin):
+    """
+    Configuração do admin para o modelo ServiceAvailability.
+    """
+    list_display = [
+        'service',
+        'weekday_display',
+        'is_active',
+        'start_time',
+        'end_time',
+        'time_range_display',
+        'created_at',
+    ]
+    list_filter = [
+        'weekday',
+        'is_active',
+        'service__client',
+        'service',
+    ]
+    search_fields = [
+        'service__name',
+        'service__slug',
+        'service__client__full_name',
+    ]
+    readonly_fields = [
+        'id',
+        'created_at',
+        'updated_at',
+    ]
+    raw_id_fields = ['service']
+
+    fieldsets = (
+        ('Configuração da Disponibilidade', {
+            'fields': (
+                'id',
+                'service',
+                'weekday',
+                'is_active',
+            )
+        }),
+        ('Horários', {
+            'fields': (
+                'start_time',
+                'end_time',
+            )
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at',
+                'updated_at',
+            )
+        }),
+    )
+
+    def get_queryset(self, request):
+        """
+        Otimiza queryset com select_related.
+        """
+        qs = super().get_queryset(request)
+        return qs.select_related('service', 'service__client')
+
+    def weekday_display(self, obj):
+        """Exibe o nome do dia da semana"""
+        return dict(ServiceAvailability.WEEKDAY_CHOICES)[obj.weekday]
+    weekday_display.short_description = 'Dia da Semana'
+    weekday_display.admin_order_field = 'weekday'
+
+    def time_range_display(self, obj):
+        """Exibe o intervalo de tempo"""
+        if obj.is_active:
+            return format_html(
+                '<span style="color: green;">{} - {}</span>',
+                obj.start_time.strftime('%H:%M'),
+                obj.end_time.strftime('%H:%M')
+            )
+        return format_html(
+            '<span style="color: gray; text-decoration: line-through;">{} - {}</span>',
+            obj.start_time.strftime('%H:%M'),
+            obj.end_time.strftime('%H:%M')
+        )
+    time_range_display.short_description = 'Horário'

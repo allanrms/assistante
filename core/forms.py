@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from .models import Client
+from .models import Client, Service, ServiceAvailability
 
 User = get_user_model()
 
@@ -256,3 +256,69 @@ class OTPVerificationForm(forms.Form):
             raise ValidationError(_('O código deve conter apenas números.'))
 
         return otp_code
+
+
+class ServiceForm(forms.ModelForm):
+    """
+    Formulário para criação e edição de Service
+    """
+
+    class Meta:
+        model = Service
+        fields = [
+            'name', 'slug', 'description', 'duration', 'price', 'service_type',
+            'auto_scheduling_enabled', 'scarcity_enabled',
+            'show_adjacent_slots_only', 'max_daily_options', 'is_active'
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nome do Serviço'}),
+            'slug': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Sigla'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição'}),
+            'duration': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Duração em minutos'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'Valor'}),
+            'service_type': forms.Select(attrs={'class': 'form-select'}),
+            'auto_scheduling_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'scarcity_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_adjacent_slots_only': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'max_daily_options': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Máximo de opções por dia'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.client = kwargs.pop('client', None)
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Usa client_id ao invés de client para evitar RelatedObjectDoesNotExist
+        if self.client and not instance.client_id:
+            instance.client = self.client
+        if commit:
+            instance.save()
+        return instance
+
+
+class ServiceAvailabilityForm(forms.ModelForm):
+    """
+    Formulário para criação e edição de ServiceAvailability
+    """
+
+    class Meta:
+        model = ServiceAvailability
+        fields = ['weekday', 'start_time', 'end_time', 'is_active']
+        widgets = {
+            'weekday': forms.Select(attrs={'class': 'form-select'}),
+            'start_time': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+# Formset para ServiceAvailability
+ServiceAvailabilityFormSet = forms.inlineformset_factory(
+    Service,
+    ServiceAvailability,
+    form=ServiceAvailabilityForm,
+    extra=0,
+    can_delete=True
+)

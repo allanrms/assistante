@@ -13,7 +13,9 @@ from django.utils.translation import gettext_lazy as _
 from datetime import timedelta
 from django.conf import settings
 from django.views import View
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse_lazy
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
@@ -22,12 +24,14 @@ from rest_framework import status
 
 from whatsapp_connector.models import EvolutionInstance, MessageHistory
 from google_calendar.models import GoogleCalendarAuth
-from core.models import Appointment, Contact, ScheduleConfig, WorkingDay, BlockedDay
+from core.models import Appointment, Contact, ScheduleConfig, WorkingDay, BlockedDay, Service, ServiceAvailability
+from core.forms import ServiceForm, ServiceAvailabilityFormSet
 from .forms import (
     LoginForm, UserProfileForm, ClientProfileForm, ChangePasswordForm,
     AppointmentForm, ScheduleConfigForm, WorkingDayFormSet, BlockedDayFormSet
 )
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 
 
 def login_view(request):
@@ -862,3 +866,182 @@ class ScheduleAvailabilityView(LoginRequiredMixin, View):
             'working_days': working_days,
             'blocked_days': blocked_days
         })
+
+
+# ===== CRUD de Serviços =====
+
+class ServiceListView(LoginRequiredMixin, ListView):
+    """
+    View para listar serviços do cliente usando django.views.generic.ListView
+    """
+    model = Service
+    template_name = 'client_painel/services/list.html'
+    context_object_name = 'services'
+    login_url = 'client_painel:login'
+
+    def get_queryset(self):
+        if not self.request.user.client:
+            return Service.objects.none()
+        return Service.objects.filter(
+            client=self.request.user.client
+        ).prefetch_related('availabilities').order_by('name')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.client:
+            messages.warning(request, 'Você precisa completar seu cadastro de cliente.')
+            return redirect('core:register')
+        return super().dispatch(request, *args, **kwargs)
+
+
+class ServiceCreateView(LoginRequiredMixin, View):
+    """
+    View para criar um novo serviço usando django.views.generic
+    """
+    login_url = 'client_painel:login'
+
+    def post(self, request):
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        client = request.user.client
+
+        # Debug: mostra os dados recebidos
+        print("=== DADOS RECEBIDOS NO POST ===")
+        print("POST data:", dict(request.POST))
+
+        form = ServiceForm(request.POST, client=client)
+        formset = ServiceAvailabilityFormSet(request.POST)
+
+        print("=== VALIDAÇÃO ===")
+        print("Form válido?", form.is_valid())
+        if not form.is_valid():
+            print("Erros do form:", form.errors)
+
+        print("Formset válido?", formset.is_valid())
+        if not formset.is_valid():
+            print("Erros do formset:", formset.errors)
+            print("Non form errors:", formset.non_form_errors())
+
+        if form.is_valid() and formset.is_valid():
+            service = form.save()
+            formset.instance = service
+            formset.save()
+
+            messages.success(request, 'Serviço criado com sucesso!')
+            return JsonResponse({
+                'success': True,
+                'redirect': reverse_lazy('client_painel:service_list')
+            })
+        else:
+            errors = {}
+            if form.errors:
+                errors['form'] = form.errors
+            if formset.errors:
+                errors['formset'] = formset.errors
+            if formset.non_form_errors():
+                errors['formset_non_form'] = formset.non_form_errors()
+
+            print("=== ERROS RETORNADOS ===")
+            print(errors)
+
+            return JsonResponse({
+                'success': False,
+                'errors': errors
+            }, status=400)
+
+
+class ServiceUpdateView(LoginRequiredMixin, View):
+    """
+    View para editar um serviço existente usando django.views.generic
+    """
+    login_url = 'client_painel:login'
+
+    def get_object(self, service_id):
+        return get_object_or_404(Service, id=service_id, client=self.request.user.client)
+
+    def get(self, request, service_id):
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        service = self.get_object(service_id)
+
+        # Retorna os dados do serviço para popular o modal
+        availabilities = []
+        for availability in service.availabilities.all().order_by('weekday', 'start_time'):
+            availabilities.append({
+                'id': str(availability.id),
+                'weekday': availability.weekday,
+                'start_time': availability.start_time.strftime('%H:%M'),
+                'end_time': availability.end_time.strftime('%H:%M'),
+                'is_active': availability.is_active,
+            })
+
+        # Gera URL completa do link de agendamento
+        scheduling_url = ''
+        if service.auto_scheduling_enabled and service.scheduling_link_token:
+            scheduling_url = request.build_absolute_uri(
+                f'/agendar/{service.scheduling_link_token}/'
+            )
+
+        return JsonResponse({
+            'id': str(service.id),
+            'name': service.name,
+            'slug': service.slug,
+            'description': service.description or '',
+            'duration': service.duration,
+            'price': float(service.price),
+            'service_type': service.service_type,
+            'auto_scheduling_enabled': service.auto_scheduling_enabled,
+            'scheduling_link_token': scheduling_url,
+            'scarcity_enabled': service.scarcity_enabled,
+            'show_adjacent_slots_only': service.show_adjacent_slots_only,
+            'max_daily_options': service.max_daily_options,
+            'is_active': service.is_active,
+            'availabilities': availabilities,
+        })
+
+    def post(self, request, service_id):
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        service = self.get_object(service_id)
+        form = ServiceForm(request.POST, instance=service, client=request.user.client)
+        formset = ServiceAvailabilityFormSet(request.POST, instance=service)
+
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+
+            messages.success(request, 'Serviço atualizado com sucesso!')
+            return JsonResponse({
+                'success': True,
+                'redirect': reverse_lazy('client_painel:service_list')
+            })
+        else:
+            errors = {}
+            if form.errors:
+                errors['form'] = form.errors
+            if formset.errors:
+                errors['formset'] = formset.errors
+            return JsonResponse({
+                'success': False,
+                'errors': errors
+            }, status=400)
+
+
+class ServiceDeleteView(LoginRequiredMixin, View):
+    """
+    View para deletar um serviço usando django.views.generic
+    """
+    login_url = 'client_painel:login'
+
+    def post(self, request, service_id):
+        if not request.user.client:
+            return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
+
+        service = get_object_or_404(Service, id=service_id, client=request.user.client)
+        service_name = service.name
+        service.delete()
+
+        messages.success(request, f'Serviço "{service_name}" excluído com sucesso!')
+        return JsonResponse({'success': True})

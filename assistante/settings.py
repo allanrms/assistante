@@ -261,59 +261,46 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-        # 'file': {
-        #     'class': 'logging.FileHandler',
-        #     'filename': '/tmp/assistante_django.log',
-        #     'formatter': 'verbose',
-        # },
         'mail_admins': {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'error_email',
             'include_html': False,
         },
-        # 'critical_file': {
-        #     'class': 'logging.FileHandler',
-        #     'filename': '/tmp/assistante_critical_errors.log',
-        #     'formatter': 'verbose',
-        #     'level': 'ERROR',
-        # },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': ['console'],
         'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['console', 'file', 'mail_admins'],
+            'handlers': ['console', 'mail_admins'],
             'level': 'ERROR',
             'propagate': False,
         },
-        # Logger customizado para erros do LangChain Agent
         'assistante.langchain_agent': {
-            'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
+            'handlers': ['console', 'mail_admins'],
             'level': 'ERROR',
             'propagate': False,
         },
-        # Logger para erros de processamento de mídia
         'assistante.media_processing': {
-            'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
+            'handlers': ['console', 'mail_admins'],
             'level': 'ERROR',
             'propagate': False,
         },
-        # Logger para erros críticos do webhook
         'assistante.webhook': {
-            'handlers': ['console', 'file', 'mail_admins', 'critical_file'],
+            'handlers': ['console', 'mail_admins'],
             'level': 'ERROR',
             'propagate': False,
         },
     },
 }
+
 
 CRONJOBS = [
     #Core

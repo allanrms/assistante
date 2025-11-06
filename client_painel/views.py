@@ -868,6 +868,7 @@ class ScheduleAvailabilityView(LoginRequiredMixin, View):
         })
 
 
+
 # ===== CRUD de Serviços =====
 
 class ServiceListView(LoginRequiredMixin, ListView):

@@ -1,0 +1,1115 @@
+{% extends 'client_painel/base.html' %}
+{% load i18n %}
+
+{% block title %}Serviços{% endblock %}
+
+{% block page_title %}Serviços{% endblock %}
+
+{% block extra_css %}
+<style>
+    .service-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-block;
+    }
+
+    .service-badge-ccg {
+        background: rgba(200, 200, 200, 0.2);
+        color: #666;
+    }
+
+    .service-badge-ret {
+        background: rgba(255, 193, 7, 0.2);
+        color: #f59e0b;
+    }
+
+    .service-badge-chk {
+        background: rgba(100, 149, 237, 0.2);
+        color: #6495ED;
+    }
+
+    .service-badge-ecg {
+        background: rgba(76, 175, 80, 0.2);
+        color: #4CAF50;
+    }
+
+    .type-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-block;
+    }
+
+    .type-particular {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+    }
+
+    .type-convenio {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+    }
+
+    .type-sus {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+
+    .availability-text {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .status-active {
+        background: rgba(5, 150, 105, 0.15);
+        color: #059669;
+    }
+
+    .status-inactive {
+        background: rgba(100, 100, 100, 0.15);
+        color: #666;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-md);
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-base);
+    }
+
+    .action-btn:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .action-btn.delete:hover {
+        background: rgba(220, 38, 38, 0.1);
+        color: var(--danger);
+    }
+
+    .header-section {
+        margin-bottom: var(--spacing-2xl);
+    }
+
+    .header-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .header-subtitle {
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+    }
+
+    .services-card {
+        background: var(--surface);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .services-card-header {
+        padding: var(--spacing-xl);
+        border-bottom: 1px solid var(--border-light);
+        background: var(--bg-secondary);
+    }
+
+    .services-card-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .services-count {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .modal-header-custom {
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .form-section-title {
+        font-size: 0.9375rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-top: var(--spacing-lg);
+        margin-bottom: var(--spacing-md);
+        padding-bottom: var(--spacing-sm);
+        border-bottom: 2px solid var(--border-light);
+    }
+
+    .weekday-checkbox {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-md);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        transition: all var(--transition-base);
+    }
+
+    .weekday-checkbox:hover {
+        background: var(--bg-secondary);
+    }
+
+    .weekday-checkbox.active {
+        background: rgba(59, 130, 246, 0.05);
+        border-color: #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="header-section">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1 class="header-title">Serviços Oferecidos</h1>
+            <p class="header-subtitle">Gerencie consultas, exames e procedimentos médicos</p>
+        </div>
+        <button class="btn btn-dark d-flex align-items-center gap-2" onclick="openServiceModal()">
+            <i class="bi bi-plus-circle"></i>
+            <span>Novo Serviço</span>
+        </button>
+    </div>
+</div>
+
+<!-- Services List Card -->
+<div class="services-card">
+    <div class="services-card-header">
+        <h2 class="services-card-title">Lista de Serviços</h2>
+        <p class="services-count mb-0">{{ services.count }} serviço{{ services.count|pluralize }} cadastrado{{ services.count|pluralize }}</p>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Serviço</th>
+                    <th>Sigla</th>
+                    <th>Tipo</th>
+                    <th>Duração</th>
+                    <th>Valor</th>
+                    <th>Disponibilidade</th>
+                    <th>AutoAgendamento</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for service in services %}
+                <tr>
+                    <td>
+                        <strong>{{ service.name }}</strong>
+                    </td>
+                    <td>
+                        <span class="service-badge service-badge-{{ service.slug|lower }}">{{ service.slug }}</span>
+                    </td>
+                    <td>
+                        {% if service.service_type == 'particular' %}
+                            <span class="type-badge type-particular">Particular</span>
+                        {% elif service.service_type == 'convenio' %}
+                            <span class="type-badge type-convenio">Convênio</span>
+                        {% else %}
+                            <span class="type-badge type-sus">SUS</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ service.duration }} min</td>
+                    <td>R$ {{ service.price|floatformat:2 }}</td>
+                    <td>
+                        <div class="availability-text">
+                            {% if service.availabilities.exists %}
+                                {% for avail in service.availabilities.all %}
+                                    {% if avail.is_active %}
+                                        <div>
+                                            <strong>{{ avail.get_weekday_display }}:</strong>
+                                            {{ avail.start_time|time:"H:i" }}-{{ avail.end_time|time:"H:i" }}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">Sem horários configurados</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if service.auto_scheduling_enabled %}
+                            <div class="d-flex flex-column gap-1">
+                                <span class="status-badge status-active">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Ativo
+                                </span>
+                                {% if service.scarcity_enabled %}
+                                    <small class="text-muted">Com Escassez</small>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <span class="status-badge status-inactive">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex justify-content-end gap-2">
+                            {% if service.auto_scheduling_enabled and service.scheduling_link_token %}
+                            <button class="action-btn" onclick="copyServiceLink('{{ request.scheme }}://{{ request.get_host }}/agendar/{{ service.scheduling_link_token }}/')" title="Copiar Link">
+                                <i class="bi bi-link-45deg"></i>
+                            </button>
+                            <button class="action-btn" onclick="openWhatsApp('{{ request.scheme }}://{{ request.get_host }}/agendar/{{ service.scheduling_link_token }}/')" title="Compartilhar no WhatsApp">
+                                <i class="bi bi-whatsapp"></i>
+                            </button>
+                            {% endif %}
+                            <button class="action-btn" onclick="editService('{{ service.id }}')" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="action-btn delete" onclick="deleteService('{{ service.id }}', '{{ service.name }}')" title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5">
+                        <div class="empty-state">
+                            <i class="bi bi-briefcase" style="font-size: 4rem; color: var(--text-tertiary);"></i>
+                            <h5 class="mt-3 text-secondary">Nenhum serviço cadastrado ainda</h5>
+                            <p class="text-muted">Clique em "Novo Serviço" para começar</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal de Criar/Editar Serviço -->
+<div class="modal fade" id="serviceModal" tabindex="-1" aria-labelledby="serviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header modal-header-custom">
+                <div>
+                    <h5 class="modal-title mb-0" id="serviceModalLabel">Editar Serviço</h5>
+                    <small class="text-muted">Atualize as informações do serviço</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="serviceForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Coluna Esquerda - Dados Básicos -->
+                        <div class="col-md-6 pe-4" style="border-right: 1px solid var(--border-light);">
+                            <h6 class="form-section-title">Dados Básicos</h6>
+
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Nome do Serviço</label>
+                                <input type="text" class="form-control" id="name" name="name" placeholder="Consulta Clínica Geral" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="slug" class="form-label">Sigla</label>
+                                <input type="text" class="form-control" id="slug" name="slug" placeholder="CCG" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Descrição</label>
+                                <textarea class="form-control" id="description" name="description" rows="3" placeholder="Descrição detalhada do serviço"></textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="duration" class="form-label">Duração (minutos)</label>
+                                    <input type="number" class="form-control" id="duration" name="duration" placeholder="30" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="price" class="form-label">Valor (R$)</label>
+                                    <input type="number" class="form-control" id="price" name="price" step="0.01" placeholder="250" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="service_type" class="form-label">Tipo</label>
+                                <select class="form-select" id="service_type" name="service_type" required>
+                                    <option value="particular">Particular</option>
+                                    <option value="convenio">Convênio</option>
+                                    <option value="sus">SUS</option>
+                                </select>
+                            </div>
+
+                            <h6 class="form-section-title">Disponibilidade Semanal</h6>
+                            <p class="text-muted small mb-3">Configure os dias e horários em que este serviço pode ser agendado</p>
+
+                            <div id="weekday-checkboxes">
+                                <!-- Segunda-feira -->
+                                <div class="weekday-item mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input weekday-toggle" type="checkbox" id="weekday-0" data-weekday="0">
+                                        <label class="form-check-label fw-semibold" for="weekday-0">
+                                            Segunda-feira
+                                        </label>
+                                    </div>
+                                    <div class="weekday-times ms-4 mt-2" id="times-0" style="display: none;">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_0_start" value="08:00">
+                                            </div>
+                                            <div class="col-auto">
+                                                <span class="text-muted">até</span>
+                                            </div>
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_0_end" value="12:00">
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-link btn-sm ps-0 mt-2" onclick="addPeriodToWeekday(0)">
+                                            <i class="bi bi-plus-circle me-1"></i>Adicionar período
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Terça-feira -->
+                                <div class="weekday-item mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input weekday-toggle" type="checkbox" id="weekday-1" data-weekday="1">
+                                        <label class="form-check-label fw-semibold" for="weekday-1">
+                                            Terça-feira
+                                        </label>
+                                    </div>
+                                    <div class="weekday-times ms-4 mt-2" id="times-1" style="display: none;">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_1_start" value="08:00">
+                                            </div>
+                                            <div class="col-auto">
+                                                <span class="text-muted">até</span>
+                                            </div>
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_1_end" value="12:00">
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-link btn-sm ps-0 mt-2" onclick="addPeriodToWeekday(1)">
+                                            <i class="bi bi-plus-circle me-1"></i>Adicionar período
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Quarta-feira -->
+                                <div class="weekday-item mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input weekday-toggle" type="checkbox" id="weekday-2" data-weekday="2">
+                                        <label class="form-check-label fw-semibold" for="weekday-2">
+                                            Quarta-feira
+                                        </label>
+                                    </div>
+                                    <div class="weekday-times ms-4 mt-2" id="times-2" style="display: none;">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_2_start" value="08:00">
+                                            </div>
+                                            <div class="col-auto">
+                                                <span class="text-muted">até</span>
+                                            </div>
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_2_end" value="12:00">
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-link btn-sm ps-0 mt-2" onclick="addPeriodToWeekday(2)">
+                                            <i class="bi bi-plus-circle me-1"></i>Adicionar período
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Quinta-feira -->
+                                <div class="weekday-item mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input weekday-toggle" type="checkbox" id="weekday-3" data-weekday="3">
+                                        <label class="form-check-label fw-semibold" for="weekday-3">
+                                            Quinta-feira
+                                        </label>
+                                    </div>
+                                    <div class="weekday-times ms-4 mt-2" id="times-3" style="display: none;">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_3_start" value="08:00">
+                                            </div>
+                                            <div class="col-auto">
+                                                <span class="text-muted">até</span>
+                                            </div>
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_3_end" value="12:00">
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-link btn-sm ps-0 mt-2" onclick="addPeriodToWeekday(3)">
+                                            <i class="bi bi-plus-circle me-1"></i>Adicionar período
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Sexta-feira -->
+                                <div class="weekday-item mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input weekday-toggle" type="checkbox" id="weekday-4" data-weekday="4">
+                                        <label class="form-check-label fw-semibold" for="weekday-4">
+                                            Sexta-feira
+                                        </label>
+                                    </div>
+                                    <div class="weekday-times ms-4 mt-2" id="times-4" style="display: none;">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_4_start" value="08:00">
+                                            </div>
+                                            <div class="col-auto">
+                                                <span class="text-muted">até</span>
+                                            </div>
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_4_end" value="12:00">
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-link btn-sm ps-0 mt-2" onclick="addPeriodToWeekday(4)">
+                                            <i class="bi bi-plus-circle me-1"></i>Adicionar período
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Sábado -->
+                                <div class="weekday-item mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input weekday-toggle" type="checkbox" id="weekday-5" data-weekday="5">
+                                        <label class="form-check-label fw-semibold" for="weekday-5">
+                                            Sábado
+                                        </label>
+                                    </div>
+                                    <div class="weekday-times ms-4 mt-2" id="times-5" style="display: none;">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_5_start" value="08:00">
+                                            </div>
+                                            <div class="col-auto">
+                                                <span class="text-muted">até</span>
+                                            </div>
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_5_end" value="12:00">
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-link btn-sm ps-0 mt-2" onclick="addPeriodToWeekday(5)">
+                                            <i class="bi bi-plus-circle me-1"></i>Adicionar período
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Domingo -->
+                                <div class="weekday-item mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input weekday-toggle" type="checkbox" id="weekday-6" data-weekday="6">
+                                        <label class="form-check-label fw-semibold" for="weekday-6">
+                                            Domingo
+                                        </label>
+                                    </div>
+                                    <div class="weekday-times ms-4 mt-2" id="times-6" style="display: none;">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_6_start" value="08:00">
+                                            </div>
+                                            <div class="col-auto">
+                                                <span class="text-muted">até</span>
+                                            </div>
+                                            <div class="col-auto">
+                                                <input type="time" class="form-control form-control-sm" name="availability_6_end" value="12:00">
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-link btn-sm ps-0 mt-2" onclick="addPeriodToWeekday(6)">
+                                            <i class="bi bi-plus-circle me-1"></i>Adicionar período
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Coluna Direita - AutoAgendamento -->
+                        <div class="col-md-6 ps-4">
+                            <h6 class="form-section-title">AutoAgendamento</h6>
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <label class="form-label mb-0">Ativar</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="auto_scheduling_enabled" name="auto_scheduling_enabled" style="width: 3rem; height: 1.5rem;">
+                                </div>
+                            </div>
+
+                            <div id="auto-scheduling-options" style="display: none;">
+                                <div class="mb-4">
+                                    <label for="scheduling_link_token" class="form-label">Link do serviço</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="scheduling_link_token" name="scheduling_link_token" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copyLinkFromInput()">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <h6 class="form-section-title">Configurações de Escassez</h6>
+
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <label class="form-label mb-0">Ativar Escassez</label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="scarcity_enabled" name="scarcity_enabled" style="width: 3rem; height: 1.5rem;">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3 form-check">
+                                    <input class="form-check-input" type="checkbox" id="show_adjacent_slots_only" name="show_adjacent_slots_only">
+                                    <label class="form-check-label" for="show_adjacent_slots_only">
+                                        Mostrar apenas horários adjacentes
+                                        <i class="bi bi-info-circle text-muted ms-1" title="Mostra apenas os próximos horários disponíveis"></i>
+                                    </label>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="max_daily_options" class="form-label">Máximo de opções por dia</label>
+                                    <input type="number" class="form-control" id="max_daily_options" name="max_daily_options" value="3">
+                                </div>
+
+                                <h6 class="form-section-title">Preview do AutoAgendamento</h6>
+
+                                <!-- Preview Card -->
+                                <div class="card" style="background: #0f766e; color: white; border-radius: 12px; overflow: hidden;">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-center gap-3 mb-3">
+                                            <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                                <i class="bi bi-calendar-check" style="font-size: 1.5rem;"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">Serviço</h6>
+                                                <p class="mb-0 small">Profissional</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex gap-3 mb-4">
+                                            <div class="d-flex align-items-center gap-1">
+                                                <i class="bi bi-clock"></i>
+                                                <small id="preview-duration">0 min</small>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <i class="bi bi-geo-alt"></i>
+                                                <small>presencial</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <p class="small mb-2">Selecione uma data</p>
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <button type="button" class="btn btn-link text-white p-0">
+                                                    <i class="bi bi-chevron-left"></i>
+                                                </button>
+                                                <span class="small">Janeiro 2025</span>
+                                                <button type="button" class="btn btn-link text-white p-0">
+                                                    <i class="bi bi-chevron-right"></i>
+                                                </button>
+                                            </div>
+
+                                            <!-- Mini Calendar -->
+                                            <div class="d-flex justify-content-between text-center" style="font-size: 0.75rem;">
+                                                <div style="width: 14%;">
+                                                    <div class="mb-1 opacity-50">DOM</div>
+                                                    <div style="width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center;">2</div>
+                                                </div>
+                                                <div style="width: 14%;">
+                                                    <div class="mb-1 opacity-50">SEG</div>
+                                                    <div style="width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center;">3</div>
+                                                </div>
+                                                <div style="width: 14%;">
+                                                    <div class="mb-1 opacity-50">TER</div>
+                                                    <div style="width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center;">4</div>
+                                                </div>
+                                                <div style="width: 14%;">
+                                                    <div class="mb-1 opacity-50">QUA</div>
+                                                    <div style="width: 100%; aspect-ratio: 1; background: white; color: #0f766e; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold;">5</div>
+                                                </div>
+                                                <div style="width: 14%;">
+                                                    <div class="mb-1 opacity-50">QUI</div>
+                                                    <div style="width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center;">6</div>
+                                                </div>
+                                                <div style="width: 14%;">
+                                                    <div class="mb-1 opacity-50">SEX</div>
+                                                    <div style="width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center;">7</div>
+                                                </div>
+                                                <div style="width: 14%;">
+                                                    <div class="mb-1 opacity-50">SÁB</div>
+                                                    <div style="width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center;">8</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <p class="small mb-2">Horários disponíveis</p>
+                                            <p class="small opacity-75 mb-0">Sem horários colados hoje.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-dark">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Estado do formulário
+let currentServiceId = null;
+let existingAvailabilities = [];  // Armazena availabilities existentes ao editar
+
+// Abre modal para novo serviço
+function openServiceModal() {
+    currentServiceId = null;
+    existingAvailabilities = [];  // Limpa availabilities existentes
+    document.getElementById('serviceModalLabel').textContent = 'Novo Serviço';
+    document.querySelector('#serviceModal small.text-muted').textContent = 'Preencha as informações do novo serviço';
+    document.getElementById('serviceForm').reset();
+
+    // Desmarca todos os checkboxes de dias da semana e limpa períodos extras
+    document.querySelectorAll('.weekday-toggle').forEach(checkbox => {
+        checkbox.checked = false;
+        const timesDiv = document.getElementById(`times-${checkbox.dataset.weekday}`);
+        if (timesDiv) {
+            timesDiv.style.display = 'none';
+            // Remove todos os períodos extras (mantém apenas o primeiro)
+            const allRows = timesDiv.querySelectorAll('.row.g-2');
+            allRows.forEach((row, index) => {
+                if (index > 0) row.remove();
+            });
+            // Reseta horários padrão do primeiro período
+            const firstRow = timesDiv.querySelector('.row.g-2');
+            if (firstRow) {
+                const inputs = firstRow.querySelectorAll('input[type="time"]');
+                if (inputs[0]) inputs[0].value = '08:00';
+                if (inputs[1]) inputs[1].value = '12:00';
+            }
+        }
+    });
+
+    // Esconde opções de autoagendamento
+    document.getElementById('auto-scheduling-options').style.display = 'none';
+
+    // Reseta o preview de duração
+    document.getElementById('preview-duration').textContent = '0 min';
+
+    const modal = new bootstrap.Modal(document.getElementById('serviceModal'));
+    modal.show();
+}
+
+// Toggle de dias da semana
+document.querySelectorAll('.weekday-toggle').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const timesDiv = document.getElementById(`times-${this.dataset.weekday}`);
+        if (timesDiv) {
+            timesDiv.style.display = this.checked ? 'block' : 'none';
+        }
+    });
+});
+
+// Edita um serviço existente
+async function editService(serviceId) {
+    try {
+        const response = await fetch(`/servicos/${serviceId}/`);
+        const data = await response.json();
+
+        currentServiceId = serviceId;
+        existingAvailabilities = data.availabilities || [];  // Armazena availabilities existentes
+        document.getElementById('serviceModalLabel').textContent = 'Editar Serviço';
+        document.querySelector('#serviceModal small.text-muted').textContent = 'Atualize as informações do serviço';
+
+        // Preenche o formulário
+        document.getElementById('name').value = data.name;
+        document.getElementById('slug').value = data.slug;
+        document.getElementById('duration').value = data.duration;
+        document.getElementById('price').value = data.price;
+        document.getElementById('service_type').value = data.service_type;
+        document.getElementById('auto_scheduling_enabled').checked = data.auto_scheduling_enabled;
+        document.getElementById('scheduling_link_token').value = data.scheduling_link_token;
+        document.getElementById('scarcity_enabled').checked = data.scarcity_enabled;
+        document.getElementById('show_adjacent_slots_only').checked = data.show_adjacent_slots_only;
+        document.getElementById('max_daily_options').value = data.max_daily_options;
+
+        // Atualiza preview de duração
+        document.getElementById('preview-duration').textContent = `${data.duration} min`;
+
+        // Mostra/esconde opções de autoagendamento
+        document.getElementById('auto-scheduling-options').style.display = data.auto_scheduling_enabled ? 'block' : 'none';
+
+        // Desmarca todos os checkboxes e limpa períodos
+        document.querySelectorAll('.weekday-toggle').forEach(checkbox => {
+            checkbox.checked = false;
+            const timesDiv = document.getElementById(`times-${checkbox.dataset.weekday}`);
+            if (timesDiv) {
+                timesDiv.style.display = 'none';
+                // Remove todos os períodos extras (mantém apenas o primeiro)
+                const allRows = timesDiv.querySelectorAll('.row.g-2');
+                allRows.forEach((row, index) => {
+                    if (index > 0) row.remove();
+                });
+            }
+        });
+
+        // Agrupa disponibilidades por dia da semana
+        const availsByDay = {};
+        data.availabilities.forEach(avail => {
+            if (!availsByDay[avail.weekday]) {
+                availsByDay[avail.weekday] = [];
+            }
+            availsByDay[avail.weekday].push(avail);
+        });
+
+        // Preenche disponibilidades para cada dia
+        Object.keys(availsByDay).forEach(weekday => {
+            const avails = availsByDay[weekday];
+            const checkbox = document.getElementById(`weekday-${weekday}`);
+
+            if (checkbox && avails.length > 0) {
+                checkbox.checked = true;
+                const timesDiv = document.getElementById(`times-${weekday}`);
+
+                if (timesDiv) {
+                    timesDiv.style.display = 'block';
+
+                    // Preenche o primeiro período
+                    const firstRow = timesDiv.querySelector('.row.g-2');
+                    if (firstRow && avails[0]) {
+                        const startInput = firstRow.querySelector('input[type="time"]');
+                        const endInput = firstRow.querySelectorAll('input[type="time"]')[1];
+                        if (startInput) startInput.value = avails[0].start_time;
+                        if (endInput) endInput.value = avails[0].end_time;
+                    }
+
+                    // Adiciona períodos extras (a partir do segundo)
+                    for (let i = 1; i < avails.length; i++) {
+                        const newPeriodDiv = document.createElement('div');
+                        newPeriodDiv.className = 'row g-2 align-items-center mt-2';
+                        newPeriodDiv.innerHTML = `
+                            <div class="col-auto">
+                                <input type="time" class="form-control form-control-sm" value="${avails[i].start_time}">
+                            </div>
+                            <div class="col-auto">
+                                <span class="text-muted">até</span>
+                            </div>
+                            <div class="col-auto">
+                                <input type="time" class="form-control form-control-sm" value="${avails[i].end_time}">
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('.row').remove()">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        `;
+
+                        // Insere antes do botão "Adicionar período"
+                        const addButton = timesDiv.querySelector('button[onclick^="addPeriodToWeekday"]');
+                        if (addButton) {
+                            addButton.parentElement.insertBefore(newPeriodDiv, addButton);
+                        }
+                    }
+                }
+            }
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById('serviceModal'));
+        modal.show();
+    } catch (error) {
+        console.error('Erro ao carregar serviço:', error);
+        alert('Erro ao carregar serviço');
+    }
+}
+
+// Deleta um serviço
+async function deleteService(serviceId, serviceName) {
+    if (!confirm(`Tem certeza que deseja excluir o serviço "${serviceName}"?`)) {
+        return;
+    }
+
+    try {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+        const response = await fetch(`/servicos/${serviceId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro ao excluir serviço');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir serviço:', error);
+        alert('Erro ao excluir serviço');
+    }
+}
+
+// Adiciona período adicional a um dia da semana
+function addPeriodToWeekday(weekday) {
+    const timesDiv = document.getElementById(`times-${weekday}`);
+    if (!timesDiv) return;
+
+    const newPeriodDiv = document.createElement('div');
+    newPeriodDiv.className = 'row g-2 align-items-center mt-2';
+    newPeriodDiv.innerHTML = `
+        <div class="col-auto">
+            <input type="time" class="form-control form-control-sm" name="availability_${weekday}_start_extra" value="14:00">
+        </div>
+        <div class="col-auto">
+            <span class="text-muted">até</span>
+        </div>
+        <div class="col-auto">
+            <input type="time" class="form-control form-control-sm" name="availability_${weekday}_end_extra" value="18:00">
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('.row').remove()">
+                <i class="bi bi-x-circle"></i>
+            </button>
+        </div>
+    `;
+
+    // Insere antes do botão "Adicionar período"
+    const addButton = timesDiv.querySelector('button[onclick^="addPeriodToWeekday"]');
+    if (addButton) {
+        addButton.parentElement.insertBefore(newPeriodDiv, addButton);
+    } else {
+        timesDiv.appendChild(newPeriodDiv);
+    }
+}
+
+// Atualiza preview de duração em tempo real
+document.getElementById('duration').addEventListener('input', function() {
+    document.getElementById('preview-duration').textContent = `${this.value || 0} min`;
+});
+
+// Toggle de AutoAgendamento
+document.getElementById('auto_scheduling_enabled').addEventListener('change', function() {
+    const optionsDiv = document.getElementById('auto-scheduling-options');
+    optionsDiv.style.display = this.checked ? 'block' : 'none';
+});
+
+// Submete o formulário
+document.getElementById('serviceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData();
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+
+    // Adiciona campos básicos do serviço
+    formData.append('name', document.getElementById('name').value);
+    formData.append('slug', document.getElementById('slug').value);
+    formData.append('description', document.getElementById('description')?.value || '');
+    formData.append('duration', document.getElementById('duration').value);
+    formData.append('price', document.getElementById('price').value);
+    formData.append('service_type', document.getElementById('service_type').value);
+
+    // Checkboxes - Django espera 'on' quando marcado ou omitir quando desmarcado
+    if (document.getElementById('auto_scheduling_enabled').checked) {
+        formData.append('auto_scheduling_enabled', 'on');
+    }
+    if (document.getElementById('scarcity_enabled').checked) {
+        formData.append('scarcity_enabled', 'on');
+    }
+    if (document.getElementById('show_adjacent_slots_only').checked) {
+        formData.append('show_adjacent_slots_only', 'on');
+    }
+
+    formData.append('max_daily_options', document.getElementById('max_daily_options').value || '3');
+    formData.append('is_active', 'on');
+
+    // Coleta disponibilidades de TODOS os dias da semana que estão marcados
+    const availabilities = [];
+    let availIndexCounter = 0;
+
+    for (let weekday = 0; weekday <= 6; weekday++) {
+        const checkbox = document.getElementById(`weekday-${weekday}`);
+
+        if (checkbox && checkbox.checked) {
+            const timesDiv = document.getElementById(`times-${weekday}`);
+            if (!timesDiv) continue;
+
+            // Coleta TODOS os períodos deste dia (podem ter múltiplos)
+            const periodRows = timesDiv.querySelectorAll('.row.g-2');
+
+            periodRows.forEach(row => {
+                const startInput = row.querySelector('input[type="time"]');
+                const endInput = row.querySelectorAll('input[type="time"]')[1];
+
+                if (startInput && endInput && startInput.value && endInput.value) {
+                    availabilities.push({
+                        weekday: weekday,
+                        start_time: startInput.value,
+                        end_time: endInput.value,
+                        is_active: true
+                    });
+                }
+            });
+        }
+    }
+
+    // Identifica quantos são registros existentes (ao editar) vs novos
+    const initialFormsCount = currentServiceId ? existingAvailabilities.length : 0;
+    const totalFormsCount = currentServiceId ? Math.max(availabilities.length, initialFormsCount) : availabilities.length;
+
+    // Adiciona campos de management do formset (usa prefixo 'availabilities-')
+    formData.append('availabilities-TOTAL_FORMS', totalFormsCount.toString());
+    formData.append('availabilities-INITIAL_FORMS', initialFormsCount.toString());
+    formData.append('availabilities-MIN_NUM_FORMS', '0');
+    formData.append('availabilities-MAX_NUM_FORMS', '1000');
+
+    if (currentServiceId) {
+        // Modo EDIÇÃO: Marca registros existentes para DELETE e adiciona novos
+        let formIndex = 0;
+
+        // Primeiro, marca todos os registros existentes como DELETE
+        existingAvailabilities.forEach((existingAvail) => {
+            formData.append(`availabilities-${formIndex}-id`, existingAvail.id);
+            formData.append(`availabilities-${formIndex}-weekday`, existingAvail.weekday);
+            formData.append(`availabilities-${formIndex}-start_time`, existingAvail.start_time);
+            formData.append(`availabilities-${formIndex}-end_time`, existingAvail.end_time);
+            formData.append(`availabilities-${formIndex}-is_active`, 'on');
+            formData.append(`availabilities-${formIndex}-DELETE`, 'on');  // Marca para deletar
+            formIndex++;
+        });
+
+        // Depois, adiciona todos os novos (sem ID)
+        availabilities.forEach((avail) => {
+            formData.append(`availabilities-${formIndex}-id`, '');
+            formData.append(`availabilities-${formIndex}-weekday`, avail.weekday);
+            formData.append(`availabilities-${formIndex}-start_time`, avail.start_time);
+            formData.append(`availabilities-${formIndex}-end_time`, avail.end_time);
+            formData.append(`availabilities-${formIndex}-is_active`, 'on');
+            formData.append(`availabilities-${formIndex}-DELETE`, '');  // Não deletar
+            formIndex++;
+        });
+    } else {
+        // Modo CRIAÇÃO: Adiciona todos como novos
+        availabilities.forEach((avail, index) => {
+            formData.append(`availabilities-${index}-id`, '');
+            formData.append(`availabilities-${index}-weekday`, avail.weekday);
+            formData.append(`availabilities-${index}-start_time`, avail.start_time);
+            formData.append(`availabilities-${index}-end_time`, avail.end_time);
+            formData.append(`availabilities-${index}-is_active`, 'on');
+            formData.append(`availabilities-${index}-DELETE`, '');
+        });
+    }
+
+    // Debug: mostra todos os dados sendo enviados
+    console.log('=== DADOS SENDO ENVIADOS ===');
+    console.log('Availabilities coletadas:', availabilities);
+    console.log('FormData entries:');
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
+
+    const url = currentServiceId ? `/servicos/${currentServiceId}/` : '/servicos/create/';
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            location.reload();
+        } else {
+            console.error('Erros completos:', data.errors);
+            console.error('Response completo:', data);
+
+            // Mostra erros específicos se houver
+            let errorMsg = 'Erro ao salvar serviço:\n\n';
+            if (data.errors) {
+                if (data.errors.form) {
+                    errorMsg += 'Erros no formulário:\n';
+                    Object.keys(data.errors.form).forEach(field => {
+                        errorMsg += `- ${field}: ${data.errors.form[field]}\n`;
+                    });
+                }
+                if (data.errors.formset) {
+                    errorMsg += '\nErros na disponibilidade:\n';
+                    console.error('Formset errors:', data.errors.formset);
+                    errorMsg += JSON.stringify(data.errors.formset, null, 2);
+                }
+            }
+
+            alert(errorMsg);
+        }
+    } catch (error) {
+        console.error('Erro ao salvar serviço:', error);
+        alert('Erro ao salvar serviço');
+    }
+});
+
+// Toggle de opções de autoagendamento
+document.getElementById('auto_scheduling_enabled').addEventListener('change', (e) => {
+    document.getElementById('auto-scheduling-options').style.display = e.target.checked ? 'block' : 'none';
+});
+
+// Copia link do serviço
+function copyServiceLink(url) {
+    navigator.clipboard.writeText(url);
+    alert('Link copiado para área de transferência!');
+}
+
+function copyLinkFromInput() {
+    const input = document.getElementById('scheduling_link_token');
+    navigator.clipboard.writeText(input.value);
+    alert('Link copiado para área de transferência!');
+}
+
+// Abre WhatsApp com link
+function openWhatsApp(url) {
+    const message = encodeURIComponent(`Agende seu horário: ${url}`);
+    window.open(`https://wa.me/?text=${message}`, '_blank');
+}
+
+// Função helper para pegar CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

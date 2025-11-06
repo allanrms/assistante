@@ -302,7 +302,6 @@ LOGGING = {
 }
 
 
-
 CRONJOBS = [
     #Core
     ('0 */4 * * *', 'google_calendar.cron.process_google_calendar_updates.run'),

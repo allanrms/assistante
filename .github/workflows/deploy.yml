@@ -12,26 +12,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Test SSH connection
+    - name: Deploy application
       uses: appleboy/ssh-action@master
       with:
         host: 3.88.156.249
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: echo "✅ Connected successfully!"
-
-#    - name: Deploy application
-#      uses: appleboy/ssh-action@master
-#      with:
-#        host: 3.88.156.249
-#        username: ubuntu
-#        key: ${{ secrets.SSH_PRIVATE_KEY }}
-#        script: |
-#          cd /home/ubuntu/webapps/assistante/assistante
-#          git pull
-#          ../bin/pip install -r requirements.txt
-#          ../bin/python manage.py collectstatic --noinput
-#          ../bin/python manage.py migrate
-#          ../bin/python manage.py crontab remove
-#          ../bin/python manage.py crontab add
-#          sudo supervisorctl restart assistante
+        script: |
+          cd /home/ubuntu/webapps/assistante/assistante
+          git pull
+          ../bin/pip install -r requirements.txt
+          ../bin/python manage.py collectstatic --noinput
+          ../bin/python manage.py migrate
+          ../bin/python manage.py crontab remove
+          ../bin/python manage.py crontab add
+          sudo supervisorctl restart assistante

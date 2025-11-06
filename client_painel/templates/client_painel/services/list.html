@@ -236,14 +236,14 @@
                     <td>R$ {{ service.price|floatformat:2 }}</td>
                     <td>
                         <div class="availability-text">
-                            {% if service.availabilities.exists %}
-                                {% for avail in service.availabilities.all %}
-                                    {% if avail.is_active %}
-                                        <div>
-                                            <strong>{{ avail.get_weekday_display }}:</strong>
-                                            {{ avail.start_time|time:"H:i" }}-{{ avail.end_time|time:"H:i" }}
-                                        </div>
-                                    {% endif %}
+                            {% if service.grouped_availabilities %}
+                                {% for weekday_name, avails in service.grouped_availabilities.items %}
+                                    <div>
+                                        <strong>{{ weekday_name }}:</strong>
+                                        {% for avail in avails %}
+                                            {{ avail.start_time|time:"H:i" }}-{{ avail.end_time|time:"H:i" }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    </div>
                                 {% endfor %}
                             {% else %}
                                 <span class="text-muted">Sem horários configurados</span>
@@ -975,9 +975,29 @@ document.getElementById('serviceForm').addEventListener('submit', async (e) => {
         }
     }
 
-    // Identifica quantos são registros existentes (ao editar) vs novos
+    // Calcula o total de forms baseado na nova lógica:
+    // - Ao editar: availabilities.length (atualizados/novos) + registros a deletar
+    // - Ao criar: apenas availabilities.length
+    let totalFormsCount = availabilities.length;
     const initialFormsCount = currentServiceId ? existingAvailabilities.length : 0;
-    const totalFormsCount = currentServiceId ? Math.max(availabilities.length, initialFormsCount) : availabilities.length;
+
+    if (currentServiceId) {
+        // Função helper para normalizar horários (remove segundos)
+        const normalizeTime = (time) => {
+            if (!time) return '';
+            return time.substring(0, 5); // Pega apenas HH:MM
+        };
+
+        // Conta quantos registros existentes serão deletados (não coincidem com nenhum novo)
+        const toDeleteCount = existingAvailabilities.filter(existing => {
+            return !availabilities.some(avail =>
+                existing.weekday === avail.weekday &&
+                normalizeTime(existing.start_time) === normalizeTime(avail.start_time) &&
+                normalizeTime(existing.end_time) === normalizeTime(avail.end_time)
+            );
+        }).length;
+        totalFormsCount = availabilities.length + toDeleteCount;
+    }
 
     // Adiciona campos de management do formset (usa prefixo 'availabilities-')
     formData.append('availabilities-TOTAL_FORMS', totalFormsCount.toString());
@@ -986,30 +1006,93 @@ document.getElementById('serviceForm').addEventListener('submit', async (e) => {
     formData.append('availabilities-MAX_NUM_FORMS', '1000');
 
     if (currentServiceId) {
-        // Modo EDIÇÃO: Marca registros existentes para DELETE e adiciona novos
+        // Modo EDIÇÃO: Atualiza existentes, deleta removidos, cria novos
+        // IMPORTANTE: Forms com ID devem vir PRIMEIRO (INITIAL_FORMS), depois os sem ID (novos)
         let formIndex = 0;
+        const processedExistingIds = new Set();
+        const formsWithId = [];      // UPDATEs e DELETEs (têm ID)
+        const formsWithoutId = [];   // CREATEs (sem ID)
 
-        // Primeiro, marca todos os registros existentes como DELETE
-        existingAvailabilities.forEach((existingAvail) => {
-            formData.append(`availabilities-${formIndex}-id`, existingAvail.id);
-            formData.append(`availabilities-${formIndex}-weekday`, existingAvail.weekday);
-            formData.append(`availabilities-${formIndex}-start_time`, existingAvail.start_time);
-            formData.append(`availabilities-${formIndex}-end_time`, existingAvail.end_time);
-            formData.append(`availabilities-${formIndex}-is_active`, 'on');
-            formData.append(`availabilities-${formIndex}-DELETE`, 'on');  // Marca para deletar
-            formIndex++;
-        });
+        // Função helper para normalizar horários (remove segundos se existir)
+        const normalizeTime = (time) => {
+            if (!time) return '';
+            return time.substring(0, 5); // Pega apenas HH:MM
+        };
 
-        // Depois, adiciona todos os novos (sem ID)
+        // Separa availabilities em UPDATEs (com ID) e CREATEs (sem ID)
         availabilities.forEach((avail) => {
-            formData.append(`availabilities-${formIndex}-id`, '');
-            formData.append(`availabilities-${formIndex}-weekday`, avail.weekday);
-            formData.append(`availabilities-${formIndex}-start_time`, avail.start_time);
-            formData.append(`availabilities-${formIndex}-end_time`, avail.end_time);
+            // Procura um registro existente que coincida (mesmo weekday, start_time, end_time)
+            const matchingExisting = existingAvailabilities.find(existing =>
+                existing.weekday === avail.weekday &&
+                normalizeTime(existing.start_time) === normalizeTime(avail.start_time) &&
+                normalizeTime(existing.end_time) === normalizeTime(avail.end_time) &&
+                !processedExistingIds.has(existing.id)
+            );
+
+            if (matchingExisting) {
+                // UPDATE: Tem ID existente
+                formsWithId.push({
+                    id: String(matchingExisting.id),
+                    weekday: avail.weekday,
+                    start_time: avail.start_time,
+                    end_time: avail.end_time,
+                    is_active: true,
+                    delete: false
+                });
+                processedExistingIds.add(matchingExisting.id);
+            } else {
+                // CREATE: Novo registro (sem ID)
+                formsWithoutId.push({
+                    id: '',
+                    weekday: avail.weekday,
+                    start_time: avail.start_time,
+                    end_time: avail.end_time,
+                    is_active: true,
+                    delete: false
+                });
+            }
+        });
+
+        // Adiciona registros existentes que foram removidos (DELETE)
+        existingAvailabilities.forEach((existingAvail) => {
+            if (!processedExistingIds.has(existingAvail.id)) {
+                formsWithId.push({
+                    id: String(existingAvail.id),
+                    weekday: existingAvail.weekday,
+                    start_time: existingAvail.start_time,
+                    end_time: existingAvail.end_time,
+                    is_active: true,
+                    delete: true
+                });
+            }
+        });
+
+        // Envia PRIMEIRO todos os forms com ID (UPDATEs e DELETEs)
+        formsWithId.forEach((form) => {
+            formData.append(`availabilities-${formIndex}-id`, form.id);
+            formData.append(`availabilities-${formIndex}-weekday`, form.weekday);
+            formData.append(`availabilities-${formIndex}-start_time`, form.start_time);
+            formData.append(`availabilities-${formIndex}-end_time`, form.end_time);
             formData.append(`availabilities-${formIndex}-is_active`, 'on');
-            formData.append(`availabilities-${formIndex}-DELETE`, '');  // Não deletar
+            formData.append(`availabilities-${formIndex}-DELETE`, form.delete ? 'on' : '');
             formIndex++;
         });
+
+        // Depois, envia os forms sem ID (CREATEs)
+        formsWithoutId.forEach((form) => {
+            formData.append(`availabilities-${formIndex}-id`, '');
+            formData.append(`availabilities-${formIndex}-weekday`, form.weekday);
+            formData.append(`availabilities-${formIndex}-start_time`, form.start_time);
+            formData.append(`availabilities-${formIndex}-end_time`, form.end_time);
+            formData.append(`availabilities-${formIndex}-is_active`, 'on');
+            formData.append(`availabilities-${formIndex}-DELETE`, '');
+            formIndex++;
+        });
+
+        // Atualiza INITIAL_FORMS para ser o número de forms com ID
+        formData.set('availabilities-INITIAL_FORMS', formsWithId.length.toString());
+        // Atualiza TOTAL_FORMS para ser o total real de forms enviados
+        formData.set('availabilities-TOTAL_FORMS', (formsWithId.length + formsWithoutId.length).toString());
     } else {
         // Modo CRIAÇÃO: Adiciona todos como novos
         availabilities.forEach((avail, index) => {
@@ -1024,7 +1107,11 @@ document.getElementById('serviceForm').addEventListener('submit', async (e) => {
 
     // Debug: mostra todos os dados sendo enviados
     console.log('=== DADOS SENDO ENVIADOS ===');
-    console.log('Availabilities coletadas:', availabilities);
+    console.log('Mode:', currentServiceId ? 'EDIT' : 'CREATE');
+    console.log('Existing availabilities:', existingAvailabilities);
+    console.log('New availabilities collected:', availabilities);
+    console.log('Total forms:', totalFormsCount);
+    console.log('Initial forms:', initialFormsCount);
     console.log('FormData entries:');
     for (let pair of formData.entries()) {
         console.log(pair[0] + ': ' + pair[1]);

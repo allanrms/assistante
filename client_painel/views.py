@@ -886,6 +886,22 @@ class ServiceListView(LoginRequiredMixin, ListView):
             client=self.request.user.client
         ).prefetch_related('availabilities').order_by('name')
 
+    def get_context_data(self, **kwargs):
+        """Adiciona dados processados ao contexto"""
+        context = super().get_context_data(**kwargs)
+
+        # Processa availabilities para agrupar por dia da semana
+        for service in context['services']:
+            grouped = {}
+            for avail in service.availabilities.filter(is_active=True).order_by('weekday', 'start_time'):
+                weekday_name = avail.get_weekday_display()
+                if weekday_name not in grouped:
+                    grouped[weekday_name] = []
+                grouped[weekday_name].append(avail)
+            service.grouped_availabilities = grouped
+
+        return context
+
     def dispatch(self, request, *args, **kwargs):
         if not request.user.client:
             messages.warning(request, 'Você precisa completar seu cadastro de cliente.')
@@ -904,23 +920,8 @@ class ServiceCreateView(LoginRequiredMixin, View):
             return JsonResponse({'error': 'Cliente não encontrado'}, status=400)
 
         client = request.user.client
-
-        # Debug: mostra os dados recebidos
-        print("=== DADOS RECEBIDOS NO POST ===")
-        print("POST data:", dict(request.POST))
-
         form = ServiceForm(request.POST, client=client)
         formset = ServiceAvailabilityFormSet(request.POST)
-
-        print("=== VALIDAÇÃO ===")
-        print("Form válido?", form.is_valid())
-        if not form.is_valid():
-            print("Erros do form:", form.errors)
-
-        print("Formset válido?", formset.is_valid())
-        if not formset.is_valid():
-            print("Erros do formset:", formset.errors)
-            print("Non form errors:", formset.non_form_errors())
 
         if form.is_valid() and formset.is_valid():
             service = form.save()
@@ -940,9 +941,6 @@ class ServiceCreateView(LoginRequiredMixin, View):
                 errors['formset'] = formset.errors
             if formset.non_form_errors():
                 errors['formset_non_form'] = formset.non_form_errors()
-
-            print("=== ERROS RETORNADOS ===")
-            print(errors)
 
             return JsonResponse({
                 'success': False,

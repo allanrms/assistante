@@ -272,12 +272,12 @@ LOGGING = {
             'formatter': 'error_email',
             'include_html': False,
         },
-        'critical_file': {
-            'class': 'logging.FileHandler',
-            'filename': '/tmp/assistante_critical_errors.log',
-            'formatter': 'verbose',
-            'level': 'ERROR',
-        },
+        # 'critical_file': {
+        #     'class': 'logging.FileHandler',
+        #     'filename': '/tmp/assistante_critical_errors.log',
+        #     'formatter': 'verbose',
+        #     'level': 'ERROR',
+        # },
     },
     'root': {
         'handlers': ['console', 'file'],

@@ -13,6 +13,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Deploy application
+      id: deploy
       uses: appleboy/ssh-action@master
       with:
         host: 3.88.156.249
@@ -27,3 +28,22 @@ jobs:
           ../bin/python manage.py crontab remove
           ../bin/python manage.py crontab add
           sudo supervisorctl restart assistante
+
+    # Notificação via ntfy.sh (ZERO configuração!)
+    - name: Send success notification
+      if: success()
+      run: |
+        curl -H "Title: ✅ Deploy Produção - Sucesso" \
+             -H "Priority: default" \
+             -H "Tags: white_check_mark,rocket" \
+             -d "Deploy concluído com sucesso! Commit: ${{ github.event.head_commit.message }}" \
+             https://ntfy.sh/assistante-deploy-${{ github.repository_owner }}
+
+    - name: Send failure notification
+      if: failure()
+      run: |
+        curl -H "Title: ❌ Deploy Produção - FALHOU" \
+             -H "Priority: urgent" \
+             -H "Tags: warning,x" \
+             -d "Deploy FALHOU! Verifique: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+             https://ntfy.sh/assistante-deploy-${{ github.repository_owner }}

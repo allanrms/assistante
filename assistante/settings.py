@@ -261,11 +261,11 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': '/tmp/assistante_django.log',
-            'formatter': 'verbose',
-        },
+        # 'file': {
+        #     'class': 'logging.FileHandler',
+        #     'filename': '/tmp/assistante_django.log',
+        #     'formatter': 'verbose',
+        # },
         'mail_admins': {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',

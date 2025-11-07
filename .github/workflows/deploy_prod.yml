@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: 🚀 Deploy Produção
 
 on:
   push:
@@ -6,7 +6,8 @@ on:
       - main
 
 jobs:
-  deploy:
+  deploy-production:
+    name: Deploy para Servidor
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code

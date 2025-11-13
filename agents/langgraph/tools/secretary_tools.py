@@ -1,3 +1,4 @@
+import traceback
 from uuid import UUID
 
 from langchain_core.tools import tool
@@ -24,7 +25,7 @@ def create_secretary_tools(contact_id: UUID):
             from core.models import Appointment
 
             # Buscar todos os agendamentos do contato ordenados por data
-            appointments = Contact.objects.get(id=contact_id).appointments.all().order_by('date', 'time')
+            appointments = Contact.objects.get(id=contact_id).appointments.filter(scheduled_for__isnull=False).order_by('date', 'time')
 
             # ✅ Se não encontrar, retorna imediatamente
             if not appointments.exists():
@@ -73,6 +74,7 @@ def create_secretary_tools(contact_id: UUID):
             return "\n".join(resultado) if resultado else "📅 Você não possui consultas marcadas no momento."
 
         except Exception as e:
+            traceback.print_exc()
             print(f"❌ [TOOL] Erro ao consultar agendamentos: {e}")
             return f"❌ Erro ao consultar agendamentos: {str(e)}"
 

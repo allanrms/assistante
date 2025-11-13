@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models import Count, Q
-from .models import Agent, AgentFile, AgentDocument, Conversation, Message, ConversationSummary, LongTermMemory
+from .models import Agent, AgentFile, AgentDocument, Conversation, Message, ConversationSummary, LongTermMemory, \
+    GlobalSettings
 
 
 class AgentFileInline(admin.TabularInline):
@@ -20,7 +21,9 @@ class AgentAdmin(admin.ModelAdmin):
     """
     list_display = ['display_name', 'owner', 'provider_badge', 'model', 'temperature', 'max_tokens', 'has_calendar_tools', 'files_count', 'created_at']
     list_filter = ['owner', 'name', 'has_calendar_tools', 'created_at']
-    search_fields = ['display_name', 'model', 'system_prompt', 'owner__full_name', 'owner__email']
+    search_fields = ['display_name', 'model', 'role', 'available_tools', 'input_context', 'steps', 'expectation',
+                     'anti_hallucination_policies', 'applied_example', 'useful_default_messages', 'owner__full_name',
+                     'owner__email']
     readonly_fields = ['created_at', 'updated_at', 'files_count']
     raw_id_fields = ['owner']
     inlines = [AgentFileInline]
@@ -39,9 +42,11 @@ class AgentAdmin(admin.ModelAdmin):
         ('Ferramentas', {
             'fields': ('has_calendar_tools',)
         }),
-        ('Instruções', {
-            'fields': ('system_prompt',),
-            'classes': ('wide',)
+        ('Instruções (RISE Framework)', {
+            'fields': ('role', 'available_tools', 'input_context', 'steps', 'expectation', 'anti_hallucination_policies',
+                       'applied_example', 'useful_default_messages'),
+            'classes': ('wide',),
+            'description': 'Estes campos constroem o prompt do agente. Preencha para customizar o comportamento.'
         }),
         ('Estatísticas', {
             'fields': ('files_count',),
@@ -552,3 +557,39 @@ class LongTermMemoryAdmin(admin.ModelAdmin):
         """Otimiza queryset com select_related"""
         qs = super().get_queryset(request)
         return qs.select_related('contact', 'conversation', 'conversation__evolution_instance')
+
+@admin.register(GlobalSettings)
+class GlobalSettingsAdmin(admin.ModelAdmin):
+    """
+    Admin para as Configurações Globais do sistema (Singleton).
+    """
+    list_display = ['id', 'role', 'updated_at']
+    search_fields = ['role', 'available_tools', 'input_context', 'steps', 'expectation', 'anti_hallucination_policies',
+                     'applied_example', 'useful_default_messages', 'global_system_prompt']
+    readonly_fields = ['updated_at']
+
+    fieldsets = (
+        ('Instruções Globais (RISE Framework)', {
+            'fields': ('role', 'available_tools', 'input_context', 'steps', 'expectation', 'anti_hallucination_policies',
+                       'applied_example', 'useful_default_messages'),
+            'classes': ('wide',),
+            'description': 'Estes campos definem o comportamento padrão para todos os agentes.'
+        }),
+        ('[LEGADO] Prompt Global', {
+            'fields': ('global_system_prompt',),
+            'classes': ('wide', 'collapse'),
+            'description': 'Este campo é legado e será removido em versões futuras. Use os campos RISE acima.'
+        }),
+        ('Timestamps', {
+            'fields': ('updated_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def has_add_permission(self, request):
+        # Impede a criação de novas instâncias, garantindo o padrão Singleton
+        return not GlobalSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        # Impede a exclusão da instância única
+        return False

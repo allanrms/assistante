@@ -13,7 +13,7 @@ from rest_framework import status
 from agents.langgraph.langgraph_app_runner import run_ai_turn
 from agents.models import Agent, Conversation
 from core.models import Client, Contact
-from whatsapp_connector.models import ChatSession
+from whatsapp_connector.models import ChatSession, EvolutionInstance
 
 
 # ========== VIEWS ==========
@@ -73,7 +73,8 @@ def send_message(request):
 
         try:
 
-            output, contact = run_ai_turn(from_number, to_number, message_text, client)
+            evolution_instance = EvolutionInstance.objects.last()
+            output, contact = run_ai_turn(from_number, to_number, message_text, client, evolution_instance=evolution_instance)
 
             return Response({
                 'message': message_text,

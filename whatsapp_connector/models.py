@@ -271,7 +271,7 @@ class ChatSession(models.Model):
         active_session = cls.objects.filter(**query_filter).last()
 
         if active_session:
-            print(f"♻️ Reutilizando sessão existente: {active_session.id} (instância: {active_session.evolution_instance})")
+            print(f"♻️ Reutilizando sessão existente1: {active_session.id} (instância: {active_session.evolution_instance})")
             return active_session, False
 
         # Criar nova sessão se não encontrar ativa

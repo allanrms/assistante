@@ -157,8 +157,7 @@ class Agent(BaseUUIDModel, HistoryBaseModel):
         max_length=50,
         choices=PROVIDERS,
         default="openai",
-        verbose_name="Fornecedor LLM",
-        help_text="Provedor do modelo de linguagem (OpenAI, Anthropic, Google, etc.)"
+        verbose_name="Fornecedor LLM"
     )
     model = models.CharField(
         max_length=100,
@@ -169,17 +168,73 @@ class Agent(BaseUUIDModel, HistoryBaseModel):
         blank=True,
         null=True,
         verbose_name="Instruções do agente",
-        help_text="Prompt inicial ou system message"
+        help_text="Prompt inicial ou system message (campo legado)"
     )
+
+    # Framework RISE - Campos separados que compõem o prompt do agente
+    role = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Role (Papel)",
+        help_text="Define quem é o assistente, sua identidade, expertise e personalidade"
+    )
+
+    available_tools = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Ferramentas Disponíveis",
+        help_text="Lista e descrição das ferramentas e recursos que o assistente pode utilizar"
+    )
+
+    input_context = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Input (Entrada/Contexto)",
+        help_text="Como o assistente deve interpretar e processar as entradas do usuário"
+    )
+
+    steps = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Steps (Passos)",
+        help_text="Passo a passo de como o assistente deve processar e responder às solicitações"
+    )
+
+    expectation = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Expectation (Expectativa)",
+        help_text="O que se espera do assistente: formato de respostas, tom, estrutura"
+    )
+
+    anti_hallucination_policies = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Políticas Anti-Alucinação e Limites",
+        help_text="Regras para evitar alucinações, limites do que o assistente pode/não pode fazer"
+    )
+
+    applied_example = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Exemplo Aplicado",
+        help_text="Exemplos práticos de interações e respostas esperadas"
+    )
+
+    useful_default_messages = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Mensagens Padrão Úteis",
+        help_text="Mensagens pré-definidas para situações comuns (saudações, despedidas, transferências)"
+    )
+
     max_tokens = models.PositiveIntegerField(
         default=1024,
-        verbose_name="Máximo de tokens",
-        help_text="Número máximo de tokens na resposta gerada"
+        verbose_name="Máximo de tokens"
     )
     temperature = models.FloatField(
         default=0.7,
-        verbose_name="Temperatura",
-        help_text="Controla a aleatoriedade das respostas (0.0 = determinístico, 1.0 = criativo)"
+        verbose_name="Temperatura"
     )
     top_p = models.FloatField(
         default=1.0,
@@ -188,13 +243,11 @@ class Agent(BaseUUIDModel, HistoryBaseModel):
     )
     presence_penalty = models.FloatField(
         default=0.0,
-        verbose_name="Penalidade de presença",
-        help_text="Penaliza tokens já mencionados para aumentar diversidade de tópicos"
+        verbose_name="Penalidade de presença"
     )
     frequency_penalty = models.FloatField(
         default=0.0,
-        verbose_name="Penalidade de frequência",
-        help_text="Penaliza tokens repetidos para reduzir repetição de frases"
+        verbose_name="Penalidade de frequência"
     )
 
     has_calendar_tools = models.BooleanField(
@@ -205,6 +258,110 @@ class Agent(BaseUUIDModel, HistoryBaseModel):
 
     def __str__(self):
         return self.display_name if self.display_name else f"{self.get_name_display()} - {self.model}"
+
+    def build_prompt(self):
+        """
+        Constrói o prompt final concatenando todos os blocos RISE + contexto temporal.
+
+        - ROLE: usa self.role OU global_settings.role (fallback)
+        - Outros campos: concatena global_settings + self (ambos se existirem)
+
+        Returns:
+            str: Prompt completo formatado com contexto temporal
+        """
+        from datetime import datetime
+
+        sections = []
+
+        # Carregar GlobalSettings
+        global_settings = GlobalSettings.load()
+
+        # 1. ROLE (único campo com fallback)
+        role = self.role or global_settings.role
+        if role:
+            sections.append(f"# ROLE (PAPEL)\n\n{role}")
+
+        # 2. AVAILABLE TOOLS (concatenar global + agent)
+        available_tools_parts = []
+        if global_settings.available_tools:
+            available_tools_parts.append(global_settings.available_tools)
+        if self.available_tools:
+            available_tools_parts.append(self.available_tools)
+        if available_tools_parts:
+            sections.append(f"# FERRAMENTAS DISPONÍVEIS\n\n{'\n\n'.join(available_tools_parts)}")
+
+        # 3. INPUT CONTEXT (concatenar global + agent)
+        input_context_parts = []
+        if global_settings.input_context:
+            input_context_parts.append(global_settings.input_context)
+        if self.input_context:
+            input_context_parts.append(self.input_context)
+        if input_context_parts:
+            sections.append(f"# INPUT (ENTRADA/CONTEXTO)\n\n{'\n\n'.join(input_context_parts)}")
+
+        # 4. STEPS (concatenar global + agent)
+        steps_parts = []
+        if global_settings.steps:
+            steps_parts.append(global_settings.steps)
+        if self.steps:
+            steps_parts.append(self.steps)
+        if steps_parts:
+            sections.append(f"# STEPS (PASSOS)\n\n{'\n\n'.join(steps_parts)}")
+
+        # 5. EXPECTATION (concatenar global + agent)
+        expectation_parts = []
+        if global_settings.expectation:
+            expectation_parts.append(global_settings.expectation)
+        if self.expectation:
+            expectation_parts.append(self.expectation)
+        if expectation_parts:
+            sections.append(f"# EXPECTATION (EXPECTATIVA)\n\n{'\n\n'.join(expectation_parts)}")
+
+        # 6. ANTI-HALLUCINATION POLICIES (concatenar global + agent)
+        anti_hallucination_parts = []
+        if global_settings.anti_hallucination_policies:
+            anti_hallucination_parts.append(global_settings.anti_hallucination_policies)
+        if self.anti_hallucination_policies:
+            anti_hallucination_parts.append(self.anti_hallucination_policies)
+        if anti_hallucination_parts:
+            sections.append(f"# POLÍTICAS ANTI-ALUCINAÇÃO E LIMITES\n\n{'\n\n'.join(anti_hallucination_parts)}")
+
+        # 7. APPLIED EXAMPLE (concatenar global + agent)
+        applied_example_parts = []
+        if global_settings.applied_example:
+            applied_example_parts.append(global_settings.applied_example)
+        if self.applied_example:
+            applied_example_parts.append(self.applied_example)
+        if applied_example_parts:
+            sections.append(f"# EXEMPLO APLICADO\n\n{'\n\n'.join(applied_example_parts)}")
+
+        # 8. USEFUL DEFAULT MESSAGES (concatenar global + agent)
+        useful_messages_parts = []
+        if global_settings.useful_default_messages:
+            useful_messages_parts.append(global_settings.useful_default_messages)
+        if self.useful_default_messages:
+            useful_messages_parts.append(self.useful_default_messages)
+        if useful_messages_parts:
+            sections.append(f"# MENSAGENS PADRÃO ÚTEIS\n\n{'\n\n'.join(useful_messages_parts)}")
+
+        # Construir prompt base
+        if sections:
+            base_prompt = "\n\n---\n\n".join(sections)
+        elif self.system_prompt:
+            # Fallback: usar campo legado system_prompt
+            base_prompt = self.system_prompt
+        elif global_settings.global_system_prompt:
+            # Fallback final: usar campo legado global
+            base_prompt = global_settings.global_system_prompt
+        else:
+            # Padrão se não houver nada configurado
+            base_prompt = "Você é um assistente útil."
+
+        # Adicionar contexto temporal
+        current_time = datetime.now().strftime('%d/%m/%Y %H:%M')
+        temporal_context = f"\n\n---\n\n## 📅 Contexto Temporal\n\n**Data/Hora atual:** {current_time}\n"
+
+        return base_prompt + temporal_context
 
 class AgentDocument(models.Model):
     agent = models.ForeignKey(
@@ -319,7 +476,7 @@ class Conversation(models.Model):
         active_session = cls.objects.filter(**query_filter).last()
 
         if active_session:
-            print(f"♻️ Reutilizando sessão existente: {active_session.id} (instância: {active_session.evolution_instance})")
+            print(f"♻️ Reutilizando sessão existente2: {active_session.id} (instância: {active_session.evolution_instance})")
             return active_session, False
 
         # Criar nova sessão se não encontrar ativa
@@ -541,4 +698,122 @@ class LongTermMemory(models.Model):
         indexes = [
             models.Index(fields=["contact"]),
         ]
+
+class GlobalSettings(models.Model):
+    """
+    Configurações globais do sistema (Singleton).
+
+    Este modelo armazena configurações que se aplicam a todos os agents,
+    seguindo o framework RISE (Role, Input, Steps, Expectation) para estruturar prompts.
+
+    Uso:
+        settings = GlobalSettings.load()
+        settings.role = "Você é um assistente..."
+        settings.save()
+        prompt_final = settings.build_prompt()
+    """
+
+    # Framework RISE - Campos separados que compõem o prompt global
+
+    role = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Role (Papel)",
+        help_text="Define quem é o assistente, sua identidade, expertise e personalidade"
+    )
+
+    available_tools = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Ferramentas Disponíveis",
+        help_text="Lista e descrição das ferramentas e recursos que o assistente pode utilizar"
+    )
+
+    input_context = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Input (Entrada/Contexto)",
+        help_text="Como o assistente deve interpretar e processar as entradas do usuário"
+    )
+
+    steps = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Steps (Passos)",
+        help_text="Passo a passo de como o assistente deve processar e responder às solicitações"
+    )
+
+    expectation = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Expectation (Expectativa)",
+        help_text="O que se espera do assistente: formato de respostas, tom, estrutura"
+    )
+
+    anti_hallucination_policies = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Políticas Anti-Alucinação e Limites",
+        help_text="Regras para evitar alucinações, limites do que o assistente pode/não pode fazer"
+    )
+
+    applied_example = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Exemplo Aplicado",
+        help_text="Exemplos práticos de interações e respostas esperadas"
+    )
+
+    useful_default_messages = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Mensagens Padrão Úteis",
+        help_text="Mensagens pré-definidas para situações comuns (saudações, despedidas, transferências)"
+    )
+
+    # Campo legado para compatibilidade (será removido em versões futuras)
+    global_system_prompt = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="[LEGADO] Prompt Global do Sistema",
+        help_text="Campo legado. Use os campos RISE acima."
+    )
+
+    # Metadados
+    updated_at = models.DateTimeField(auto_now=True)
+    # updated_by = models.ForeignKey(
+    #     Client,
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     blank=True,
+    #     verbose_name="Atualizado por",
+    #     related_name="global_settings_updates"
+    # )
+
+    class Meta:
+        verbose_name = "Configuração Global"
+        verbose_name_plural = "Configurações Globais"
+
+    def __str__(self):
+        return "Configurações Globais do Sistema"
+
+    def save(self, *args, **kwargs):
+        """Garantir que só existe um registro (singleton)."""
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Impedir deleção do singleton."""
+        pass
+
+    @classmethod
+    def load(cls):
+        """
+        Retorna a instância singleton das Configurações Globais.
+
+        A migration 0012_load_initial_global_settings garante que este registro
+        sempre existe no banco de dados.
+        """
+        return cls.objects.get(pk=1)
+
 

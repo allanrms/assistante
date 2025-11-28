@@ -1,7 +1,18 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.contrib import messages
-from .models import EvolutionInstance, MessageHistory, ImageProcessingJob, ChatSession
+from .models import EvolutionInstance, MessageHistory, ImageProcessingJob, ChatSession, NotificationContact
+
+
+class NotificationContactInline(admin.TabularInline):
+    """
+    Inline para gerenciar contatos de notificação diretamente na EvolutionInstance
+    """
+    model = NotificationContact
+    extra = 1
+    fields = ('name', 'phone', 'is_active')
+    verbose_name = 'Contato de Notificação'
+    verbose_name_plural = 'Contatos de Notificação'
 
 
 @admin.register(EvolutionInstance)
@@ -16,6 +27,7 @@ class EvolutionInstanceAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at', 'last_connection', ]
     raw_id_fields = ['owner', 'agent']
     actions = ['update_connection_info']
+    inlines = [NotificationContactInline]
     fieldsets = (
         ('Informações Básicas', {
             'fields': ('name', 'instance_name', 'instance_evolution_id', 'owner', 'is_active')
@@ -25,6 +37,10 @@ class EvolutionInstanceAdmin(admin.ModelAdmin):
         }),
         ('Configuração de IA', {
             'fields': ('agent',)
+        }),
+        ('📢 Notificações de Atendimento Humano', {
+            'fields': ('notification_strategy',),
+            'description': 'Configure como as notificações serão enviadas quando uma conversa precisar de atendimento humano. Os contatos de notificação são configurados na seção abaixo.'
         }),
         ('🔐 Configurações de Segurança', {
             'fields': ('ignore_own_messages', 'authorized_numbers'),
@@ -275,3 +291,28 @@ class ImageProcessingJobAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+@admin.register(NotificationContact)
+class NotificationContactAdmin(admin.ModelAdmin):
+    """
+    Admin para gerenciar contatos de notificação
+    """
+    list_display = ('name', 'phone', 'evolution_instance', 'is_active', 'created_at')
+    list_filter = ('is_active', 'evolution_instance', 'created_at')
+    search_fields = ('name', 'phone', 'evolution_instance__name')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('evolution_instance',)
+    
+    fieldsets = (
+        ('Informações do Contato', {
+            'fields': ('evolution_instance', 'name', 'phone', 'is_active')
+        }),
+        ('Datas', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    def get_queryset(self, request):
+        """Otimiza queryset com select_related"""
+        qs = super().get_queryset(request)
+        return qs.select_related('evolution_instance')

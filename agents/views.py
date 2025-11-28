@@ -4,18 +4,20 @@ from django.contrib import messages
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.db.models import Q
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import AllowAny
+from django.core.mail import mail_admins
+import os
+import traceback
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 
 from .models import Agent, AgentFile
 from .forms import AgentForm, AgentFileForm
 # from .services import create_llm_service
-from .file_processors import file_processor
 from whatsapp_connector.models import EvolutionInstance
 from whatsapp_connector.services import EvolutionAPIService
 from core.mixins import ClientRequiredMixin
+from agents.langchain.vectorstore import get_vectorstore_for_agent, get_collection_uuid_by_name
+from agents.patterns.factories.file_processors import FileProcessorFactory
 
 
 # === AGENTS VIEWS ===
@@ -81,6 +83,22 @@ class AgentDetailView(ClientRequiredMixin, LoginRequiredMixin, DetailView):
             agent=agent, owner=self.request.user.client
         )[:5]
 
+        # Adicionar preview do prompt final
+        context['final_prompt'] = agent.build_prompt()
+
+        # Adicionar contagem de chunks para cada arquivo
+        from agents.models import LangchainEmbedding
+        files_with_chunks = []
+        for file in agent.files.all()[:6]:
+            chunks_count = LangchainEmbedding.objects.filter(
+                cmetadata__agent_file_id=str(file.id)
+            ).count()
+            files_with_chunks.append({
+                'file': file,
+                'chunks_count': chunks_count
+            })
+        context['files_with_chunks'] = files_with_chunks
+
         return context
 
 
@@ -126,6 +144,20 @@ class AgentUpdateView(ClientRequiredMixin, LoginRequiredMixin, UpdateView):
 
     def get_queryset(self):
         return Agent.objects.filter(owner=self.request.user.client)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Gerar preview do prompt final
+        try:
+            context['final_prompt'] = self.object.build_prompt()
+        except Exception as e:
+            context['final_prompt'] = f"Erro ao gerar preview: {str(e)}"
+
+        # Contar arquivos vetorizados (files com status 'ready')
+        context['vectorized_files_count'] = self.object.files.filter(status='ready').count()
+
+        return context
 
     def get_success_url(self):
         return reverse_lazy('agents:agent_detail', kwargs={'pk': self.object.pk})
@@ -193,7 +225,7 @@ class AgentFileUploadView(LoginRequiredMixin, CreateView):
         # Associar o arquivo ao agent (apenas do usuário atual)
         agent_id = self.kwargs.get('agent_id')
         agent = get_object_or_404(Agent, id=agent_id, owner=self.request.user.client)
-        
+
         context_file = form.save(commit=False)
         context_file.agent = agent
 
@@ -215,32 +247,132 @@ class AgentFileUploadView(LoginRequiredMixin, CreateView):
         context_file.status = 'processing'
         context_file.save()
 
-        # Processar arquivo em background (simplificado - pode ser movido para Celery)
-        self.process_file_content(context_file)
+        # Processar arquivo imediatamente (para desenvolvimento)
+        # TODO: Mover para Celery para processamento assíncrono em produção
+        try:
+            self.process_file_content(context_file)
 
-        messages.success(self.request, f'Arquivo "{context_file.name}" enviado com sucesso!')
-        return redirect('agents:agent_detail', pk=agent.pk)
-    
+            # Verificar se foi processado com sucesso
+            context_file.refresh_from_db()
+
+            if context_file.status == 'ready':
+                messages.success(
+                    self.request,
+                    f'✅ Arquivo "{context_file.name}" processado e vetorizado com sucesso!'
+                )
+            elif context_file.status == 'error':
+                messages.error(
+                    self.request,
+                    f'❌ Erro ao processar "{context_file.name}": {context_file.error_message}'
+                )
+            else:
+                messages.warning(
+                    self.request,
+                    f'⏳ Arquivo "{context_file.name}" em processamento...'
+                )
+
+        except Exception as e:
+            traceback.print_exc()
+            messages.error(
+                self.request,
+                f'❌ Erro ao processar arquivo: {str(e)}'
+            )
+            subject = "process_file_content - Falha Crítica"
+            message = f'{traceback.format_exc()}\n\nLocals: {locals()}'
+            mail_admins(subject, message)
+
+        return redirect('agents:agent_file_list', agent_id=agent.pk)
+
+    def build_vectorstore(self, context_file, document_str):
+        """
+        Processa o arquivo: carrega, faz chunking e vetoriza no PGVector.
+
+        Fluxo:
+        1. Detecta tipo do arquivo e carrega com loader apropriado
+        2. Divide o conteúdo em chunks e vetoriza no PGVector
+        """
+        agent = context_file.agent
+
+        try:
+
+            doc = Document(page_content=document_str, metadata={"source": "string"})
+            documents = [doc]
+
+            # 3. Chunking do conteúdo
+            splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=500)
+            chunks = splitter.split_documents(documents)
+
+            # 4. Preparar documentos para PGVector
+            docs_to_add = []
+            for i, chunk in enumerate(chunks):
+                doc = Document(
+                    page_content=chunk.page_content,
+                    metadata={
+                        "source": context_file.file.name,
+                        "file_name": context_file.name,
+                        "agent_file_id": str(context_file.id),
+                        "page": chunk.metadata.get("page", 0),
+                        "chunk_index": i,
+                        "total_chunks": len(chunks),
+                        "agent_id": str(agent.id),
+                        "file_type": context_file.file_type,
+                    }
+                )
+                docs_to_add.append(doc)
+
+            # 5. Salvar chunks no PGVector
+            vectorstore, collection_info = get_vectorstore_for_agent(agent)
+            vectorstore.add_documents(docs_to_add)
+
+            # Persistir collection_uuid se necessário
+            if isinstance(collection_info, str):
+                collection_uuid = get_collection_uuid_by_name(collection_info)
+                if collection_uuid:
+                    agent.collection_uuid = collection_uuid
+                    agent.save(update_fields=['collection_uuid'])
+
+            context_file.status = 'ready'
+            context_file.error_message = None
+
+        except Exception as e:
+            traceback.print_exc()
+            context_file.status = 'error'
+            context_file.error_message = f'Erro durante processamento: {str(e)}'
+
+        context_file.save()
+
     def process_file_content(self, context_file):
         """
-        Processa o arquivo e extrai o conteúdo
+        Processa o arquivo: extrai conteúdo com IA e gera embeddings
         """
         try:
             file_path = context_file.file.path
-            result = file_processor.process_file(file_path)
-            
-            if result['success']:
-                context_file.extracted_content = result['extracted_text']
-                context_file.status = 'ready'
-                context_file.error_message = None
-            else:
+
+            file_processor = FileProcessorFactory(agent=context_file.agent)
+            result = file_processor.process_file(file_path, use_ai=True)
+
+            if not result['success']:
                 context_file.status = 'error'
                 context_file.error_message = result['error']
-                
+                context_file.save()
+                return
+
+            context_file.save()
+
+            # 3. Gerar embedding (vetorização)
+            try:
+                self.build_vectorstore(context_file, result['extracted_text'])
+
+            except Exception as e:
+                # Se falhar vetorização, manter arquivo mas marcar como não vetorizado
+                context_file.status = 'error'
+                context_file.vectorized = False
+                context_file.error_message = f'Arquivo pronto mas erro na vetorização: {str(e)}'
+
         except Exception as e:
             context_file.status = 'error'
             context_file.error_message = f'Erro durante processamento: {str(e)}'
-        
+
         context_file.save()
     
     def get_context_data(self, **kwargs):
@@ -270,6 +402,20 @@ class AgentFileListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         agent_id = self.kwargs.get('agent_id')
         context['agent'] = get_object_or_404(Agent, id=agent_id, owner=self.request.user.client)
+
+        # Adicionar contagem de chunks para cada arquivo
+        from agents.models import LangchainEmbedding
+        files_with_chunks = []
+        for file in context['files']:
+            chunks_count = LangchainEmbedding.objects.filter(
+                cmetadata__agent_file_id=str(file.id)
+            ).count()
+            files_with_chunks.append({
+                'file': file,
+                'chunks_count': chunks_count
+            })
+        context['files_with_chunks'] = files_with_chunks
+
         return context
 
 

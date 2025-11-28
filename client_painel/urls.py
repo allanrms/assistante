@@ -40,4 +40,14 @@ urlpatterns = [
     path('servicos/create/', views.ServiceCreateView.as_view(), name='service_create'),
     path('servicos/<uuid:service_id>/', views.ServiceUpdateView.as_view(), name='service_edit'),
     path('servicos/<uuid:service_id>/delete/', views.ServiceDeleteView.as_view(), name='service_delete'),
+
+    # API endpoints para conversas com atendimento humano
+    path('human-conversations/', views.HumanConversationsListView.as_view(), name='api_human_conversations'),
+    path('human-conversations/count/', views.HumanConversationsCountView.as_view(), name='api_human_conversations_count'),
+    path('human-conversations/<int:conversation_id>/close/', views.CloseConversationView.as_view(), name='api_close_conversation'),
+
+    # Contatos
+    path('contatos/', views.ContactsView.as_view(), name='contacts'),
+    path('api/contatos/<uuid:contact_id>/conversas/', views.ContactConversationsView.as_view(), name='api_contact_conversations'),
+    path('api/conversas/<int:conversation_id>/mensagens/', views.ConversationMessagesView.as_view(), name='api_conversation_messages'),
 ]

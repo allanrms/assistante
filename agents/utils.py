@@ -1,4 +1,43 @@
 import re
+from typing import Any
+from langchain_core.messages import AIMessage
+
+
+def extract_ai_message_content(message: AIMessage) -> str:
+    """
+    Extrai conteúdo de uma AIMessage de forma simples e direta.
+
+    Centraliza a lógica de extração que estava duplicada em múltiplos lugares.
+    Seguindo o princípio "Start simple" do LangChain.
+
+    Args:
+        message: AIMessage do LangChain
+
+    Returns:
+        String com o conteúdo extraído
+    """
+    content = message.content
+
+    # Se for None ou vazio, retornar placeholder
+    if not content:
+        return "[Resposta vazia]"
+
+    # Se for lista, extrair partes de texto
+    if isinstance(content, list):
+        text_parts = []
+        for item in content:
+            if isinstance(item, dict) and item.get('type') == 'text':
+                # Extrair apenas o campo 'text', ignorando 'extras' e outros campos
+                text_parts.append(item.get('text', ''))
+            elif isinstance(item, str):
+                text_parts.append(item)
+            else:
+                # Fallback para converter para string
+                text_parts.append(str(item))
+        return '\n'.join(text_parts) if text_parts else "[Resposta vazia]"
+
+    # Se for string, retornar diretamente
+    return str(content)
 
 
 def remove_markdown_formatting(text: str) -> str:

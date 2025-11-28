@@ -8,19 +8,14 @@ def create_conversation_summary(conversation) -> str:
     Retorna o texto do resumo criado.
     """
     try:
-        # Obter LLM do Agent configurado
-        print(f"📝 [SUMMARY] Iniciando criação de resumo para conversa #{conversation.id}")
-
         if not conversation.evolution_instance or not conversation.evolution_instance.agent:
-            print(f"⚠️ [SUMMARY] Nenhum agente configurado para a conversa #{conversation.id}")
             return ""
 
         agent_config = conversation.evolution_instance.agent
 
-        # Criar LLM diretamente (sem factory, já que não precisamos de tools/agent)
+        # Criar LLM
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        print(f"🤖 [SUMMARY] Criando LLM para resumo...")
         factory = LLMFactory(
             agent=agent_config,
             contact_id=conversation.contact.id,
@@ -30,16 +25,22 @@ def create_conversation_summary(conversation) -> str:
 
         summary_llm = factory.llm
 
+        # IMPORTANTE: Gemini 2.5 Pro usa thinking mode, então precisa de mais tokens
+        # Aumentar max_tokens para garantir que sobrem tokens para o conteúdo após o reasoning
+        if agent_config.name == 'google':
+            # O ChatGoogleGenerativeAI usa max_output_tokens
+            if hasattr(summary_llm, 'max_output_tokens'):
+                summary_llm.max_output_tokens = 4096
+            elif hasattr(summary_llm, 'max_tokens'):
+                summary_llm.max_tokens = 4096
+
         # Pegar todas as mensagens da conversa
         messages = Message.objects.filter(conversation=conversation).order_by("created_at")
 
         if not messages.exists():
-            print(f"⚠️ [SUMMARY] Nenhuma mensagem encontrada para conversa #{conversation.id}")
             return ""
 
-        print(f"📚 [SUMMARY] Processando {messages.count()} mensagem(ns)...")
-
-        # Montar histórico para o LLM (cada Message tem content do usuário e response da IA)
+        # Montar histórico para o LLM
         history_text = []
         for msg in messages:
             if msg.content:
@@ -50,10 +51,7 @@ def create_conversation_summary(conversation) -> str:
         full_history = "\n".join(history_text)
 
         if not full_history.strip():
-            print(f"⚠️ [SUMMARY] Histórico vazio para conversa #{conversation.id}")
             return ""
-
-        print(f"📄 [SUMMARY] Histórico montado ({len(full_history)} caracteres)")
 
         # Prompt para criar resumo
         prompt = f"""Analise a conversa abaixo e crie um resumo conciso e informativo.
@@ -69,24 +67,17 @@ Conversa:
 
 Resumo:"""
 
-        print(f"🤖 [SUMMARY] Invocando LLM para gerar resumo...")
-
         # Gerar resumo com LLM
         response = summary_llm.invoke(prompt)
 
         # Verificar se response tem content
         if not hasattr(response, 'content'):
-            print(f"❌ [SUMMARY] Resposta do LLM não tem atributo 'content': {type(response)}")
-            print(f"❌ [SUMMARY] Response completo: {response}")
             return ""
 
-        summary_text = response.content.strip()
+        summary_text = response.content.strip() if response.content else ""
 
         if not summary_text:
-            print(f"⚠️ [SUMMARY] LLM retornou resumo vazio")
             return ""
-
-        print(f"✅ [SUMMARY] Resumo gerado ({len(summary_text)} caracteres)")
 
         # Salvar ou atualizar no banco
         summary_obj, created = ConversationSummary.objects.update_or_create(
@@ -94,14 +85,10 @@ Resumo:"""
             defaults={"summary": summary_text}
         )
 
-        action = "Criado" if created else "Atualizado"
-        print(f"📝 [SUMMARY] {action} resumo para conversa #{conversation.id}: {summary_text[:100]}...")
-
         return summary_text
 
     except Exception as e:
         import traceback
-        print(f"❌ [SUMMARY] Erro ao criar resumo para conversa #{conversation.id}: {str(e)}")
         traceback.print_exc()
         return ""
 
@@ -135,6 +122,15 @@ def extract_long_term_facts(conversation) -> list:
 
         summary_llm = factory.llm
         emb = factory.embeddings
+
+        # IMPORTANTE: Gemini 2.5 Pro usa thinking mode, então precisa de mais tokens
+        # Aumentar max_tokens para garantir que sobrem tokens para o conteúdo após o reasoning
+        if agent_config.name == 'google':
+            # O ChatGoogleGenerativeAI usa max_output_tokens
+            if hasattr(summary_llm, 'max_output_tokens'):
+                summary_llm.max_output_tokens = 4096
+            elif hasattr(summary_llm, 'max_tokens'):
+                summary_llm.max_tokens = 4096
 
         contact = conversation.contact
 
@@ -234,13 +230,12 @@ Fatos importantes:"""
                 print(f"🔢 [FACTS] Gerando embedding para: {fact[:50]}...")
                 embedding_vector = emb.embed_query(fact)
 
-                # Salvar no banco com provider
+                # Salvar no banco
                 memory, created = LongTermMemory.objects.update_or_create(
                     conversation=conversation,
                     content=fact,
                     defaults={
                         "embedding": embedding_vector,
-                        "embedding_provider": emb.provider,
                         "contact": contact
                     }
                 )

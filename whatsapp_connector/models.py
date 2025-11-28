@@ -17,6 +17,12 @@ class EvolutionInstance(BaseUUIDModel, HistoryBaseModel):
         ('error', 'Erro'),
     )
 
+    # Estratégia de notificação
+    NOTIFICATION_STRATEGY_CHOICES = (
+        ('all', 'Enviar para Todos'),
+        ('random', 'Enviar para Um Aleatório'),
+    )
+
     owner = models.ForeignKey('core.Client', on_delete=models.CASCADE, related_name='evolution_instances')
     name = models.CharField('Nome da Instância', max_length=100, unique=True)
     instance_evolution_id = models.CharField('Id da Instância no Evolution API', max_length=100, unique=True, null=True, blank=True)
@@ -52,7 +58,16 @@ class EvolutionInstance(BaseUUIDModel, HistoryBaseModel):
         null=True,
         help_text='Lista de números autorizados separados por vírgula (ex: 5511999999999, 5511888888888)'
     )
-    
+
+    # Estratégia de notificação para atendimento humano
+    notification_strategy = models.CharField(
+        'Estratégia de Notificação',
+        max_length=20,
+        choices=NOTIFICATION_STRATEGY_CHOICES,
+        default='random',
+        help_text='Define como as notificações serão enviadas: para todos os contatos ou apenas um aleatório'
+    )
+
     # Agent de IA para esta instância
     agent = models.ForeignKey(
         'agents.Agent',
@@ -399,3 +414,41 @@ class ImageProcessingJob(models.Model):
     
     def __str__(self):
         return f"{self.processor_type} job for {self.message.message_id}"
+
+class NotificationContact(BaseUUIDModel, HistoryBaseModel):
+    """
+    Modelo para contatos que receberão notificações quando uma conversa mudar para atendimento humano
+    """
+    evolution_instance = models.ForeignKey(
+        EvolutionInstance,
+        on_delete=models.CASCADE,
+        related_name='notification_contacts',
+        verbose_name='Instância Evolution'
+    )
+
+    name = models.CharField(
+        'Nome do Contato',
+        max_length=100,
+        help_text='Nome da pessoa que receberá a notificação'
+    )
+
+    phone = models.CharField(
+        'Número do WhatsApp',
+        max_length=20,
+        help_text='Número no formato completo com DDI (ex: 5511999999999)'
+    )
+
+    is_active = models.BooleanField(
+        'Ativo',
+        default=True,
+        help_text='Se desativado, este contato não receberá notificações'
+    )
+
+    class Meta:
+        verbose_name = 'Contato de Notificação'
+        verbose_name_plural = 'Contatos de Notificação'
+        ordering = ['name']
+        unique_together = [['evolution_instance', 'phone']]
+
+    def __str__(self):
+        return f"{self.name} ({self.phone}) - {self.evolution_instance.name}"

@@ -10,7 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
-from agents.langgraph.langgraph_app_runner import run_ai_turn
+from agents.langchain.agente import ask_agent
 from agents.models import Agent, Conversation
 from core.models import Client, Contact
 from whatsapp_connector.models import ChatSession, EvolutionInstance
@@ -74,11 +74,12 @@ def send_message(request):
         try:
 
             evolution_instance = EvolutionInstance.objects.last()
-            output, contact = run_ai_turn(from_number, to_number, message_text, client, evolution_instance=evolution_instance)
+            result = ask_agent(message_text, evolution_instance.agent)
+            response_msg = result.get("answer", "")
 
             return Response({
                 'message': message_text,
-                'response': output,
+                'response': response_msg,
                 'success': True
             }, status=status.HTTP_200_OK)
 

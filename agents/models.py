@@ -11,6 +11,67 @@ def generate_unique_message_id():
     """Generate a unique message ID"""
     return str(uuid.uuid4())
 
+class LangchainCollection(models.Model):
+    """Model para visualizar coleções do PGVector."""
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    name = models.CharField(max_length=255, unique=True)
+    cmetadata = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        managed = False  # Django não gerencia esta tabela
+        db_table = 'langchain_pg_collection'
+        verbose_name = 'Coleção'
+        verbose_name_plural = 'Coleções'
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def agent(self):
+        """Retorna o Agent associado a esta coleção pelo collection_uuid."""
+        return Agent.objects.filter(collection_uuid=self.uuid).first()
+
+class LangchainEmbedding(models.Model):
+    """Model para visualizar embeddings do PGVector."""
+    id = models.CharField(primary_key=True, max_length=255)
+    collection = models.ForeignKey(
+        LangchainCollection,
+        on_delete=models.CASCADE,
+        db_column='collection_id',
+        null=True,
+        blank=True
+    )
+    document = models.TextField(null=True, blank=True)
+    cmetadata = models.JSONField(null=True, blank=True)
+    # embedding é do tipo vector, não mapeamos diretamente
+
+    class Meta:
+        managed = False  # Django não gerencia esta tabela
+        db_table = 'langchain_pg_embedding'
+        verbose_name = 'Documento Vetorizado'
+        verbose_name_plural = 'Documentos Vetorizados'
+
+    def __str__(self):
+        return f"Chunk {self.id[:8]}..."
+
+    @property
+    def source(self):
+        if self.cmetadata:
+            return self.cmetadata.get('source', 'N/A')
+        return 'N/A'
+
+    @property
+    def page(self):
+        if self.cmetadata:
+            return self.cmetadata.get('page', 'N/A')
+        return 'N/A'
+
+    @property
+    def content_preview(self):
+        if self.document:
+            return self.document[:200] + '...' if len(self.document) > 200 else self.document
+        return ''
+
 class AgentFile(BaseUUIDModel, HistoryBaseModel):
     """
     Arquivos de contexto para assistants
@@ -34,6 +95,12 @@ class AgentFile(BaseUUIDModel, HistoryBaseModel):
         ('processing', 'Processando'),
         ('ready', 'Pronto'),
         ('error', 'Erro'),
+    )
+
+    USAGE_TYPE_CHOICES = (
+        ('context_only', 'Apenas Contexto'),
+        ('sendable', 'Enviável ao Usuário'),
+        ('both', 'Contexto e Enviável'),
     )
 
     agent = models.ForeignKey("Agent", on_delete=models.CASCADE, related_name="files")
@@ -100,6 +167,14 @@ class AgentFile(BaseUUIDModel, HistoryBaseModel):
         default=False,
         verbose_name="Vetorizado",
         help_text="Indica se o arquivo já foi processado para busca vetorial"
+    )
+
+    usage_type = models.CharField(
+        max_length=20,
+        choices=USAGE_TYPE_CHOICES,
+        default='context_only',
+        verbose_name="Tipo de Uso",
+        help_text="Define como este arquivo pode ser usado pelo agente"
     )
 
     class Meta:
@@ -229,7 +304,7 @@ class Agent(BaseUUIDModel, HistoryBaseModel):
     )
 
     max_tokens = models.PositiveIntegerField(
-        default=1024,
+        default=8192,
         verbose_name="Máximo de tokens"
     )
     temperature = models.FloatField(
@@ -256,8 +331,30 @@ class Agent(BaseUUIDModel, HistoryBaseModel):
         help_text="Habilita integração com Google Calendar"
     )
 
+    # UUID da coleção no PGVector (cada agent tem sua própria coleção)
+    collection_uuid = models.UUIDField(
+        null=True,
+        blank=True,
+        verbose_name="UUID da Coleção",
+        help_text="UUID da coleção no PGVector para os documentos deste agente"
+    )
+
     def __str__(self):
         return self.display_name if self.display_name else f"{self.get_name_display()} - {self.model}"
+
+
+    @property
+    def collection(self):
+        """Retorna a LangchainCollection associada a este agente."""
+        if self.collection_uuid:
+            return LangchainCollection.objects.filter(uuid=self.collection_uuid).first()
+        return None
+
+    @property
+    def collection_name(self):
+        """Retorna o nome da coleção (para compatibilidade)."""
+        collection = self.collection
+        return collection.name if collection else None
 
     def build_prompt(self):
         """
@@ -815,5 +912,175 @@ class GlobalSettings(models.Model):
         sempre existe no banco de dados.
         """
         return cls.objects.get(pk=1)
+
+class LLMUsage(BaseUUIDModel):
+    """
+    Rastreamento de uso e custos de chamadas à LLM.
+
+    Armazena métricas de cada chamada ao modelo de IA para:
+    - Estimar custos
+    - Monitorar uso
+    - Identificar conversas caras
+    - Otimizar prompts
+    """
+
+    # Relacionamentos
+    conversation = models.ForeignKey(
+        'Conversation',
+        on_delete=models.CASCADE,
+        related_name='llm_usages',
+        verbose_name="Conversa"
+    )
+
+    message = models.ForeignKey(
+        'Message',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='llm_usages',
+        verbose_name="Mensagem"
+    )
+
+    agent = models.ForeignKey(
+        'Agent',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='llm_usages',
+        verbose_name="Agente"
+    )
+
+    # Informações do modelo
+    provider = models.CharField(
+        max_length=50,
+        verbose_name="Provedor",
+        help_text="Ex: openai, anthropic, google"
+    )
+
+    model_name = models.CharField(
+        max_length=100,
+        verbose_name="Modelo",
+        help_text="Ex: gpt-4o, claude-3-5-sonnet-20241022"
+    )
+
+    # Tokens
+    input_tokens = models.IntegerField(
+        default=0,
+        verbose_name="Tokens de Entrada",
+        help_text="Tokens enviados (prompt + contexto)"
+    )
+
+    output_tokens = models.IntegerField(
+        default=0,
+        verbose_name="Tokens de Saída",
+        help_text="Tokens gerados na resposta"
+    )
+
+    total_tokens = models.IntegerField(
+        default=0,
+        verbose_name="Total de Tokens",
+        help_text="Soma de entrada + saída"
+    )
+
+    # Tokens em cache (para Anthropic prompt caching)
+    cache_creation_tokens = models.IntegerField(
+        default=0,
+        verbose_name="Tokens de Criação de Cache",
+        help_text="Tokens usados para criar o cache (Anthropic)"
+    )
+
+    cache_read_tokens = models.IntegerField(
+        default=0,
+        verbose_name="Tokens Lidos do Cache",
+        help_text="Tokens lidos do cache (Anthropic - ~90% desconto)"
+    )
+
+    # Custos estimados (em USD)
+    input_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        default=0,
+        verbose_name="Custo de Entrada (USD)",
+        help_text="Custo estimado dos tokens de entrada"
+    )
+
+    output_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        default=0,
+        verbose_name="Custo de Saída (USD)",
+        help_text="Custo estimado dos tokens de saída"
+    )
+
+    cache_creation_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        default=0,
+        verbose_name="Custo de Criação de Cache (USD)"
+    )
+
+    cache_read_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        default=0,
+        verbose_name="Custo de Leitura de Cache (USD)"
+    )
+
+    total_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        default=0,
+        verbose_name="Custo Total (USD)",
+        help_text="Soma de todos os custos"
+    )
+
+    # Metadados adicionais
+    response_time_ms = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Tempo de Resposta (ms)",
+        help_text="Tempo em milissegundos da chamada"
+    )
+
+    context_size = models.IntegerField(
+        default=0,
+        verbose_name="Tamanho do Contexto",
+        help_text="Número de caracteres do contexto adicional carregado"
+    )
+
+    tools_used = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Ferramentas Usadas",
+        help_text="Lista de ferramentas chamadas nesta interação"
+    )
+
+    # Timestamp
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Uso de LLM"
+        verbose_name_plural = "Usos de LLM"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['conversation', '-created_at']),
+            models.Index(fields=['agent', '-created_at']),
+            models.Index(fields=['provider', 'model_name']),
+        ]
+
+    def __str__(self):
+        return f"{self.provider}/{self.model_name} - {self.total_tokens} tokens - ${self.total_cost}"
+
+    def save(self, *args, **kwargs):
+        """Calcula totais antes de salvar"""
+        self.total_tokens = self.input_tokens + self.output_tokens
+        self.total_cost = (
+            self.input_cost +
+            self.output_cost +
+            self.cache_creation_cost +
+            self.cache_read_cost
+        )
+        super().save(*args, **kwargs)
 
 

@@ -17,13 +17,13 @@
 <!-- Breadcrumb -->
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'agents:agent_list' %}">Assistants</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'agents:agent_list' %}">Agentes</a></li>
         <li class="breadcrumb-item"><a href="{% url 'agents:agent_detail' agent.pk %}">{{ agent.display_name }}</a></li>
         <li class="breadcrumb-item active">Upload Arquivo</li>
     </ol>
 </nav>
 <div class="row">
-    <div class="col-lg-8 mx-auto">
+    <div class="col-lg-8">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
@@ -33,23 +33,9 @@
                 <small class="text-muted">Para: {{ agent.display_name }}</small>
             </div>
             <div class="card-body">
-                <!-- Informações sobre tipos suportados -->
-                <div class="alert alert-info">
-                    <h6><i class="bi bi-info-circle me-2"></i>Tipos de arquivo suportados:</h6>
-                    <ul class="mb-0">
-                        <li><strong>PDF:</strong> Documentos PDF com texto pesquisável</li>
-                        <li><strong>TXT/MD:</strong> Arquivos de texto simples e Markdown</li>
-                        <li><strong>DOCX:</strong> Documentos Microsoft Word</li>
-                        <li><strong>CSV:</strong> Planilhas CSV (convertidas para formato tabular)</li>
-                        <li><strong>JSON:</strong> Dados estruturados JSON</li>
-                        <li><strong>HTML:</strong> Páginas web (texto extraído)</li>
-                    </ul>
-                    <small class="text-muted mt-2 d-block">Tamanho máximo: 10MB por arquivo</small>
-                </div>
-
                 <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
-                    
+
                     <div class="row">
                         <div class="col-12">
                             <div class="mb-3">
@@ -67,7 +53,7 @@
                                 {% endif %}
                             </div>
                         </div>
-                        
+
                         <div class="col-12">
                             <div class="mb-3">
                                 <label for="{{ form.file.id_for_label }}" class="form-label">
@@ -84,7 +70,24 @@
                                 {% endif %}
                             </div>
                         </div>
-                        
+
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="{{ form.usage_type.id_for_label }}" class="form-label">
+                                    {{ form.usage_type.label }}
+                                </label>
+                                {{ form.usage_type }}
+                                {% if form.usage_type.help_text %}
+                                    <div class="form-text">{{ form.usage_type.help_text }}</div>
+                                {% endif %}
+                                {% if form.usage_type.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.usage_type.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
                         <div class="col-12">
                             <div class="form-check mb-3">
                                 {{ form.is_active }}
@@ -97,21 +100,58 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between">
                         <a href="{% url 'agents:agent_detail' agent.pk %}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left me-2"></i>Cancelar
                         </a>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="uploadButton">
                             <i class="bi bi-upload me-2"></i>Fazer Upload
                         </button>
+                    </div>
+
+                    <!-- Indicador de carregamento -->
+                    <div id="uploadLoading" class="alert alert-info mt-3" style="display: none;">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-3" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <div>
+                                <strong>Aguarde, seu arquivo está sendo processado...</strong>
+                                <p class="mb-0 small">Isso pode levar alguns minutos dependendo do tamanho do arquivo.</p>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
-        
+    </div>
+
+    <!-- Sidebar com informações -->
+    <div class="col-lg-4">
+        <!-- Tipos de arquivo suportados -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Tipos de arquivo suportados
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-2 small">
+                    <li><strong>PDF:</strong> Documentos PDF com texto pesquisável</li>
+                    <li><strong>TXT/MD:</strong> Arquivos de texto simples e Markdown</li>
+                    <li><strong>DOCX:</strong> Documentos Microsoft Word</li>
+                    <li><strong>CSV:</strong> Planilhas CSV (convertidas para formato tabular)</li>
+                    <li><strong>JSON:</strong> Dados estruturados JSON</li>
+                    <li><strong>HTML:</strong> Páginas web (texto extraído)</li>
+                </ul>
+                <small class="text-muted">Tamanho máximo: 5MB por arquivo</small>
+            </div>
+        </div>
+
         <!-- Dicas de uso -->
-        <div class="card mt-4">
+        <div class="card">
             <div class="card-header">
                 <h6 class="mb-0">
                     <i class="bi bi-lightbulb me-2"></i>
@@ -119,7 +159,7 @@
                 </h6>
             </div>
             <div class="card-body">
-                <ul class="mb-0">
+                <ul class="mb-0 small">
                     <li><strong>Nome descritivo:</strong> Use nomes que identifiquem claramente o conteúdo (ex: "Manual do Produto v2.1", "FAQ Suporte Técnico")</li>
                     <li><strong>Conteúdo relevante:</strong> Inclua apenas informações que são relevantes para as respostas do assistant</li>
                     <li><strong>Texto claro:</strong> Para PDFs, certifique-se de que o texto é pesquisável (não apenas imagens)</li>
@@ -134,15 +174,40 @@
 // Validação do lado cliente para tamanho do arquivo
 document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.querySelector('input[type="file"]');
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    
+    const uploadForm = document.querySelector('form');
+    const uploadButton = document.getElementById('uploadButton');
+    const uploadLoading = document.getElementById('uploadLoading');
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
     if (fileInput) {
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file && file.size > maxSize) {
-                alert('Arquivo muito grande. O tamanho máximo permitido é 10MB.');
+                alert('Arquivo muito grande. O tamanho máximo permitido é 5MB.');
                 e.target.value = '';
             }
+        });
+    }
+
+    // Mostrar indicador de carregamento ao submeter o formulário
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            // Verificar se há um arquivo selecionado
+            if (!fileInput.files || !fileInput.files[0]) {
+                alert('Por favor, selecione um arquivo para fazer upload.');
+                e.preventDefault();
+                return false;
+            }
+
+            // Mostrar loading
+            uploadLoading.style.display = 'block';
+
+            // Desabilitar botão de upload para evitar múltiplos envios
+            uploadButton.disabled = true;
+            uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processando...';
+
+            // Rolar até o loading
+            uploadLoading.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
     }
 });

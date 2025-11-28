@@ -1,26 +1,27 @@
 {% extends 'client_painel/base.html' %}
 
-{% block title %}Editar Assistant - Assistante{% endblock %}
+{% block title %}Editar Agente - Assistante{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 fw-bold text-dark">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <h1 class="h3 fw-bold text-dark mb-0">
         <i class="bi bi-pencil me-2"></i>
-        Editar Assistant
+        Editar Agente
     </h1>
-    <div class="d-flex gap-2">
-        <a href="{% url 'agents:agent_detail' object.pk %}" class="btn btn-outline-info">
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'agents:agent_detail' object.pk %}" class="btn btn-outline-info btn-sm">
             <i class="bi bi-eye me-1"></i>
-            Ver Detalhes
+            <span class="d-none d-sm-inline">Ver Detalhes</span>
+            <span class="d-inline d-sm-none">Detalhes</span>
         </a>
-        <a href="{% url 'agents:agent_list' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'agents:agent_list' %}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>
             Voltar
         </a>
     </div>
 </div>
 
-<div class="row justify-content-center">
+<div class="row">
     <div class="col-lg-8">
         <div class="card">
             <div class="card-header">
@@ -29,7 +30,7 @@
                     Editando: {{ object.display_name }}
                 </h5>
                 <p class="card-text text-muted mb-0">
-                    Modifique a personalidade, comportamento e parâmetros do seu assistant
+                    Modifique a personalidade, comportamento e parâmetros do seu agente
                 </p>
             </div>
             <div class="card-body">
@@ -90,40 +91,185 @@
                             {% endif %}
                         </div>
                         
+                        <!-- Prompt RISE -->
                         <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label for="{{ form.system_prompt.id_for_label }}" class="form-label mb-0">
-                                    {{ form.system_prompt.label }}
-                                </label>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-preview">
-                                    <i class="bi bi-eye me-1"></i>
-                                    <span id="preview-toggle-text">Mostrar Preview</span>
-                                </button>
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-file-text me-2"></i>
+                                Prompt do Agente
+                            </h6>
+                            <div class="alert alert-info mb-3">
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                                Estruture o prompt usando blocos separados. Todos os campos serão concatenados para formar o prompt final.
                             </div>
 
-                            <div class="row g-2" id="editor-container">
-                                <div class="col-12" id="editor-col">
-                                    <div class="border rounded p-2">
-                                        {{ form.system_prompt }}
-                                    </div>
-                                </div>
-                                <div class="col-6 d-none" id="preview-col">
-                                    <div class="border rounded p-3" style="height: 100%;">
-                                        <div id="markdown-preview" class="markdown-body">
-                                            <p class="text-muted">O preview aparecerá aqui...</p>
+                            <!-- Accordion com blocos RISE -->
+                            <div class="accordion" id="riseAccordion">
+
+                                <!-- 1. ROLE -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingRole">
+                                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRole" aria-expanded="true" aria-controls="collapseRole">
+                                            <i class="bi bi-person-badge me-2"></i>
+                                            <strong>1. Papel e Especialidade do Assistente</strong>
+                                            <span class="badge bg-primary ms-2">R</span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseRole" class="accordion-collapse collapse show" aria-labelledby="headingRole" data-bs-parent="#riseAccordion">
+                                        <div class="accordion-body">
+                                            <label for="id_role" class="form-label fw-bold">{{ form.role.label }}</label>
+                                            <div class="form-text mb-2">{{ form.role.help_text }}</div>
+                                            {{ form.role }}
+                                            {% if form.role.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.role.errors }}</div>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {% if form.system_prompt.help_text %}
-                                <div class="form-text">{{ form.system_prompt.help_text }}</div>
-                            {% endif %}
-                            {% if form.system_prompt.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ form.system_prompt.errors.0 }}
+                                <!-- 2. AVAILABLE TOOLS -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingTools">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTools" aria-expanded="false" aria-controls="collapseTools">
+                                            <i class="bi bi-tools me-2"></i>
+                                            <strong>2. Ferramentas e Recursos</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseTools" class="accordion-collapse collapse" aria-labelledby="headingTools" data-bs-parent="#riseAccordion">
+                                        <div class="accordion-body">
+                                            <label for="id_available_tools" class="form-label fw-bold">{{ form.available_tools.label }}</label>
+                                            <div class="form-text mb-2">{{ form.available_tools.help_text }}</div>
+                                            {{ form.available_tools }}
+                                            {% if form.available_tools.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.available_tools.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
                                 </div>
-                            {% endif %}
+
+                                <!-- 3. INPUT CONTEXT -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingInput">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInput" aria-expanded="false" aria-controls="collapseInput">
+                                            <i class="bi bi-input-cursor me-2"></i>
+                                            <strong>3. Informações de Contexto</strong>
+                                            <span class="badge bg-primary ms-2">I</span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseInput" class="accordion-collapse collapse" aria-labelledby="headingInput" data-bs-parent="#riseAccordion">
+                                        <div class="accordion-body">
+                                            <label for="id_input_context" class="form-label fw-bold">{{ form.input_context.label }}</label>
+                                            <div class="form-text mb-2">{{ form.input_context.help_text }}</div>
+                                            {{ form.input_context }}
+                                            {% if form.input_context.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.input_context.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 4. STEPS -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingSteps">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSteps" aria-expanded="false" aria-controls="collapseSteps">
+                                            <i class="bi bi-list-ol me-2"></i>
+                                            <strong>4. Instruções e Procedimentos</strong>
+                                            <span class="badge bg-primary ms-2">S</span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseSteps" class="accordion-collapse collapse" aria-labelledby="headingSteps" data-bs-parent="#riseAccordion">
+                                        <div class="accordion-body">
+                                            <label for="id_steps" class="form-label fw-bold">{{ form.steps.label }}</label>
+                                            <div class="form-text mb-2">{{ form.steps.help_text }}</div>
+                                            {{ form.steps }}
+                                            {% if form.steps.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.steps.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 5. EXPECTATION -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingExpectation">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExpectation" aria-expanded="false" aria-controls="collapseExpectation">
+                                            <i class="bi bi-check2-square me-2"></i>
+                                            <strong>5. Formato e Estilo de Resposta</strong>
+                                            <span class="badge bg-primary ms-2">E</span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseExpectation" class="accordion-collapse collapse" aria-labelledby="headingExpectation" data-bs-parent="#riseAccordion">
+                                        <div class="accordion-body">
+                                            <label for="id_expectation" class="form-label fw-bold">{{ form.expectation.label }}</label>
+                                            <div class="form-text mb-2">{{ form.expectation.help_text }}</div>
+                                            {{ form.expectation }}
+                                            {% if form.expectation.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.expectation.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 6. ANTI-HALLUCINATION -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingAntiHallucination">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAntiHallucination" aria-expanded="false" aria-controls="collapseAntiHallucination">
+                                            <i class="bi bi-shield-check me-2"></i>
+                                            <strong>6. Regras e Restrições</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseAntiHallucination" class="accordion-collapse collapse" aria-labelledby="headingAntiHallucination" data-bs-parent="#riseAccordion">
+                                        <div class="accordion-body">
+                                            <label for="id_anti_hallucination_policies" class="form-label fw-bold">{{ form.anti_hallucination_policies.label }}</label>
+                                            <div class="form-text mb-2">{{ form.anti_hallucination_policies.help_text }}</div>
+                                            {{ form.anti_hallucination_policies }}
+                                            {% if form.anti_hallucination_policies.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.anti_hallucination_policies.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 7. APPLIED EXAMPLE -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingExample">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
+                                            <i class="bi bi-chat-left-text me-2"></i>
+                                            <strong>7. Exemplos Práticos</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseExample" class="accordion-collapse collapse" aria-labelledby="headingExample" data-bs-parent="#riseAccordion">
+                                        <div class="accordion-body">
+                                            <label for="id_applied_example" class="form-label fw-bold">{{ form.applied_example.label }}</label>
+                                            <div class="form-text mb-2">{{ form.applied_example.help_text }}</div>
+                                            {{ form.applied_example }}
+                                            {% if form.applied_example.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.applied_example.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 8. DEFAULT MESSAGES -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingMessages">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMessages" aria-expanded="false" aria-controls="collapseMessages">
+                                            <i class="bi bi-envelope me-2"></i>
+                                            <strong>8. Mensagens e Respostas Padrão</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseMessages" class="accordion-collapse collapse" aria-labelledby="headingMessages" data-bs-parent="#riseAccordion">
+                                        <div class="accordion-body">
+                                            <label for="id_useful_default_messages" class="form-label fw-bold">{{ form.useful_default_messages.label }}</label>
+                                            <div class="form-text mb-2">{{ form.useful_default_messages.help_text }}</div>
+                                            {{ form.useful_default_messages }}
+                                            {% if form.useful_default_messages.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.useful_default_messages.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
                         </div>
                         
                         <!-- Parâmetros Avançados -->
@@ -219,11 +365,11 @@
                             {% if object.files.all %}
                                 <div class="row g-2 mb-3">
                                     {% for file in object.files.all|slice:":4" %}
-                                    <div class="col-md-6">
+                                    <div class="col-12 col-sm-6 col-lg-12 col-xl-6">
                                         <div class="d-flex align-items-center p-2 border rounded">
-                                            <i class="bi bi-file-earmark-{% if file.file_type == 'pdf' %}pdf{% elif file.file_type == 'docx' %}word{% elif file.file_type == 'txt' or file.file_type == 'md' %}text{% elif file.file_type == 'csv' %}spreadsheet{% elif file.file_type == 'json' %}code{% else %}text{% endif %} me-2 text-primary"></i>
-                                            <div class="flex-grow-1">
-                                                <div class="fw-semibold text-truncate" style="max-width: 120px;">{{ file.name }}</div>
+                                            <i class="bi bi-file-earmark-{% if file.file_type == 'pdf' %}pdf{% elif file.file_type == 'docx' %}word{% elif file.file_type == 'txt' or file.file_type == 'md' %}text{% elif file.file_type == 'csv' %}spreadsheet{% elif file.file_type == 'json' %}code{% else %}text{% endif %} me-2 text-primary fs-5"></i>
+                                            <div class="flex-grow-1 min-width-0">
+                                                <div class="fw-semibold text-truncate">{{ file.name }}</div>
                                                 <div class="d-flex align-items-center gap-2">
                                                     <small class="text-muted">{{ file.get_file_type_display }}</small>
                                                     {% if file.status == 'ready' %}
@@ -246,7 +392,7 @@
                                 </div>
                                 {% endif %}
                                 
-                                <div class="d-flex justify-content-between">
+                                <div class="d-flex flex-column flex-sm-row justify-content-between gap-2">
                                     <a href="{% url 'agents:agent_file_list' object.pk %}" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-list me-1"></i>Gerenciar Arquivos
                                     </a>
@@ -257,7 +403,7 @@
                             {% else %}
                                 <div class="alert alert-info">
                                     <i class="bi bi-info-circle me-2"></i>
-                                    <strong>Nenhum arquivo de contexto adicionado.</strong> Adicione documentos para personalizar as respostas do assistant.
+                                    <strong>Nenhum arquivo de contexto adicionado.</strong> Adicione documentos para personalizar as respostas do agente.
                                 </div>
                                 <div class="text-center">
                                     <a href="{% url 'agents:agent_file_upload' object.pk %}" class="btn btn-primary">
@@ -268,7 +414,7 @@
                         </div>
                     </div>
                     
-                    <div class="d-flex justify-content-end gap-2 mt-4">
+                    <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
                         <a href="{% url 'agents:agent_detail' object.pk %}" class="btn btn-outline-secondary">
                             <i class="bi bi-x-circle me-2"></i>
                             Cancelar
@@ -282,88 +428,301 @@
             </div>
         </div>
     </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Informações do Agente
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Provider:</strong>
+                    <div class="text-capitalize">
+                        <i class="bi bi-{% if object.name == 'openai' %}openai{% elif object.name == 'anthropic' %}robot{% elif object.name == 'google' %}google{% endif %} me-1"></i>
+                        {{ object.get_name_display }}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Modelo:</strong>
+                    <div>
+                        <code>{{ object.model }}</code>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Arquivos de Contexto:</strong>
+                    <div>
+                        <span class="badge bg-{% if object.files.count > 0 %}success{% else %}secondary{% endif %}">
+                            {{ object.files.count }} arquivo{{ object.files.count|pluralize }}
+                        </span>
+                    </div>
+                </div>
+
+                {% if vectorized_files_count > 0 %}
+                <div class="mb-3">
+                    <strong>Arquivos Vetorizados:</strong>
+                    <div>
+                        <span class="badge bg-primary">
+                            {{ vectorized_files_count }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <strong>Configuração:</strong>
+                    <div class="small">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="bi bi-person-badge me-1"></i> Role:</span>
+                            <span class="badge bg-{% if object.role %}success{% else %}secondary{% endif %}">
+                                {% if object.role %}{{ object.role|length }} chars{% else %}Global{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="bi bi-tools me-1"></i> Tools:</span>
+                            <span class="badge bg-{% if object.available_tools %}success{% else %}secondary{% endif %}">
+                                {% if object.available_tools %}{{ object.available_tools|length }} chars{% else %}Global{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="bi bi-input-cursor me-1"></i> Input:</span>
+                            <span class="badge bg-{% if object.input_context %}success{% else %}secondary{% endif %}">
+                                {% if object.input_context %}{{ object.input_context|length }} chars{% else %}Global{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="bi bi-list-ol me-1"></i> Steps:</span>
+                            <span class="badge bg-{% if object.steps %}success{% else %}secondary{% endif %}">
+                                {% if object.steps %}{{ object.steps|length }} chars{% else %}Global{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="bi bi-check2-square me-1"></i> Expectation:</span>
+                            <span class="badge bg-{% if object.expectation %}success{% else %}secondary{% endif %}">
+                                {% if object.expectation %}{{ object.expectation|length }} chars{% else %}Global{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="bi bi-shield-check me-1"></i> Anti-Hallucination:</span>
+                            <span class="badge bg-{% if object.anti_hallucination_policies %}success{% else %}secondary{% endif %}">
+                                {% if object.anti_hallucination_policies %}{{ object.anti_hallucination_policies|length }} chars{% else %}Global{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="bi bi-chat-left-text me-1"></i> Example:</span>
+                            <span class="badge bg-{% if object.applied_example %}success{% else %}secondary{% endif %}">
+                                {% if object.applied_example %}{{ object.applied_example|length }} chars{% else %}Global{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-envelope me-1"></i> Messages:</span>
+                            <span class="badge bg-{% if object.useful_default_messages %}success{% else %}secondary{% endif %}">
+                                {% if object.useful_default_messages %}{{ object.useful_default_messages|length }} chars{% else %}Global{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Criado em:</strong>
+                    <div class="small">{{ object.created_at|date:"d/m/Y H:i" }}</div>
+                </div>
+
+                {% if object.updated_at %}
+                <div class="mb-3">
+                    <strong>Última atualização:</strong>
+                    <div class="small">{{ object.updated_at|date:"d/m/Y H:i" }}</div>
+                </div>
+                {% endif %}
+
+                <div class="alert alert-info small mb-0">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    <strong>Dica:</strong> Campos com badge "Global" usarão as configurações padrão do sistema. Preencha para personalizar este agente.
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-file-earmark-text me-1"></i>
+                    Resumo de Parâmetros
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted small">Temperature:</span>
+                    <span class="badge bg-secondary">{{ object.temperature }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted small">Max Tokens:</span>
+                    <span class="badge bg-secondary">{{ object.max_tokens|default:"Padrão" }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted small">Top P:</span>
+                    <span class="badge bg-secondary">{{ object.top_p }}</span>
+                </div>
+                {% if object.presence_penalty %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted small">Presence Penalty:</span>
+                    <span class="badge bg-secondary">{{ object.presence_penalty }}</span>
+                </div>
+                {% endif %}
+                {% if object.frequency_penalty %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted small">Frequency Penalty:</span>
+                    <span class="badge bg-secondary">{{ object.frequency_penalty }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-eye me-1"></i>
+                    Preview do Prompt Final
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-prompt-preview">
+                    <i class="bi bi-arrows-expand"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-secondary small mb-2">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Este é o prompt final que será enviado ao modelo (com contexto temporal).
+                </div>
+                <div id="prompt-preview-content" style="max-height: 300px; overflow-y: auto; font-size: 0.75rem; line-height: 1.4;">
+                    <pre class="mb-0 p-2 bg-light border rounded" style="white-space: pre-wrap; word-wrap: break-word;">{{ final_prompt }}</pre>
+                </div>
+                <div class="mt-2 small text-muted">
+                    <i class="bi bi-fonts me-1"></i>
+                    {{ final_prompt|length|default:0 }} caracteres
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
-
 <script>
+// Função para auto-resize do textarea
+function autoResize(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+// Contador de caracteres e auto-resize para cada campo RISE
 document.addEventListener('DOMContentLoaded', function() {
-    const textarea = document.querySelector('#id_system_prompt');
-    const previewDiv = document.getElementById('markdown-preview');
-    const toggleBtn = document.getElementById('toggle-preview');
-    const toggleText = document.getElementById('preview-toggle-text');
-    const editorCol = document.getElementById('editor-col');
-    const previewCol = document.getElementById('preview-col');
-    let previewVisible = false;
+    const fields = [
+        'role',
+        'available_tools',
+        'input_context',
+        'steps',
+        'expectation',
+        'anti_hallucination_policies',
+        'applied_example',
+        'useful_default_messages'
+    ];
 
-    // Configurar textarea para crescer automaticamente
-    if (textarea) {
-        textarea.removeAttribute('rows');
-        textarea.style.minHeight = '400px';
-        textarea.style.resize = 'vertical';
-        textarea.style.overflow = 'hidden';
+    fields.forEach(function(fieldName) {
+        const textarea = document.getElementById('id_' + fieldName);
+        if (textarea) {
+            // Configurar textarea para auto-resize
+            textarea.style.overflow = 'hidden';
+            textarea.style.resize = 'vertical';
+            textarea.style.minHeight = '100px';
 
-        // Função para ajustar altura do textarea
-        function autoResize() {
-            textarea.style.height = 'auto';
-            textarea.style.height = textarea.scrollHeight + 'px';
-        }
+            const counter = document.createElement('div');
+            counter.className = 'text-muted small mt-2';
+            textarea.parentNode.appendChild(counter);
 
-        // Ajustar altura inicial
-        autoResize();
+            function updateCounter() {
+                const length = textarea.value.length;
+                const label = length === 0 ? 'vazio' : `${length.toLocaleString()} caracteres`;
+                counter.innerHTML = `<i class="bi bi-fonts me-1"></i>${label}`;
+            }
 
-        // Ajustar altura ao digitar
-        textarea.addEventListener('input', autoResize);
-    }
+            function handleInput() {
+                autoResize(textarea);
+                updateCounter();
+            }
 
-    // Função para atualizar preview
-    function updatePreview() {
-        if (textarea && previewDiv) {
-            const markdown = textarea.value || '*Nenhum conteúdo para visualizar*';
-            previewDiv.innerHTML = marked.parse(markdown);
+            textarea.addEventListener('input', handleInput);
 
-            // Aplicar syntax highlighting
-            previewDiv.querySelectorAll('pre code').forEach((block) => {
-                Prism.highlightElement(block);
-            });
-        }
-    }
-
-    // Toggle preview
-    toggleBtn.addEventListener('click', function() {
-        previewVisible = !previewVisible;
-
-        if (previewVisible) {
-            // Mostrar preview lado a lado
-            editorCol.classList.remove('col-12');
-            editorCol.classList.add('col-6');
-            previewCol.classList.remove('d-none');
-            toggleText.textContent = 'Ocultar Preview';
-            toggleBtn.querySelector('i').classList.remove('bi-eye');
-            toggleBtn.querySelector('i').classList.add('bi-eye-slash');
-            updatePreview();
-        } else {
-            // Ocultar preview
-            editorCol.classList.remove('col-6');
-            editorCol.classList.add('col-12');
-            previewCol.classList.add('d-none');
-            toggleText.textContent = 'Mostrar Preview';
-            toggleBtn.querySelector('i').classList.remove('bi-eye-slash');
-            toggleBtn.querySelector('i').classList.add('bi-eye');
+            // Aplicar auto-resize inicial com delay para garantir renderização
+            setTimeout(function() {
+                autoResize(textarea);
+                updateCounter();
+            }, 100);
         }
     });
 
-    // Atualizar preview em tempo real enquanto digita
-    if (textarea) {
-        textarea.addEventListener('input', function() {
-            if (previewVisible) {
-                updatePreview();
+    // Redimensionar textareas quando accordions forem abertos
+    document.querySelectorAll('.accordion-collapse').forEach(function(collapse) {
+        collapse.addEventListener('shown.bs.collapse', function() {
+            const textarea = this.querySelector('textarea');
+            if (textarea) {
+                autoResize(textarea);
+            }
+        });
+    });
+
+    // Adicionar botão para expandir todos os accordions
+    const firstAccordion = document.querySelector('.accordion-item');
+    if (firstAccordion) {
+        const expandAllBtn = document.createElement('button');
+        expandAllBtn.type = 'button';
+        expandAllBtn.className = 'btn btn-sm btn-outline-secondary mb-3';
+        expandAllBtn.innerHTML = '<i class="bi bi-arrows-expand me-1"></i> Expandir Todos';
+        expandAllBtn.onclick = function() {
+            const collapses = document.querySelectorAll('.accordion-collapse');
+            const isExpanding = !collapses[0].classList.contains('show');
+
+            collapses.forEach(collapse => {
+                if (isExpanding) {
+                    collapse.classList.add('show');
+                    // Redimensionar textarea dentro do accordion expandido
+                    const textarea = collapse.querySelector('textarea');
+                    if (textarea) {
+                        setTimeout(function() {
+                            autoResize(textarea);
+                        }, 50);
+                    }
+                } else {
+                    collapse.classList.remove('show');
+                }
+            });
+
+            expandAllBtn.innerHTML = isExpanding
+                ? '<i class="bi bi-arrows-collapse me-1"></i> Recolher Todos'
+                : '<i class="bi bi-arrows-expand me-1"></i> Expandir Todos';
+        };
+
+        document.querySelector('.accordion').insertAdjacentElement('beforebegin', expandAllBtn);
+    }
+
+    // Toggle para preview do prompt final
+    const togglePromptBtn = document.getElementById('toggle-prompt-preview');
+    const promptPreviewContent = document.getElementById('prompt-preview-content');
+
+    if (togglePromptBtn && promptPreviewContent) {
+        togglePromptBtn.addEventListener('click', function() {
+            const isExpanded = promptPreviewContent.style.maxHeight !== '300px';
+
+            if (isExpanded) {
+                // Recolher
+                promptPreviewContent.style.maxHeight = '300px';
+                togglePromptBtn.innerHTML = '<i class="bi bi-arrows-expand"></i>';
+                togglePromptBtn.title = 'Expandir';
+            } else {
+                // Expandir
+                promptPreviewContent.style.maxHeight = 'none';
+                togglePromptBtn.innerHTML = '<i class="bi bi-arrows-collapse"></i>';
+                togglePromptBtn.title = 'Recolher';
             }
         });
     }
@@ -371,139 +730,23 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Estilos das tabs */
-#instructionsTabs .nav-link {
-    color: #666666;
-    border: 1px solid transparent;
-    background-color: #f5f5f5;
-}
-#instructionsTabs .nav-link:hover {
-    color: #4d4d4d;
-    background-color: #e6e6e6;
-    border-color: #d9d9d9;
-}
-#instructionsTabs .nav-link.active {
-    color: #000000;
-    font-weight: 600;
-    background-color: #fff;
-    border-color: #d9d9d9 #d9d9d9 #fff;
-}
+/* Responsividade Mobile */
+@media (max-width: 575.98px) {
+    /* Ajustar tamanho dos botões em mobile */
+    .btn {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
+    }
 
-.markdown-body {
-    font-size: 14px;
-    line-height: 1.6;
-    color: #333;
-}
-.markdown-body h1 {
-    font-size: 1.8em;
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-    color: #000000;
-    font-weight: 600;
-    border-bottom: 2px solid #d9d9d9;
-    padding-bottom: 0.3em;
-}
-.markdown-body h2 {
-    font-size: 1.5em;
-    margin-top: 0.8em;
-    margin-bottom: 0.4em;
-    color: #1a1a1a;
-    font-weight: 600;
-    border-bottom: 1px solid #d9d9d9;
-    padding-bottom: 0.3em;
-}
-.markdown-body h3 {
-    font-size: 1.2em;
-    margin-top: 0.6em;
-    margin-bottom: 0.3em;
-    color: #333333;
-    font-weight: 600;
-}
-.markdown-body h4 {
-    font-size: 1.1em;
-    color: #4d4d4d;
-    font-weight: 600;
-}
-.markdown-body p {
-    margin-bottom: 0.8em;
-    line-height: 1.7;
-}
-.markdown-body ul, .markdown-body ol {
-    margin-bottom: 0.8em;
-    padding-left: 2em;
-    line-height: 1.7;
-}
-.markdown-body li {
-    margin-bottom: 0.3em;
-}
-.markdown-body strong {
-    font-weight: 600;
-    color: #000000;
-}
-.markdown-body em {
-    font-style: italic;
-    color: #555;
-}
-.markdown-body code {
-    background-color: #f5f5f5;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 0.9em;
-    color: #666666;
-    border: 1px solid #d9d9d9;
-}
-.markdown-body pre {
-    background-color: #2d2d2d;
-    padding: 16px;
-    border-radius: 6px;
-    overflow-x: auto;
-    margin: 1em 0;
-    border: 1px solid #444;
-}
-.markdown-body pre code {
-    background-color: transparent;
-    padding: 0;
-    color: #ccc;
-    border: none;
-    font-size: 0.9em;
-    line-height: 1.5;
-}
-.markdown-body blockquote {
-    border-left: 4px solid #000000;
-    padding-left: 1em;
-    color: #666;
-    margin: 1em 0;
-    background-color: #f5f5f5;
-    padding: 0.5em 1em;
-    border-radius: 0 4px 4px 0;
-}
-.markdown-body a {
-    color: #000000;
-    text-decoration: none;
-}
-.markdown-body a:hover {
-    text-decoration: underline;
-}
-.markdown-body table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1em 0;
-}
-.markdown-body table th,
-.markdown-body table td {
-    border: 1px solid #ddd;
-    padding: 8px 12px;
-    text-align: left;
-}
-.markdown-body table th {
-    background-color: #f5f5f5;
-    font-weight: 600;
-}
-.markdown-body hr {
-    border: none;
-    border-top: 2px solid #d9d9d9;
-    margin: 1.5em 0;
+    /* Ajustar títulos em mobile */
+    .h3 {
+        font-size: 1.5rem !important;
+    }
+
+    /* Garantir que cards de arquivo não quebrem */
+    .min-width-0 {
+        min-width: 0;
+    }
 }
 </style>
 {% endblock %}

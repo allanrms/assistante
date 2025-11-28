@@ -1,0 +1,161 @@
+{% extends 'client_painel/base.html' %}
+
+{% block title %}Deletar Instância - {{ instance.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold text-dark">
+        <i class="bi bi-trash me-2"></i>
+        Deletar Instância
+    </h1>
+    <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>
+        Voltar
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Confirmar Exclusão
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <h6 class="alert-heading">
+                        <i class="bi bi-exclamation-octagon me-2"></i>
+                        Atenção! Esta ação não pode ser desfeita.
+                    </h6>
+                    <p class="mb-0">
+                        Você está prestes a deletar a instância <strong>{{ instance.name }}</strong>.
+                        Todos os dados relacionados serão permanentemente removidos.
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="fw-semibold mb-3">O que será deletado:</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-danger me-2"></i>
+                            A instância será removida da Evolution API
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-danger me-2"></i>
+                            Todas as sessões de chat relacionadas
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-danger me-2"></i>
+                            Todo o histórico de mensagens
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-danger me-2"></i>
+                            Configurações de webhook e contatos autorizados
+                        </li>
+                    </ul>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i>
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>
+                            Sim, Deletar Permanentemente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Detalhes da Instância
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Nome:</strong>
+                    <div>{{ instance.name }}</div>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Nome Técnico:</strong>
+                    <div class="font-monospace small">{{ instance.instance_name }}</div>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Status:</strong>
+                    <div>
+                        <span class="badge bg-{% if instance.status == 'connected' %}success{% elif instance.status == 'connecting' %}warning{% elif instance.status == 'disconnected' %}secondary{% else %}danger{% endif %}">
+                            {{ instance.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+
+                {% if instance.phone_number %}
+                <div class="mb-3">
+                    <strong>Número:</strong>
+                    <div>{{ instance.phone_number }}</div>
+                </div>
+                {% endif %}
+
+                {% if instance.profile_name %}
+                <div class="mb-3">
+                    <strong>Perfil:</strong>
+                    <div>{{ instance.profile_name }}</div>
+                </div>
+                {% endif %}
+
+                {% if instance.created_at %}
+                <div class="mb-3">
+                    <strong>Criada em:</strong>
+                    <div>{{ instance.created_at|date:"d/m/Y H:i" }}</div>
+                </div>
+                {% endif %}
+
+                {% if instance.last_connection %}
+                <div class="mb-3">
+                    <strong>Última Conexão:</strong>
+                    <div>{{ instance.last_connection|date:"d/m/Y H:i" }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mt-3 border-warning">
+            <div class="card-header bg-warning">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    Alternativas
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-2">
+                    <strong>Considere estas alternativas antes de deletar:</strong>
+                </p>
+                <ul class="small mb-0">
+                    <li class="mb-2">
+                        Desconectar a instância temporariamente
+                    </li>
+                    <li class="mb-2">
+                        Desativar a instância mantendo os dados
+                    </li>
+                    <li>
+                        Fazer backup das mensagens antes de deletar
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

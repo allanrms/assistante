@@ -7,12 +7,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
-from agents.langgraph.langgraph_app_runner import run_ai_turn
+from agents.langchain.agente import ask_agent
 from agents.models import Message, Conversation
 from whatsapp_connector.models import EvolutionInstance
 from whatsapp_connector.services import ImageProcessingService, EvolutionAPIService
 from whatsapp_connector.utils import transcribe_audio_from_bytes, clean_number_whatsapp
 import logging
+
+logger = logging.getLogger(__name__)
 
 # Configurar loggers específicos
 langchain_logger = logging.getLogger('assistante.langchain_agent')
@@ -29,7 +31,6 @@ class EvolutionWebhookView(APIView):
         Handle incoming webhooks from Evolution API
         """
         try:
-            print(f"📥 Webhook recebido - Content-Type: {request.content_type}")
             # 1️⃣ Ler os dados do request
             try:
                 data = request.data
@@ -37,7 +38,9 @@ class EvolutionWebhookView(APIView):
                 return Response({'error': 'Failed to parse request data'}, status=400)
 
             # Filtrar mensagens que não precisam ser processadas
-            remote_jid = data.get('key', {}).get('remoteJid', '')
+            key_data = data.get('key', {})
+            remote_jid = key_data.get('remoteJid', '')
+            from_me = key_data.get('fromMe', False)
             message_type = data.get('messageType', '')
 
             if remote_jid in ['status@broadcast'] or message_type in ['group']:
@@ -46,7 +49,6 @@ class EvolutionWebhookView(APIView):
 
             # Validate webhook data
             if not self._validate_webhook_data(data):
-                print(f"❌ Validação falhou - Data: {str(data)[:200]}")
                 return Response(
                     {'error': 'Invalid webhook data'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -55,30 +57,25 @@ class EvolutionWebhookView(APIView):
             # Extract message data
             try:
                 message_data = self._extract_message_data(data)
-                print(f"✅ Message data extraído - Has content: {bool(message_data)}")
             except Exception as extract_error:
-                print(f"❌ Erro ao extrair message data: {extract_error}")
-                webhook_logger.error(f"Erro ao extrair message data: {extract_error}", exc_info=True)
+                logger.error(f"Erro ao extrair message data: {extract_error}", exc_info=True)
                 return Response(
                     {'status': 'error', 'reason': 'Failed to extract message data'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
             if not message_data:
-                print(f"⚠️ Message data vazio - ignorando")
                 return Response(
                     {'status': 'ignored', 'reason': 'Not a valid message'},
                     status=status.HTTP_200_OK
                 )
 
             message_id = message_data.get('message_id')
-            print(f"📨 Message ID: {message_id}")
 
             # ✅ DEDUPLICAÇÃO: Verificar se mensagem já foi processada (com try/except para cache)
             try:
                 cache_key = f"webhook_msg_{message_id}"
                 if cache.get(cache_key):
-                    print(f"⚠️ Mensagem duplicada ignorada: {message_id}")
                     return Response({
                         'status': 'ignored',
                         'reason': 'Mensagem duplicada'
@@ -87,15 +84,14 @@ class EvolutionWebhookView(APIView):
                 # Marcar como processada por 5 minutos (300 segundos)
                 cache.set(cache_key, True, 300)
             except Exception as cache_error:
-                print(f"⚠️ Cache não disponível: {cache_error}")
                 # Continuar mesmo sem cache
+                pass
 
             # Get Evolution instance
             evolution_instance = self._get_evolution_instance(message_data)
 
             # Verifique se a instância está ativa
             if evolution_instance and not evolution_instance.is_active:
-                print(f"🔴 Instância inativa, ignorando mensagem: {evolution_instance.name}")
                 return Response({
                     'status': 'ignored',
                     'reason': 'Instância está inativa'
@@ -104,97 +100,71 @@ class EvolutionWebhookView(APIView):
             # Validar autorização
             from_number = clean_number_whatsapp(message_data['from_number'])
             if evolution_instance and not evolution_instance.is_number_authorized(from_number):
-                print(f"❌ Número não autorizado: {from_number}")
                 return Response({
                     'status': 'unauthorized',
                     'reason': f'Número {from_number} não autorizado'
                 }, status=status.HTTP_200_OK)
 
             # Save message to database
-            message_history = self._save_message(message_data, evolution_instance)
+            message = self._save_message(message_data, evolution_instance)
+
+            if message.conversation.status == 'human':
+                message.processing_status = "completed"
+                message.responded_by = message.conversation.status
+                message.response = "resposta será gerada por humano"
+                message.save()
+                return Response({
+                    'status': 'success',
+                    'message': '',
+                }, status=status.HTTP_200_OK)
+
 
             # Check admin commands (activate/deactivate instance)
-            admin_response = self._process_admin_commands(message_history, evolution_instance)
+            admin_response = self._process_admin_commands(message, evolution_instance)
             if admin_response:
                 return admin_response
 
-            # Verifique se deve ignorar as próprias mensagens
-            ignore_response = self._should_ignore_own_message(message_history, evolution_instance)
+            # Verifique se deve ignorar as próprias mensagens (resposta manual)
+            ignore_response = self._should_ignore_own_message(message, evolution_instance, from_me)
             if ignore_response:
                 return ignore_response
 
             # Inicializar serviços
             evolution_api = EvolutionAPIService(evolution_instance)
 
-            print(f"Processando mensagem: {message_history.message_type} de {message_history.sender_name}")
+            if message_data.get('has_audio') or message.message_type == 'audio':
+                message = self._process_audio_message(message, evolution_api, data)
 
-            if message_data.get('has_audio') or message_history.message_type == 'audio':
-                message_history = self._process_audio_message(message_history, evolution_api, data)
+            elif message_data.get('has_image') or message.message_type == 'image':
+                message = self._process_image_message(message, data, evolution_instance)
 
-            elif message_data.get('has_image') or message_history.message_type == 'image':
-                message_history = self._process_image_message(message_history, data, evolution_instance)
+            elif message.content or message.message_type == 'text':
+                message.processing_status = 'processing'
+                message.save()
 
-            elif message_history.content or message_history.message_type == 'text':
-                message_history.processing_status = 'processing'
-                message_history.save()
+            try:
+                result = ask_agent(message, evolution_instance.agent)
+                response_msg = result.get("answer", "")
+            except Exception as e:
+                logger.error(f"Erro LangChain Agent - Usuário: {from_number} | Erro: {e}", exc_info=True)
+                response_msg = "⚠️ Erro ao processar sua mensagem. Por favor, tente novamente."
 
-            # Preparar dados para run_ai_turn
-            to_number = clean_number_whatsapp(message_data.get('to_number', ''))
-            message_text = message_history.content
-            client = evolution_instance.owner if evolution_instance else None
-
-            if client:
-                # Usar sistema multi-agent com LangGraph
-                try:
-                    # response_msg, session = run_ai_turn(
-                    #     from_number=from_number,
-                    #     to_number=to_number,
-                    #     user_message=message_text,
-                    #     owner=client,
-                    #     evolution_instance=evolution_instance
-                    # )
-
-                    response_msg, contact = run_ai_turn(from_number, to_number, message_text, client, evolution_instance)
-
-
-                except Exception as e:
-                    error_details = str(e)
-                    langchain_logger.error(
-                        f"Erro LangGraph Agent - Usuário: {from_number} | "
-                        f"Mensagem: {message_text[:100] if message_text else 'N/A'}... | "
-                        f"Erro: {error_details}",
-                        exc_info=True,
-                        extra={
-                            'usuario': from_number,
-                            'mensagem': message_text,
-                            'erro': error_details,
-                            'message_id': message_history.message_id
-                        }
-                    )
-                    response_msg = "⚠️ Erro ao processar sua mensagem. Por favor, tente novamente."
-            else:
-                response_msg = "⚠️ Nenhuma configuração de cliente foi encontrada para esta instância."
-
-            # Processar resposta estruturada ou simples - só se houver resposta
             result = False
-            print(f'response_msg {response_msg}')
 
             if response_msg:
-                result = self._send_response_to_whatsapp(evolution_api, message_history.conversation.from_number, response_msg)
+                result = self._send_response_to_whatsapp(evolution_api, message.conversation.from_number,
+                                                         response_msg)
 
                 if result:
-                    message_history.response = response_msg
-                    message_history.processing_status = 'completed'
-                    message_history.save()
-                    print(f"✅ Resposta enviada e salva para mensagem {message_history.message_id}")
+                    message.response = response_msg
+                    message.processing_status = 'completed'
+                    message.save()
                 else:
-                    message_history.processing_status = 'failed'
-                    message_history.save()
-                    print(f"❌ Erro ao enviar resposta para {message_history.conversation.from_number}")
+                    message.processing_status = 'failed'
+                    message.save()
             else:
-                message_history.processing_status = 'completed'
-                message_history.save()
-                print(f"ℹ️ Mensagem processada sem resposta")
+                message.processing_status = 'completed'
+                message.save()
                 result = True
 
             if result:
@@ -210,20 +180,13 @@ class EvolutionWebhookView(APIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
-            webhook_logger.error(
-                f"Erro crítico no webhook - Dados: {str(request.data)[:200]}... | Erro: {str(e)}",
-                exc_info=True,
-                extra={
-                    'dados_webhook': str(request.data)[:500],
-                    'erro': str(e),
-                    'endpoint': 'webhook'
-                }
-            )
+            logger.error(f"Erro crítico no webhook: {e}", exc_info=True)
 
             return Response(
                 {'error': 'Internal server error'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
     def _validate_webhook_data(self, data):
         """Validate that webhook data has required fields"""
@@ -1009,25 +972,36 @@ CONTEXTO IMPORTANTE:
                 'message_id': message_history.message_id
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def _should_ignore_own_message(self, message_history, evolution_instance):
+    def _should_ignore_own_message(self, message_history, evolution_instance, from_me=False):
         """
         Verifica se deve ignorar mensagem enviada pelo próprio número da instância
+        Considera tanto o campo fromMe (mensagens respondidas manualmente)
+        quanto o sender_name (mensagens enviadas pela própria instância)
+
         Retorna Response se deve ignorar, None caso contrário
         """
+        # Só ignora se a configuração ignore_own_messages estiver ativa
+        if not (evolution_instance and evolution_instance.ignore_own_messages):
+            return None
+
         sender_name = message_history.sender_name
 
-        if (evolution_instance and 
-            evolution_instance.ignore_own_messages and 
-            evolution_instance.profile_name and
-            sender_name == evolution_instance.profile_name):
-            
-            print(f"🚫 Ignorando mensagem da própria instância: {sender_name}")
+        # Verificar se é mensagem enviada manualmente (fromMe = true)
+        if from_me:
+            return Response({
+                'status': 'ignored',
+                'reason': 'Mensagem enviada manualmente pelo dono da instância (fromMe=true)',
+                'message_id': message_history.message_id
+            }, status=status.HTTP_200_OK)
+
+        # Verificar se é mensagem enviada pela própria instância (por sender_name)
+        if evolution_instance.profile_name and sender_name == evolution_instance.profile_name:
             return Response({
                 'status': 'ignored',
                 'reason': 'Mensagem enviada pela própria instância',
                 'message_id': message_history.message_id
             }, status=status.HTTP_200_OK)
-            
+
         return None
     
     def _send_response_to_whatsapp(self, evolution_api, to_number, response_msg):

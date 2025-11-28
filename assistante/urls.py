@@ -32,8 +32,9 @@ urlpatterns = [
     path('dialog-test/', include('dialog_test.urls')),  # Dialog Test URLs
     # path('ai-assistant/', include('django_ai_assistant.urls')),  # AI Assistant URLs
 
-    # Public appointment scheduling
+    # Public appointment scheduling (com e sem barra final)
     path('agendar/<str:token>/', PublicAppointmentView.as_view(), name='public_appointment'),
+    path('agendar/<str:token>', PublicAppointmentView.as_view(), name='public_appointment_no_slash'),
     path('agendar/<str:token>/availability/<str:date_str>/', PublicAppointmentAvailabilityAPI.as_view(), name='public_appointment_availability'),
 
     path('', include('client_painel.urls')),  # Client Painel como página inicial

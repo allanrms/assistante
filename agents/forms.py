@@ -1,6 +1,6 @@
 from django import forms
 from agents.models import Agent, AgentFile
-from .file_processors import file_processor
+from agents.patterns.factories.file_processors import FileProcessorFactory
 
 
 class AgentForm(forms.ModelForm):
@@ -10,8 +10,11 @@ class AgentForm(forms.ModelForm):
 
     class Meta:
         model = Agent
-        fields = ['display_name', 'name', 'model', 'system_prompt', 'temperature', 'max_tokens',
-                  'top_p', 'presence_penalty', 'frequency_penalty']
+        fields = ['display_name', 'name', 'model',
+                  'role', 'available_tools', 'input_context', 'steps',
+                  'expectation', 'anti_hallucination_policies', 'applied_example',
+                  'useful_default_messages',
+                  'temperature', 'max_tokens', 'top_p', 'presence_penalty', 'frequency_penalty']
         widgets = {
             'display_name': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -22,12 +25,56 @@ class AgentForm(forms.ModelForm):
             }),
             'model': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'ex: gemini-2.5-flash-lite	'
+                'placeholder': 'ex: gemini-2.5-pro, gpt-4o-mini, claude-3-5-sonnet-20241022'
             }),
-            'system_prompt': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 12,
-                'placeholder': 'Exemplo:\n\nVocê é um assistente especializado em vendas de bicicletas.\n\nComportamento:\n- Seja amigável e entusiasmado sobre ciclismo\n- Sempre pergunte sobre o uso pretendido antes de recomendar\n- Ofereça opções dentro do orçamento do cliente\n\nRegras:\n- Nunca recomende produtos que não temos em estoque\n- Sempre mencione a garantia e manutenção\n- Se não souber algo, encaminhe para um especialista'
+            # Campos RISE
+            'role': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: Você é um assistente virtual especializado em atendimento ao cliente...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'available_tools': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: - Busca em arquivos de contexto\n- Consulta ao Google Calendar\n- Envio de PDFs...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'input_context': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: Analise cada mensagem do usuário e identifique a intenção principal...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'steps': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 8,
+                'placeholder': 'Ex:\n1. Cumprimentar o usuário\n2. Identificar a necessidade\n3. Buscar informações relevantes...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'expectation': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: Respostas devem ser objetivas, claras e em português brasileiro...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'anti_hallucination_policies': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: ❌ NUNCA invente informações\n✅ Se não souber, seja honesto...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'applied_example': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 8,
+                'placeholder': 'Ex:\nUsuário: "Oi, preciso de ajuda"\nAssistente: "Olá! Como posso ajudar você hoje?"...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'useful_default_messages': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex:\n- Saudação: "Olá! Como posso ajudar você hoje?"\n- Transferência: "Vou transferir você para um atendente humano..."...',
+                'style': 'font-size: 14px; line-height: 1.6;'
             }),
             'temperature': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -38,7 +85,7 @@ class AgentForm(forms.ModelForm):
             'max_tokens': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'min': '1',
-                'max': '4000'
+                'max': '8192'
             }),
             'top_p': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -63,7 +110,14 @@ class AgentForm(forms.ModelForm):
             'display_name': 'Nome do Agent',
             'name': 'Provedor de IA',
             'model': 'Modelo',
-            'system_prompt': 'Instruções do Agent',
+            'role': 'Role',
+            'available_tools': 'Available Tools',
+            'input_context': 'Input',
+            'steps': 'Steps',
+            'expectation': 'Expectation',
+            'anti_hallucination_policies': 'Anti-Hallucination Policies',
+            'applied_example': 'Applied Example',
+            'useful_default_messages': 'Useful Default Messages',
             'temperature': 'Temperatura',
             'max_tokens': 'Máximo de Tokens',
             'top_p': 'Top-p',
@@ -72,9 +126,16 @@ class AgentForm(forms.ModelForm):
         }
         help_texts = {
             'display_name': 'Nome personalizado para identificar este agent (ex: "Suporte Técnico", "Vendedor Expert")',
-            'name': 'Escolha o provedor de IA (OpenAI, Anthropic, etc)',
-            'model': 'Nome específico do modelo (ex: gemini-2.5-flash-lite)',
-            'system_prompt': 'Defina a personalidade, comportamento e regras do seu agent. Use frases claras e específicas.',
+            'name': 'Escolha o provedor de IA (OpenAI, Google DeepMind, Anthropic, etc)',
+            'model': 'Nome específico do modelo (ex: gemini-2.5-pro para Google, gpt-4o-mini para OpenAI)',
+            'role': 'Define quem é o assistente, sua identidade, expertise e personalidade',
+            'available_tools': 'Lista e descrição das ferramentas e recursos disponíveis',
+            'input_context': 'Como o assistente deve interpretar e processar as entradas',
+            'steps': 'Passo a passo de como processar e responder às solicitações',
+            'expectation': 'Formato de respostas, tom, estrutura e estilo esperados',
+            'anti_hallucination_policies': 'Regras para evitar alucinações e limites do assistente',
+            'applied_example': 'Exemplos práticos de interações e respostas',
+            'useful_default_messages': 'Mensagens pré-definidas para situações comuns',
             'temperature': 'Controla criatividade (0.0 = conservador, 2.0 = criativo)',
             'max_tokens': 'Limite máximo de tokens na resposta',
             'top_p': 'Amostragem nuclear - controla diversidade da resposta',
@@ -88,7 +149,16 @@ class AgentForm(forms.ModelForm):
         self.fields['display_name'].required = True
         self.fields['name'].required = True
         self.fields['model'].required = True
-        self.fields['system_prompt'].required = True
+
+        # Campos RISE não são obrigatórios
+        self.fields['role'].required = False
+        self.fields['available_tools'].required = False
+        self.fields['input_context'].required = False
+        self.fields['steps'].required = False
+        self.fields['expectation'].required = False
+        self.fields['anti_hallucination_policies'].required = False
+        self.fields['applied_example'].required = False
+        self.fields['useful_default_messages'].required = False
 
         # Os valores padrão são definidos na view AgentCreateView.get_initial()
         # Não precisamos definir aqui para evitar conflitos
@@ -115,33 +185,17 @@ class AgentForm(forms.ModelForm):
         Valida o nome do modelo
         """
         model = self.cleaned_data.get('model')
-        
+
         if not model:
             raise forms.ValidationError('Nome do modelo é obrigatório')
-        
+
         # Remove espaços
         model = model.strip()
-        
+
         if len(model) < 3:
             raise forms.ValidationError('Nome do modelo deve ter pelo menos 3 caracteres')
-        
+
         return model
-    
-    def clean_system_prompt(self):
-        """
-        Valida as instruções
-        """
-        system_prompt = self.cleaned_data.get('system_prompt')
-
-        if not system_prompt:
-            raise forms.ValidationError('Instruções são obrigatórias')
-
-        system_prompt = system_prompt.strip()
-
-        if len(system_prompt) < 10:
-            raise forms.ValidationError('Instruções devem ter pelo menos 10 caracteres')
-
-        return system_prompt
 
 
 class AgentSearchForm(forms.Form):
@@ -176,8 +230,8 @@ class AgentFileForm(forms.ModelForm):
 
     class Meta:
         model = AgentFile
-        fields = ['name', 'file', 'is_active']
-        
+        fields = ['name', 'file', 'usage_type', 'is_active']
+
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -187,20 +241,25 @@ class AgentFileForm(forms.ModelForm):
                 'class': 'form-control',
                 'accept': '.pdf,.txt,.docx,.md,.csv,.json,.html'
             }),
+            'usage_type': forms.Select(attrs={
+                'class': 'form-select'
+            }),
             'is_active': forms.CheckboxInput(attrs={
                 'class': 'form-check-input'
             })
         }
-        
+
         labels = {
             'name': 'Nome do arquivo',
             'file': 'Arquivo',
+            'usage_type': 'Tipo de Uso',
             'is_active': 'Ativo'
         }
-        
+
         help_texts = {
             'name': 'Nome descritivo para identificar o arquivo',
-            'file': 'Formatos suportados: PDF, TXT, DOCX, MD, CSV, JSON, HTML (máx. 10MB)',
+            'file': 'Formatos suportados: PDF, TXT, DOCX, MD, CSV, JSON, HTML (máx. 5MB)',
+            'usage_type': 'Define como o agente pode usar este arquivo',
             'is_active': 'Se desativado, o arquivo não será usado como contexto'
         }
     
@@ -219,18 +278,20 @@ class AgentFileForm(forms.ModelForm):
         Valida o arquivo enviado
         """
         uploaded_file = self.cleaned_data.get('file')
-        
+
         if not uploaded_file:
             return uploaded_file
-            
-        # Verificar tamanho (10MB)
-        max_size = 10 * 1024 * 1024
+
+        # Verificar tamanho (5MB)
+        max_size = 5 * 1024 * 1024
         if uploaded_file.size > max_size:
             raise forms.ValidationError(f'Arquivo muito grande. Máximo permitido: {max_size / (1024*1024):.1f}MB')
         
         # Verificar extensão
         file_name = uploaded_file.name.lower()
-        supported_extensions = file_processor.get_supported_extensions()
+        # Criar instância temporária apenas para obter extensões suportadas
+        file_processor_factory = FileProcessorFactory()
+        supported_extensions = file_processor_factory.get_supported_extensions()
         
         file_extension = None
         for ext in supported_extensions:
@@ -260,3 +321,90 @@ class AgentFileForm(forms.ModelForm):
             raise forms.ValidationError('Nome deve ter pelo menos 3 caracteres')
 
         return name
+
+class GlobalSettingsForm(forms.ModelForm):
+    """Form para editar configurações globais do sistema usando framework RISE."""
+
+    class Meta:
+        from .models import GlobalSettings
+        model = GlobalSettings
+        fields = [
+            'role',
+            'available_tools',
+            'input_context',
+            'steps',
+            'expectation',
+            'anti_hallucination_policies',
+            'applied_example',
+            'useful_default_messages',
+        ]
+        widgets = {
+            'role': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: Você é um assistente virtual especializado em atendimento ao cliente...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'available_tools': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: - Busca em arquivos de contexto\n- Consulta ao Google Calendar\n- Envio de PDFs...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'input_context': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: Analise cada mensagem do usuário e identifique a intenção principal...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'steps': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 8,
+                'placeholder': 'Ex:\n1. Cumprimentar o usuário\n2. Identificar a necessidade\n3. Buscar informações relevantes...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'expectation': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: Respostas devem ser objetivas, claras e em português brasileiro...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'anti_hallucination_policies': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex: ❌ NUNCA invente informações\n✅ Se não souber, seja honesto...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'applied_example': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 8,
+                'placeholder': 'Ex:\nUsuário: "Oi, preciso de ajuda"\nAssistente: "Olá! Como posso ajudar você hoje?"...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+            'useful_default_messages': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex:\n- Saudação: "Olá! Como posso ajudar você hoje?"\n- Transferência: "Vou transferir você para um atendente humano..."...',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
+        }
+        labels = {
+            'role': 'Role',
+            'available_tools': 'Available Tools',
+            'input_context': 'Input',
+            'steps': 'Steps',
+            'expectation': 'Expectation',
+            'anti_hallucination_policies': 'Anti-Hallucination Policies',
+            'applied_example': 'Applied Example',
+            'useful_default_messages': 'Useful Default Messages',
+        }
+        help_texts = {
+            'role': 'Define quem é o assistente, sua identidade, expertise e personalidade',
+            'available_tools': 'Lista e descrição das ferramentas e recursos disponíveis',
+            'input_context': 'Como o assistente deve interpretar e processar as entradas',
+            'steps': 'Passo a passo de como processar e responder às solicitações',
+            'expectation': 'Formato de respostas, tom, estrutura e estilo esperados',
+            'anti_hallucination_policies': 'Regras para evitar alucinações e limites do assistente',
+            'applied_example': 'Exemplos práticos de interações e respostas',
+            'useful_default_messages': 'Mensagens pré-definidas para situações comuns',
+        }

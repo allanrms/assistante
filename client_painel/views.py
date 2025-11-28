@@ -1043,3 +1043,271 @@ class ServiceDeleteView(LoginRequiredMixin, View):
 
         messages.success(request, f'Serviço "{service_name}" excluído com sucesso!')
         return JsonResponse({'success': True})
+
+# ===== VIEWS DE CONVERSAS E CONTATOS =====
+
+from rest_framework.views import APIView
+from agents.models import Message, Conversation
+from django.views.generic import TemplateView
+
+
+class HumanConversationsListView(APIView):
+    """
+    Retorna as conversas que estão com status 'human' (atendimento humano)
+    """
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        client = request.user.client
+
+        # Buscar todas as conversas com status 'human' das instâncias do cliente
+        conversations = Conversation.objects.filter(
+            evolution_instance__owner=client,
+            status='human'
+        ).select_related(
+            'evolution_instance',
+            'contact'
+        ).order_by('-updated_at')
+
+        # Serializar os dados
+        data = []
+        for conv in conversations:
+            # Pegar a última mensagem
+            last_message = conv.messages.order_by('-received_at').first()
+
+            data.append({
+                'id': conv.id,
+                'from_number': conv.from_number,
+                'contact_name': conv.contact.name if conv.contact else None,
+                'instance_name': conv.evolution_instance.name if conv.evolution_instance else None,
+                'last_message': last_message.content if last_message else None,
+                'last_message_time': last_message.received_at.isoformat() if last_message else None,
+                'updated_at': conv.updated_at.isoformat(),
+                'created_at': conv.created_at.isoformat(),
+            })
+
+        return Response({
+            'count': len(data),
+            'conversations': data
+        })
+
+
+class HumanConversationsCountView(APIView):
+    """
+    Retorna apenas o contador de conversas com status 'human'
+    """
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        client = request.user.client
+
+        count = Conversation.objects.filter(
+            evolution_instance__owner=client,
+            status='human'
+        ).count()
+
+        return Response({'count': count})
+
+
+class CloseConversationView(APIView):
+    """
+    Marca uma conversa como encerrada (status 'closed')
+    """
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, conversation_id):
+        try:
+            client = request.user.client
+
+            # Verificar se a conversa pertence ao cliente
+            conversation = Conversation.objects.get(
+                id=conversation_id,
+                evolution_instance__owner=client
+            )
+
+            # Atualizar status para 'closed'
+            conversation.status = 'closed'
+            conversation.save()
+
+            return Response({
+                'success': True,
+                'message': 'Conversa encerrada com sucesso',
+                'conversation_id': conversation_id
+            })
+
+        except Conversation.DoesNotExist:
+            return Response({
+                'success': False,
+                'error': 'Conversa não encontrada'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ContactsView(LoginRequiredMixin, TemplateView):
+    """
+    View para listar todos os contatos do cliente
+    """
+    template_name = 'client_painel/contacts.html'
+    login_url = 'client_painel:login'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        client = self.request.user.client
+
+        # Buscar todos os contatos do cliente
+        # Note: total_messages é um campo do modelo, não precisa de anotação
+        contacts = Contact.objects.filter(
+            client=client,
+            is_active=True
+        ).select_related('client').prefetch_related('conversations').order_by('-last_contact_at')
+
+        context['contacts'] = contacts
+        context['total_contacts'] = contacts.count()
+
+        return context
+
+
+class ContactConversationsView(APIView):
+    """
+    Retorna todas as conversas de um contato específico
+    """
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, contact_id):
+        try:
+            client = request.user.client
+
+            # Verificar se o contato pertence ao cliente
+            contact = Contact.objects.get(
+                id=contact_id,
+                client=client
+            )
+
+            # Buscar todas as conversas do contato
+            conversations = Conversation.objects.filter(
+                contact=contact
+            ).select_related(
+                'evolution_instance'
+            ).order_by('-updated_at')
+
+            # Serializar os dados
+            data = []
+            for conv in conversations:
+                # Pegar a última mensagem
+                last_message = conv.messages.order_by('-received_at').first()
+
+                # Contar total de mensagens
+                total_messages = conv.messages.count()
+
+                data.append({
+                    'id': conv.id,
+                    'from_number': conv.from_number,
+                    'to_number': conv.to_number,
+                    'status': conv.status,
+                    'status_display': conv.get_status_display(),
+                    'instance_name': conv.evolution_instance.name if conv.evolution_instance else None,
+                    'last_message': last_message.content if last_message else None,
+                    'last_message_time': last_message.received_at.isoformat() if last_message else None,
+                    'total_messages': total_messages,
+                    'updated_at': conv.updated_at.isoformat(),
+                    'created_at': conv.created_at.isoformat(),
+                })
+
+            return Response({
+                'success': True,
+                'contact': {
+                    'id': str(contact.id),
+                    'name': contact.name or contact.profile_name,
+                    'phone_number': contact.phone_number,
+                    'profile_pic_url': contact.profile_pic_url,
+                },
+                'count': len(data),
+                'conversations': data
+            })
+
+        except Contact.DoesNotExist:
+            return Response({
+                'success': False,
+                'error': 'Contato não encontrado'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ConversationMessagesView(APIView):
+    """
+    Retorna todas as mensagens de uma conversa específica
+    """
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, conversation_id):
+        try:
+            client = request.user.client
+
+            # Verificar se a conversa pertence ao cliente
+            conversation = Conversation.objects.select_related(
+                'evolution_instance',
+                'contact'
+            ).get(
+                id=conversation_id,
+                evolution_instance__owner=client
+            )
+
+            # Buscar todas as mensagens da conversa
+            messages = Message.objects.filter(
+                conversation=conversation
+            ).order_by('received_at')
+
+            # Serializar os dados
+            messages_data = []
+            for msg in messages:
+                messages_data.append({
+                    'id': msg.id,
+                    'content': msg.content,
+                    'message_type': msg.message_type,
+                    'message_type_display': msg.get_message_type_display(),
+                    'sender_name': msg.sender_name,
+                    'response': msg.response,
+                    'processing_status': msg.processing_status,
+                    'processing_status_display': msg.get_processing_status_display(),
+                    'received_at': msg.received_at.isoformat(),
+                    'is_from_me': msg.is_from_me if hasattr(msg, 'is_from_me') else False,
+                })
+
+            return Response({
+                'success': True,
+                'conversation': {
+                    'id': conversation.id,
+                    'from_number': conversation.from_number,
+                    'to_number': conversation.to_number,
+                    'status': conversation.status,
+                    'status_display': conversation.get_status_display(),
+                    'instance_name': conversation.evolution_instance.name if conversation.evolution_instance else None,
+                    'contact_name': conversation.contact.name if conversation.contact else None,
+                },
+                'count': len(messages_data),
+                'messages': messages_data
+            })
+
+        except Conversation.DoesNotExist:
+            return Response({
+                'success': False,
+                'error': 'Conversa não encontrada'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

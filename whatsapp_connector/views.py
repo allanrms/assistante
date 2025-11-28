@@ -1125,3 +1125,82 @@ def change_session_status(request, pk):
             'success': False,
             'error': str(e)
         })
+
+@login_required
+def configure_notifications(request, pk):
+    """
+    Página para configurar contatos de notificação quando conversa mudar para 'human'
+    """
+    import json
+    from .models import NotificationContact
+
+    instance = get_object_or_404(EvolutionInstance, pk=pk, owner=request.user.client)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            notification_contacts_data = data.get('notification_contacts', [])
+            notification_strategy = data.get('notification_strategy', 'random')
+
+            # Validar dados
+            for contact in notification_contacts_data:
+                if not contact.get('name') or not contact.get('phone'):
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Todos os contatos devem ter nome e número preenchidos.'
+                    }, status=400)
+
+            # Atualizar estratégia de notificação
+            instance.notification_strategy = notification_strategy
+            instance.save(update_fields=['notification_strategy'])
+
+            # Remover contatos existentes
+            NotificationContact.objects.filter(evolution_instance=instance).delete()
+
+            # Criar novos contatos
+            for contact_data in notification_contacts_data:
+                NotificationContact.objects.create(
+                    evolution_instance=instance,
+                    name=contact_data['name'],
+                    phone=contact_data['phone'],
+                    is_active=True
+                )
+
+            # Mensagem de sucesso
+            count = len(notification_contacts_data)
+            strategy_text = 'todos os contatos' if notification_strategy == 'all' else 'um contato aleatório'
+            message = f'Configuração salva! {count} contato(s) configurado(s). Notificações serão enviadas para {strategy_text}.'
+
+            return JsonResponse({
+                'success': True,
+                'message': message
+            })
+
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Dados inválidos.'
+            }, status=400)
+        except Exception as e:
+            print(f"❌ Erro ao salvar notificações: {str(e)}")
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False,
+                'message': f'Erro ao salvar: {str(e)}'
+            }, status=500)
+
+    # GET - renderizar página
+    # Buscar contatos existentes
+    existing_contacts = NotificationContact.objects.filter(
+        evolution_instance=instance
+    ).values('name', 'phone', 'is_active')
+
+    notification_contacts_json = json.dumps(list(existing_contacts))
+
+    context = {
+        'instance': instance,
+        'notification_contacts': notification_contacts_json,
+        'notification_strategy': instance.notification_strategy,
+    }
+
+    return render(request, 'whatsapp_connector/instances/notifications_config.html', context)

@@ -37,7 +37,10 @@ urlpatterns = [
     # Webhook configuration
     path('instances/<uuid:pk>/webhook/', ConfigureWebhookView.as_view(), name='instance_webhook'),
     path('instances/<uuid:pk>/webhook/config/', views.configure_webhook, name='instance_webhook_config'),
-    
+
     # Contact configuration
     path('instances/<uuid:pk>/contacts/', views.configure_contacts, name='instance_contacts_config'),
+
+    # Notifications configuration
+    path('instances/<uuid:pk>/notifications-config/', views.configure_notifications, name='instance_notifications_config'),
 ]

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models import Count, Q
 from .models import Agent, AgentFile, AgentDocument, Conversation, Message, ConversationSummary, LongTermMemory, \
-    GlobalSettings
+    GlobalSettings, LangchainCollection, LangchainEmbedding, LLMUsage
 
 
 class AgentFileInline(admin.TabularInline):
@@ -13,6 +13,59 @@ class AgentFileInline(admin.TabularInline):
     readonly_fields = ('status',)
     show_change_link = True
 
+@admin.register(LangchainCollection)
+class LangchainCollectionAdmin(admin.ModelAdmin):
+    list_display = ['name', 'agent_display', 'uuid', 'documents_count']
+    search_fields = ['name']
+    readonly_fields = ['uuid', 'name', 'cmetadata', 'agent_display']
+
+    def agent_display(self, obj):
+        agent = obj.agent
+        if agent:
+            return format_html('<a href="/admin/langchain_poc/agent/{}/change/">{}</a>', agent.id, agent.display_name)
+        return '-'
+    agent_display.short_description = 'Agente'
+
+    def documents_count(self, obj):
+        return obj.langchainembedding_set.count()
+    documents_count.short_description = 'Documentos'
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(LangchainEmbedding)
+class LangchainEmbeddingAdmin(admin.ModelAdmin):
+    list_display = ['id_short', 'source_display', 'page_display', 'content_short', 'collection']
+    list_filter = ['collection']
+    search_fields = ['document', 'id']
+    readonly_fields = ['id', 'collection', 'document', 'cmetadata']
+
+    def id_short(self, obj):
+        return obj.id[:12] + '...'
+    id_short.short_description = 'ID'
+
+    def source_display(self, obj):
+        if obj.cmetadata and isinstance(obj.cmetadata, dict):
+            return obj.cmetadata.get('source', 'N/A')
+        return 'N/A'
+    source_display.short_description = 'Fonte'
+
+    def page_display(self, obj):
+        if obj.cmetadata and isinstance(obj.cmetadata, dict):
+            return obj.cmetadata.get('page', '-')
+        return '-'
+    page_display.short_description = 'Pagina'
+
+    def content_short(self, obj):
+        if obj.document:
+            text = obj.document[:100] + '...' if len(obj.document) > 100 else obj.document
+            return text
+        return ''
+    content_short.short_description = 'Conteudo'
+
+    def has_add_permission(self, request):
+        return False
 
 @admin.register(Agent)
 class AgentAdmin(admin.ModelAdmin):
@@ -593,3 +646,358 @@ class GlobalSettingsAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # Impede a exclusão da instância única
         return False
+
+@admin.register(LLMUsage)
+class LLMUsageAdmin(admin.ModelAdmin):
+    """
+    Admin para rastreamento de uso e custos de LLM
+    """
+    change_list_template = 'admin/agents/llmusage/change_list.html'
+
+    list_display = [
+        'id',
+        'conversation_link',
+        'provider_badge',
+        'model_name',
+        'tokens_display',
+        'cost_display',
+        'cache_display',
+        'response_time_display',
+        'created_at'
+    ]
+    list_filter = [
+        'provider',
+        'model_name',
+        'agent',
+        'created_at',
+        'conversation__evolution_instance'
+    ]
+    search_fields = [
+        'conversation__from_number',
+        'conversation__contact__name',
+        'conversation__contact__phone_number',
+        'model_name',
+        'tools_used'
+    ]
+    readonly_fields = [
+        'conversation',
+        'message',
+        'agent',
+        'provider',
+        'model_name',
+        'input_tokens',
+        'output_tokens',
+        'total_tokens',
+        'cache_creation_tokens',
+        'cache_read_tokens',
+        'input_cost',
+        'output_cost',
+        'cache_creation_cost',
+        'cache_read_cost',
+        'total_cost',
+        'response_time_ms',
+        'context_size',
+        'tools_used',
+        'created_at',
+        'cost_breakdown'
+    ]
+    raw_id_fields = ['conversation', 'message', 'agent']
+    date_hierarchy = 'created_at'
+
+    fieldsets = (
+        ('Relacionamentos', {
+            'fields': ('conversation', 'message', 'agent')
+        }),
+        ('Modelo', {
+            'fields': ('provider', 'model_name')
+        }),
+        ('Tokens', {
+            'fields': ('input_tokens', 'output_tokens', 'total_tokens')
+        }),
+        ('Cache (Anthropic)', {
+            'fields': ('cache_creation_tokens', 'cache_read_tokens'),
+            'classes': ('collapse',)
+        }),
+        ('Custos (USD)', {
+            'fields': ('cost_breakdown', 'input_cost', 'output_cost', 'cache_creation_cost', 'cache_read_cost', 'total_cost')
+        }),
+        ('Metadados', {
+            'fields': ('response_time_ms', 'context_size', 'tools_used'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamp', {
+            'fields': ('created_at',)
+        }),
+    )
+
+    def conversation_link(self, obj):
+        """Link para a conversa"""
+        if obj.conversation:
+            from django.urls import reverse
+            from django.utils.html import format_html
+            url = reverse('admin:agents_conversation_change', args=[obj.conversation.id])
+            return format_html(
+                '<a href="{}">{}</a>',
+                url,
+                f"Conv. #{obj.conversation.id}"
+            )
+        return '-'
+    conversation_link.short_description = 'Conversa'
+
+    def provider_badge(self, obj):
+        """Badge colorido para o provider"""
+        colors = {
+            'openai': 'success',
+            'anthropic': 'info',
+            'google': 'warning',
+            'mistral': 'primary'
+        }
+        color = colors.get(obj.provider, 'secondary')
+        return format_html(
+            '<span class="badge bg-{}">{}</span>',
+            color,
+            obj.provider.upper()
+        )
+    provider_badge.short_description = 'Provider'
+    provider_badge.admin_order_field = 'provider'
+
+    def tokens_display(self, obj):
+        """Exibe tokens formatados"""
+        return format_html(
+            '<strong>{}</strong> → <strong>{}</strong><br>'
+            '<small class="text-muted">Total: {}</small>',
+            f"{obj.input_tokens:,}",
+            f"{obj.output_tokens:,}",
+            f"{obj.total_tokens:,}"
+        )
+    tokens_display.short_description = 'Tokens (in → out)'
+
+    def cost_display(self, obj):
+        """Exibe custo total formatado"""
+        cost_usd = float(obj.total_cost)
+        cost_brl = cost_usd * 5.33  # Conversão USD -> BRL
+
+        if cost_usd < 0.001:
+            color = 'success'
+        elif cost_usd < 0.01:
+            color = 'info'
+        elif cost_usd < 0.1:
+            color = 'warning'
+        else:
+            color = 'danger'
+
+        cost_usd_formatted = f"${cost_usd:.6f}"
+        cost_brl_formatted = f"R${cost_brl:.6f}"
+
+        return format_html(
+            '<span class="badge bg-{}" style="font-size: 14px;">{}</span><br>'
+            '<small class="text-muted">{}</small>',
+            color,
+            cost_usd_formatted,
+            cost_brl_formatted
+        )
+    cost_display.short_description = 'Custo'
+    cost_display.admin_order_field = 'total_cost'
+
+    def cache_display(self, obj):
+        """Exibe informações de cache se disponível"""
+        if obj.cache_creation_tokens > 0 or obj.cache_read_tokens > 0:
+            savings = float(obj.cache_creation_cost - obj.cache_read_cost)
+            savings_formatted = f"${savings:.6f}" if savings > 0 else "$0.000000"
+
+            return format_html(
+                '💾 Criado: {}<br>'
+                '⚡ Lido: {}<br>'
+                '<span class="badge bg-success">Economia: {}</span>',
+                f"{obj.cache_creation_tokens:,}",
+                f"{obj.cache_read_tokens:,}",
+                savings_formatted
+            )
+        return format_html('<span class="text-muted">-</span>')
+    cache_display.short_description = 'Cache'
+
+    def response_time_display(self, obj):
+        """Exibe tempo de resposta formatado"""
+        if obj.response_time_ms:
+            seconds = obj.response_time_ms / 1000
+            if seconds < 1:
+                return format_html(
+                    '<span class="badge bg-success">{} ms</span>',
+                    obj.response_time_ms
+                )
+            elif seconds < 5:
+                time_formatted = f"{seconds:.2f}s"
+                return format_html(
+                    '<span class="badge bg-info">{}</span>',
+                    time_formatted
+                )
+            else:
+                time_formatted = f"{seconds:.2f}s"
+                return format_html(
+                    '<span class="badge bg-warning">{}</span>',
+                    time_formatted
+                )
+        return '-'
+    response_time_display.short_description = 'Tempo'
+    response_time_display.admin_order_field = 'response_time_ms'
+
+    def cost_breakdown(self, obj):
+        """Exibe breakdown detalhado dos custos"""
+        from django.utils.safestring import mark_safe
+
+        breakdown_html = '<div style="background: #f5f5f5; padding: 15px; border-radius: 4px;">'
+        breakdown_html += '<h4 style="margin-top: 0;">Breakdown de Custos</h4>'
+        breakdown_html += '<table style="width: 100%; border-collapse: collapse;">'
+
+        # Input
+        breakdown_html += f'''
+        <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 8px;"><strong>Input</strong></td>
+            <td style="padding: 8px;">{obj.input_tokens:,} tokens</td>
+            <td style="padding: 8px; text-align: right;">${float(obj.input_cost):.6f}</td>
+        </tr>
+        '''
+
+        # Output
+        breakdown_html += f'''
+        <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 8px;"><strong>Output</strong></td>
+            <td style="padding: 8px;">{obj.output_tokens:,} tokens</td>
+            <td style="padding: 8px; text-align: right;">${float(obj.output_cost):.6f}</td>
+        </tr>
+        '''
+
+        # Cache (se houver)
+        if obj.cache_creation_tokens > 0:
+            breakdown_html += f'''
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;"><strong>Cache (criação)</strong></td>
+                <td style="padding: 8px;">{obj.cache_creation_tokens:,} tokens</td>
+                <td style="padding: 8px; text-align: right;">${float(obj.cache_creation_cost):.6f}</td>
+            </tr>
+            '''
+
+        if obj.cache_read_tokens > 0:
+            savings = float(obj.cache_creation_cost - obj.cache_read_cost)
+            breakdown_html += f'''
+            <tr style="border-bottom: 1px solid #ddd; background-color: #d4edda;">
+                <td style="padding: 8px;"><strong>Cache (leitura)</strong></td>
+                <td style="padding: 8px;">{obj.cache_read_tokens:,} tokens</td>
+                <td style="padding: 8px; text-align: right;">
+                    ${float(obj.cache_read_cost):.6f}
+                    <br><small style="color: #155724;">Economia: ${savings:.6f}</small>
+                </td>
+            </tr>
+            '''
+
+        # Total
+        breakdown_html += f'''
+        <tr style="background-color: #e9ecef; font-weight: bold;">
+            <td style="padding: 8px;">TOTAL</td>
+            <td style="padding: 8px;">{obj.total_tokens:,} tokens</td>
+            <td style="padding: 8px; text-align: right; font-size: 16px;">${float(obj.total_cost):.6f}</td>
+        </tr>
+        '''
+
+        breakdown_html += '</table></div>'
+
+        return mark_safe(breakdown_html)
+    cost_breakdown.short_description = 'Breakdown'
+
+    def get_queryset(self, request):
+        """Otimiza queryset"""
+        qs = super().get_queryset(request)
+        return qs.select_related(
+            'conversation',
+            'conversation__contact',
+            'conversation__evolution_instance',
+            'agent',
+            'message'
+        )
+
+    def has_add_permission(self, request):
+        """Não permite adicionar manualmente"""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Não permite editar"""
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        """Adiciona sumário com totais ao topo da lista"""
+        from django.db.models import Sum
+
+        # Pegar o queryset filtrado (o que está sendo exibido)
+        response = super().changelist_view(request, extra_context=extra_context)
+
+        try:
+            # Acessar o queryset filtrado da changelist
+            qs = response.context_data['cl'].queryset
+
+            # Calcular agregações
+            totals = qs.aggregate(
+                total_input_tokens=Sum('input_tokens'),
+                total_output_tokens=Sum('output_tokens'),
+                total_tokens_sum=Sum('total_tokens'),
+                total_cost_sum=Sum('total_cost'),
+                count=Count('id')
+            )
+
+            # Formatar valores
+            total_input = totals['total_input_tokens'] or 0
+            total_output = totals['total_output_tokens'] or 0
+            total_tokens = totals['total_tokens_sum'] or 0
+            total_cost_usd = float(totals['total_cost_sum'] or 0)
+            total_cost_brl = total_cost_usd * 5.33
+            count = totals['count']
+
+            # Criar mensagem de sumário
+            from django.utils.safestring import mark_safe
+            summary = f'''
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        margin-bottom: 20px;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 18px;">
+                    📊 Resumo do Período Selecionado
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px;">
+                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">Total de Chamadas</div>
+                        <div style="font-size: 24px; font-weight: bold;">{count:,}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px;">
+                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">Tokens de Entrada</div>
+                        <div style="font-size: 24px; font-weight: bold;">{total_input:,}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px;">
+                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">Tokens de Saída</div>
+                        <div style="font-size: 24px; font-weight: bold;">{total_output:,}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px;">
+                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">Total de Tokens</div>
+                        <div style="font-size: 24px; font-weight: bold;">{total_tokens:,}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px;">
+                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">Custo Total (USD)</div>
+                        <div style="font-size: 24px; font-weight: bold;">${total_cost_usd:.4f}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px;">
+                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">Custo Total (BRL)</div>
+                        <div style="font-size: 24px; font-weight: bold;">R$ {total_cost_brl:.4f}</div>
+                    </div>
+                </div>
+            </div>
+            '''
+
+            # Adicionar ao contexto
+            extra_context = extra_context or {}
+            extra_context['summary_stats'] = mark_safe(summary)
+            response.context_data.update(extra_context)
+
+        except (AttributeError, KeyError):
+            pass
+
+        return response

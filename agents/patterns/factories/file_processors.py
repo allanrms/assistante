@@ -48,31 +48,30 @@ except ImportError:
     convert_from_path = None
 
 # LangChain e LLM
-from agents.patterns.factories.llm_factory import LLMFactory
 from langchain_core.messages import HumanMessage
 
 
 class BaseFileProcessor:
     """Classe base para processadores de arquivo"""
-    
+
     def __init__(self):
         self.supported_extensions = []
         self.max_file_size = 10 * 1024 * 1024  # 10MB por padrão
-    
+
     def can_process(self, file_path: str) -> bool:
         """Verifica se pode processar o arquivo baseado na extensão"""
         ext = os.path.splitext(file_path)[1].lower()
         return ext in self.supported_extensions
-    
+
     def extract_text(self, file_path: str) -> str:
         """Extrai texto do arquivo. Deve ser implementado pelas subclasses."""
         raise NotImplementedError
-    
+
     def get_file_info(self, file_path: str) -> Dict[str, Any]:
         """Retorna informações básicas do arquivo"""
         stat = os.stat(file_path)
         mime_type, _ = mimetypes.guess_type(file_path)
-        
+
         return {
             'size': stat.st_size,
             'mime_type': mime_type,
@@ -82,25 +81,25 @@ class BaseFileProcessor:
 
 class TextFileProcessor(BaseFileProcessor):
     """Processador para arquivos de texto simples"""
-    
+
     def __init__(self):
         super().__init__()
         self.supported_extensions = ['.txt', '.md', '.csv', '.json', '.html', '.xml']
-    
+
     def extract_text(self, file_path: str) -> str:
         """Extrai texto de arquivos texto"""
         try:
             # Tentar diferentes encodings
             encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
-            
+
             for encoding in encodings:
                 try:
                     with open(file_path, 'r', encoding=encoding) as file:
                         content = file.read()
-                        
+
                     # Se conseguiu ler, processa baseado na extensão
                     ext = os.path.splitext(file_path)[1].lower()
-                    
+
                     if ext == '.json':
                         return self._process_json(content)
                     elif ext == '.csv':
@@ -109,15 +108,15 @@ class TextFileProcessor(BaseFileProcessor):
                         return self._process_html(content)
                     else:
                         return content.strip()
-                        
+
                 except UnicodeDecodeError:
                     continue
-                    
+
             return "Erro: Não foi possível decodificar o arquivo"
-            
+
         except Exception as e:
             return f"Erro ao processar arquivo: {str(e)}"
-    
+
     def _process_json(self, content: str) -> str:
         """Formata JSON para melhor legibilidade"""
         try:
@@ -125,7 +124,7 @@ class TextFileProcessor(BaseFileProcessor):
             return json.dumps(data, indent=2, ensure_ascii=False)
         except:
             return content
-    
+
     def _process_csv(self, content: str) -> str:
         """Converte CSV em formato legível"""
         try:
@@ -133,14 +132,14 @@ class TextFileProcessor(BaseFileProcessor):
             sample = content[:1024]
             sniffer = csv.Sniffer()
             delimiter = sniffer.sniff(sample).delimiter
-            
+
             # Converter para formato tabular
             reader = csv.reader(io.StringIO(content), delimiter=delimiter)
             rows = list(reader)
-            
+
             if not rows:
                 return content
-                
+
             # Formatar como tabela
             formatted_rows = []
             for i, row in enumerate(rows[:100]):  # Limitar a 100 linhas
@@ -149,29 +148,29 @@ class TextFileProcessor(BaseFileProcessor):
                     formatted_rows.append("-" * 50)
                 else:
                     formatted_rows.append(" | ".join(row))
-                    
+
             if len(rows) > 100:
                 formatted_rows.append(f"... e mais {len(rows) - 100} linhas")
-                
+
             return "\n".join(formatted_rows)
-            
+
         except:
             return content
-    
+
     def _process_html(self, content: str) -> str:
         """Extrai texto de HTML"""
         try:
             if BeautifulSoup is None:
                 return content
             soup = BeautifulSoup(content, 'html.parser')
-            
+
             # Remover scripts e estilos
             for script in soup(["script", "style"]):
                 script.decompose()
-                
+
             # Extrair texto
             text = soup.get_text()
-            
+
             # Limpar linhas vazias excessivas
             lines = [line.strip() for line in text.splitlines()]
             lines = [line for line in lines if line]
@@ -279,11 +278,11 @@ class PDFFileProcessor(BaseFileProcessor):
 
 class DocxFileProcessor(BaseFileProcessor):
     """Processador para arquivos Word DOCX"""
-    
+
     def __init__(self):
         super().__init__()
         self.supported_extensions = ['.docx']
-    
+
     def extract_text(self, file_path: str) -> str:
         """Extrai texto de arquivos DOCX"""
         try:
@@ -292,12 +291,12 @@ class DocxFileProcessor(BaseFileProcessor):
 
             doc = docx.Document(file_path)
             text_content = []
-            
+
             # Extrair texto dos parágrafos
             for paragraph in doc.paragraphs:
                 if paragraph.text.strip():
                     text_content.append(paragraph.text.strip())
-            
+
             # Extrair texto de tabelas
             for table in doc.tables:
                 table_text = []
@@ -308,7 +307,7 @@ class DocxFileProcessor(BaseFileProcessor):
                             row_text.append(cell.text.strip())
                     if row_text:
                         table_text.append(" | ".join(row_text))
-                
+
                 if table_text:
                     text_content.append("--- Tabela ---")
                     text_content.extend(table_text)
@@ -323,12 +322,12 @@ class DocxFileProcessor(BaseFileProcessor):
 
 class ImageFileProcessor(BaseFileProcessor):
     """Processador para arquivos de imagem"""
-    
+
     def __init__(self):
         super().__init__()
         self.supported_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff']
         self.max_file_size = 20 * 1024 * 1024  # 20MB para imagens
-    
+
     def extract_text(self, file_path: str) -> str:
         """
         Para imagens, não extraímos texto diretamente.
@@ -344,11 +343,11 @@ class ImageFileProcessor(BaseFileProcessor):
                 width, height = img.size
                 mode = img.mode
                 format_name = img.format or "Unknown"
-                
+
                 # Tamanho do arquivo
                 file_size = os.path.getsize(file_path)
                 size_mb = file_size / (1024 * 1024)
-                
+
                 # Construir descrição da imagem
                 description = f"""Imagem: {os.path.basename(file_path)}
 Formato: {format_name}
@@ -358,7 +357,7 @@ Tamanho: {size_mb:.2f} MB
 
 Nota: Esta é uma imagem que pode ser enviada diretamente ao usuário via WhatsApp.
 Para análise visual do conteúdo da imagem, ela será processada pela IA Vision quando necessário."""
-                
+
                 # Verificar se há metadados EXIF (opcional)
                 if hasattr(img, '_getexif') and img._getexif():
                     description += "\n\nMetadados EXIF disponíveis."
@@ -431,6 +430,9 @@ class AIFileProcessor:
         """
         Extrai conteúdo usando LLM configurado via LLMFactory.
 
+        IMPORTANTE: Para OCR/extração de documentos, SEMPRE usa OpenAI GPT-4o
+        independente do agent configurado, pois é o melhor modelo para vision/OCR.
+
         Args:
             file_path: Caminho do arquivo
             use_vision: Se True, usa vision para processar como imagem
@@ -439,9 +441,20 @@ class AIFileProcessor:
             Dict com 'success', 'extracted_text' ou 'error'
         """
         try:
-            # Criar LLMFactory uma única vez e reutilizar
-            llm_factory = LLMFactory(agent=self.agent)
-            llm = llm_factory.llm
+            # FORÇAR OpenAI GPT-4o para OCR (melhor modelo para vision/extração)
+            from langchain_openai import ChatOpenAI
+            from django.conf import settings
+
+            print(f"🤖 Usando OpenAI GPT-4o para OCR (melhor modelo para extração de documentos)")
+
+            llm = ChatOpenAI(
+                model="gpt-4o",
+                temperature=0.0,  # Temperatura baixa para OCR preciso
+                max_tokens=4096,
+                timeout=60.0,
+                max_retries=2,
+                api_key=getattr(settings, 'OPENAI_API_KEY', '')
+            )
 
             if use_vision:
                 # Processar como imagem usando Vision

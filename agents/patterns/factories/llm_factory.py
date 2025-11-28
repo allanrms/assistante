@@ -8,7 +8,7 @@ Seguindo melhores práticas da documentação LangChain:
 - Logs estruturados
 - Tratamento de erros robusto
 """
-
+import traceback
 from uuid import UUID
 from typing import List, Optional
 
@@ -63,23 +63,27 @@ class PaddedEmbeddings(Embeddings):
         return self._pad_vector(vector)
 
 class LLMFactory:
-    """Factory para criação dinâmica de agentes LangChain.
+    """Factory para criação de modelos LLM e Embeddings.
 
-    Cria LLMs, Embeddings e Agentes completos baseados na configuração
-    do modelo Agent do Django. Suporta múltiplos providers:
+    Seguindo o princípio Single Responsibility, este factory cria APENAS:
+    - Modelos LLM (ChatOpenAI, ChatAnthropic, ChatGoogleGenerativeAI)
+    - Modelos de Embeddings (OpenAIEmbeddings, GoogleGenerativeAIEmbeddings)
+
+    As ferramentas (tools) devem ser criadas externamente e passadas para o agente.
+    Isso separa as responsabilidades de forma clara:
+    - LLMFactory → Modelos
+    - ToolFactory → Ferramentas
+    - AgentOrchestrator → Orquestra tudo
+
+    Suporta múltiplos providers:
     - OpenAI (GPT-4, GPT-3.5)
     - Anthropic (Claude)
     - Google (Gemini)
 
     Attributes:
         agent: Configuração do Agent (Django model)
-        contact_id: ID do contato (opcional)
-        tools_factory: Factory de ferramentas (opcional)
-        evolution_instance: Instância Evolution (opcional)
         llm: Modelo LLM criado
         embeddings: Modelo de embeddings criado
-        tools: Lista de ferramentas
-        langchain_agent: Agente LangChain completo
 
     Example:
         >>> from agents.models import Agent
@@ -96,42 +100,40 @@ class LLMFactory:
         evolution_instance: Optional[object] = None,
         create_agent: bool = True
     ):
-        """Inicializa factory e cria todos os componentes.
+        """Inicializa factory e cria modelos LLM e Embeddings.
 
         Args:
             agent: Configuração do modelo LLM (Django Agent model)
-            contact_id: ID do contato para injetar nas ferramentas
-            tools_factory: Função que cria ferramentas (ex: create_reception_tools)
-            evolution_instance: Instância Evolution para envio de mensagens/arquivos
-            create_agent: Se False, apenas cria LLM e embeddings (útil para tasks)
+            contact_id: ID do contato (mantido para compatibilidade temporária)
+            tools_factory: Factory de ferramentas (mantido para compatibilidade temporária)
+            evolution_instance: Instância Evolution (mantido para compatibilidade temporária)
+            create_agent: Flag de compatibilidade (ignorado, mantido para compatibilidade)
 
         Raises:
             Exception: Se houver erro na criação de qualquer componente
+
+        Note:
+            Os parâmetros contact_id, tools_factory, evolution_instance e create_agent
+            são mantidos para compatibilidade com código existente, mas não são mais
+            usados pela factory. As tools devem ser criadas externamente.
         """
-        print(f"🏭 [Factory] Inicializando LLMFactory para agent: {agent.name}")
 
         try:
             self.agent = agent
+
+            # Parâmetros mantidos para compatibilidade (não usados)
             self.contact_id = contact_id
             self.tools_factory = tools_factory
             self.evolution_instance = evolution_instance
 
-            # Criar componentes na ordem correta
+            # Criar APENAS modelos (responsabilidade única)
             self.llm = self._create_llm()
             self.embeddings = self._create_embeddings()
 
-            # Criar tools e agent apenas se necessário
-            if create_agent:
-                self.tools = self._create_tools()
-            else:
-                self.tools = []
-                self.langchain_agent = None
-                print(f"⚠️  [Factory] Modo simplificado (apenas LLM + Embeddings)")
-
-            print(f"✅ [Factory] Inicialização completa!")
+            # Tools são criadas externamente
+            self.tools = self._create_tools() if tools_factory and contact_id and create_agent else []
 
         except Exception as e:
-            print(f"❌ [Factory] Erro ao inicializar: {str(e)}")
             import traceback
             traceback.print_exc()
             raise e
@@ -163,9 +165,6 @@ class LLMFactory:
             "timeout": 30.0,  # 30 segundos de timeout
             "max_retries": 2,  # Até 2 tentativas em caso de falha
         }
-
-        print(f"🤖 [LLM] Criando: {provider.title()} - Modelo: {model_name}")
-        print(f"⚙️  [LLM] Config: temp={common_params['temperature']}, timeout={common_params['timeout']}s, retries={common_params['max_retries']}")
 
         if provider == "openai":
             return ChatOpenAI(
@@ -204,7 +203,6 @@ class LLMFactory:
 
         else:
             # Fallback para OpenAI
-            print(f"⚠️  [LLM] Provider desconhecido '{provider}', usando OpenAI como fallback")
             return ChatOpenAI(
                 model=model_name or "gpt-4o",
                 temperature=common_params["temperature"],
@@ -231,10 +229,8 @@ class LLMFactory:
         """
         provider = self.agent.name.lower() if self.agent.name else ""
 
-        print(f"🔢 [Embeddings] Criando para provider: {provider.title()}")
 
         if provider == "google":
-            print(f"📊 [Embeddings] Google: 768 dims → 1536 (com padding)")
             try:
                 base_embeddings = GoogleGenerativeAIEmbeddings(
                     model="models/embedding-001",
@@ -242,8 +238,7 @@ class LLMFactory:
                 )
                 return PaddedEmbeddings(base_embeddings, target_dim=1536, provider='google')
             except Exception as e:
-                print(f"⚠️  [Embeddings] Erro ao criar Google Embeddings: {str(e)}")
-                print(f"⚠️  [Embeddings] Fallback para OpenAI")
+                traceback.print_exc()
                 # Fallback para OpenAI
                 base_embeddings = OpenAIEmbeddings(
                     model="text-embedding-3-small",
@@ -252,7 +247,6 @@ class LLMFactory:
                 return PaddedEmbeddings(base_embeddings, target_dim=1536, provider='openai')
         else:
             # OpenAI como padrão (openai, anthropic, outros)
-            print(f"📊 [Embeddings] OpenAI: 1536 dims (nativo)")
             try:
                 base_embeddings = OpenAIEmbeddings(
                     model="text-embedding-3-small",
@@ -260,7 +254,7 @@ class LLMFactory:
                 )
                 return PaddedEmbeddings(base_embeddings, target_dim=1536, provider='openai')
             except Exception as e:
-                print(f"❌ [Embeddings] Erro ao criar OpenAI Embeddings: {str(e)}")
+                traceback.print_exc()
                 raise
 
     def _create_tools(self):
@@ -282,6 +276,5 @@ class LLMFactory:
 
             return tools
         else:
-            print('⚠️ Nenhuma ferramenta criada (tools_factory ou contact_id não fornecidos)')
             return []
 

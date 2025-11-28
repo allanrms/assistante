@@ -1,0 +1,431 @@
+{% extends 'client_painel/base.html' %}
+
+{% block title %}Configurar Notificações - {{ instance.name }} - Orbi{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 fw-bold text-dark mb-1">
+            <i class="bi bi-person-arms-up me-2"></i>
+            Configurar Notificações de Atendimento Humano
+        </h1>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted">{{ instance.name }}</span>
+            {% if instance.name != instance.instance_name %}
+                <small class="text-muted">{{ instance.instance_name }}</small>
+            {% endif %}
+        </div>
+    </div>
+    <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>
+        Voltar
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person-arms-up me-2"></i>
+                    Contatos para Notificação
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Área de mensagens -->
+                <div id="messageContainer"></div>
+
+                <p class="text-muted mb-4">
+                    Configure os contatos que receberão notificações via WhatsApp quando uma conversa solicitar atendimento humano.
+                </p>
+
+                <!-- Estratégia de Notificação -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Estratégia de Envio</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="notificationStrategy" id="strategyAll" value="all" onchange="updateStrategy('all')">
+                            <label class="form-check-label" for="strategyAll">
+                                <i class="bi bi-people-fill me-1"></i>
+                                Enviar para Todos
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="notificationStrategy" id="strategyRandom" value="random" checked onchange="updateStrategy('random')">
+                            <label class="form-check-label" for="strategyRandom">
+                                <i class="bi bi-shuffle me-1"></i>
+                                Enviar para Um Aleatório
+                            </label>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-2" id="strategyDescription">
+                        Um contato será escolhido aleatoriamente para receber a notificação.
+                    </small>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Lista de contatos -->
+                <div id="contactsList" class="mb-4">
+                    <!-- Os contatos serão renderizados aqui via JavaScript -->
+                </div>
+
+                <!-- Botão adicionar contato -->
+                <button type="button" class="btn btn-primary" onclick="addContact()">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    Adicionar Contato
+                </button>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{% url 'whatsapp_connector:instance_detail' instance.pk %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Cancelar
+                    </a>
+                    <button type="button" class="btn btn-success" onclick="saveContacts()">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Salvar Configuração
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Guia de Configuração -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Como Funciona
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Notificação Automática:</strong>
+                    <p class="small text-muted mb-2">Quando uma conversa mudar para atendimento humano, os contatos cadastrados receberão notificação via WhatsApp conforme a estratégia escolhida.</p>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Estratégias de Envio:</strong>
+                    <p class="small text-muted mb-2">
+                        • <strong>Todos:</strong> Notifica todos os contatos cadastrados<br>
+                        • <strong>Aleatório:</strong> Sorteia um contato para receber
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Formato dos Números:</strong>
+                    <p class="small text-muted mb-2">Use o formato completo com DDI e DDD (ex: 5511999999999)</p>
+                </div>
+
+                <div class="alert alert-warning small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>Importante:</strong> As mensagens serão enviadas pela própria instância do WhatsApp.
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Atual -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-gear me-1"></i>
+                    Status da Configuração
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-bell text-info me-2"></i>
+                    <span class="text-info fw-semibold" id="statusText">Carregando...</span>
+                </div>
+                <p class="small text-muted mb-2" id="statusDescription">
+                    Verificando configuração atual...
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.contact-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+.contact-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.contact-item input {
+    margin-bottom: 0;
+}
+
+.contact-item .btn-danger {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+
+<script>
+// Dados da instância
+const instanceId = '{{ instance.pk }}';
+let contacts = {{ notification_contacts|safe }};
+let notificationStrategy = '{{ notification_strategy }}';
+
+// Renderizar lista de contatos
+function renderContacts() {
+    const contactsList = document.getElementById('contactsList');
+
+    if (contacts.length === 0) {
+        contactsList.innerHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Nenhum contato cadastrado. Clique em "Adicionar Contato" para começar.
+            </div>
+        `;
+        updateStatus();
+        return;
+    }
+
+    contactsList.innerHTML = contacts.map((contact, index) => `
+        <div class="contact-item">
+            <div class="row align-items-end">
+                <div class="col-md-5 mb-2">
+                    <label class="form-label fw-semibold">Nome</label>
+                    <input type="text" class="form-control" value="${contact.name || ''}"
+                           onchange="updateContact(${index}, 'name', this.value)"
+                           placeholder="Ex: João Silva">
+                </div>
+                <div class="col-md-5 mb-2">
+                    <label class="form-label fw-semibold">Número do WhatsApp</label>
+                    <input type="text" class="form-control" value="${contact.phone || ''}"
+                           onchange="updateContact(${index}, 'phone', this.value)"
+                           placeholder="Ex: 5511999999999">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <button type="button" class="btn btn-danger w-100" onclick="removeContact(${index})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    updateStatus();
+}
+
+// Adicionar novo contato
+function addContact() {
+    contacts.push({ name: '', phone: '' });
+    renderContacts();
+}
+
+// Remover contato
+async function removeContact(index) {
+    if (!confirm('Tem certeza que deseja remover este contato?')) {
+        return;
+    }
+
+    // Remover do array local
+    contacts.splice(index, 1);
+    renderContacts();
+
+    // Salvar alteração no banco de dados
+    try {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                         getCookie('csrftoken');
+
+        const validContacts = contacts.filter(c => c.name && c.phone);
+
+        const response = await fetch(`/whatsapp/instances/${instanceId}/notifications-config/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                notification_contacts: validContacts,
+                notification_strategy: notificationStrategy
+            })
+        });
+
+        if (response.ok) {
+            showMessage('Contato removido com sucesso!', 'success');
+        } else {
+            const error = await response.json();
+            showMessage('Erro ao remover contato: ' + (error.message || 'Erro desconhecido'), 'error');
+            // Recarregar para reverter a mudança local
+            setTimeout(() => window.location.reload(), 2000);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showMessage('Erro ao remover contato: ' + error.message, 'error');
+        // Recarregar para reverter a mudança local
+        setTimeout(() => window.location.reload(), 2000);
+    }
+}
+
+// Atualizar dados do contato
+function updateContact(index, field, value) {
+    contacts[index][field] = value;
+}
+
+// Atualizar estratégia de notificação
+function updateStrategy(strategy) {
+    notificationStrategy = strategy;
+    const description = document.getElementById('strategyDescription');
+
+    if (strategy === 'all') {
+        description.textContent = 'Todos os contatos cadastrados receberão a notificação.';
+    } else if (strategy === 'random') {
+        description.textContent = 'Um contato será escolhido aleatoriamente para receber a notificação.';
+    }
+}
+
+// Salvar contatos
+async function saveContacts() {
+    // Validar contatos
+    const validContacts = contacts.filter(c => c.name && c.phone);
+
+    if (contacts.length > 0 && validContacts.length === 0) {
+        showMessage('Por favor, preencha nome e número de todos os contatos ou remova-os.', 'error');
+        return;
+    }
+
+    // Mostrar loading no botão
+    const submitBtn = document.querySelector('button[onclick="saveContacts()"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i>Salvando...';
+    submitBtn.disabled = true;
+
+    try {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                         getCookie('csrftoken');
+
+        const response = await fetch(`/whatsapp/instances/${instanceId}/notifications-config/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                notification_contacts: validContacts,
+                notification_strategy: notificationStrategy
+            })
+        });
+
+        if (response.ok) {
+            showMessage('Configuração salva com sucesso!', 'success');
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        } else {
+            const error = await response.json();
+            let errorMessage = error.message || 'Erro desconhecido';
+
+            // Tratar erro de duplicação
+            if (errorMessage.includes('duplicar valor da chave') || errorMessage.includes('já existe')) {
+                errorMessage = 'Este número de telefone já está cadastrado.';
+            }
+
+            showMessage(errorMessage, 'error');
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showMessage('Erro ao salvar configuração: ' + error.message, 'error');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+// Atualizar status da configuração
+function updateStatus() {
+    const statusText = document.getElementById('statusText');
+    const statusDescription = document.getElementById('statusDescription');
+
+    if (contacts.length === 0) {
+        statusText.textContent = 'Notificações Desativadas';
+        statusDescription.textContent = 'Nenhum contato configurado. As notificações não serão enviadas.';
+    } else {
+        statusText.textContent = 'Notificações Ativas';
+        statusDescription.textContent = `${contacts.length} contato${contacts.length > 1 ? 's' : ''} configurado${contacts.length > 1 ? 's' : ''}. Notificações serão enviadas para todos.`;
+    }
+}
+
+// Get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Função para mostrar mensagens de alerta
+function showMessage(message, type = 'success') {
+    const messageContainer = document.getElementById('messageContainer');
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill';
+
+    const alertHTML = `
+        <div class="alert ${alertClass} alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+
+    messageContainer.innerHTML = alertHTML;
+
+    // Scroll suave para o topo do card para ver a mensagem
+    messageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Inicializar ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    // Definir estratégia inicial (default é 'random')
+    if (notificationStrategy === 'all') {
+        document.getElementById('strategyAll').checked = true;
+        updateStrategy('all');
+    } else {
+        // Default ou 'random'
+        document.getElementById('strategyRandom').checked = true;
+        updateStrategy('random');
+    }
+
+    // Renderizar contatos
+    renderContacts();
+});
+
+// CSS para animação de loading
+const style = document.createElement('style');
+style.textContent = `
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+
+{% csrf_token %}
+{% endblock %}

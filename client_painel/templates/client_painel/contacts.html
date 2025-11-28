@@ -1,0 +1,398 @@
+{% extends 'client_painel/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans 'Contatos' %}{% endblock %}
+
+{% block page_title %}{% trans 'Contatos' %}{% endblock %}
+
+{% block content %}
+<!-- Action Buttons -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h5 class="mb-0">
+            <i class="bi bi-person-lines-fill me-2"></i>
+            {% trans 'Total de contatos' %}: <span class="badge bg-primary">{{ total_contacts }}</span>
+        </h5>
+    </div>
+    <div>
+        <input type="text" id="searchContact" class="form-control" placeholder="{% trans 'Buscar contato...' %}" style="min-width: 300px;">
+    </div>
+</div>
+
+<!-- Contacts List -->
+<div class="row g-4" id="contactsList">
+    {% if contacts %}
+        {% for contact in contacts %}
+        <div class="col-xl-3 col-lg-4 col-md-6 contact-card" data-contact-name="{{ contact.name|default:contact.profile_name|default:contact.phone_number|lower }}" data-contact-phone="{{ contact.phone_number }}">
+            <div class="card h-100 contact-item" style="cursor: pointer;" onclick="loadContactConversations('{{ contact.id }}')">
+                <div class="card-body text-center">
+                    {% if contact.profile_pic_url %}
+                        <img src="{{ contact.profile_pic_url }}" alt="{{ contact.name }}" class="rounded-circle mb-3" style="width: 80px; height: 80px; object-fit: cover;">
+                    {% else %}
+                        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                    {% endif %}
+
+                    <h6 class="card-title mb-2">
+                        {{ contact.name|default:contact.profile_name|default:'Sem nome' }}
+                    </h6>
+
+                    <p class="text-muted mb-2">
+                        <i class="bi bi-phone me-1"></i>
+                        {{ contact.phone_number }}
+                    </p>
+
+                    <div class="d-flex justify-content-around mt-3 pt-3 border-top">
+                        <div class="text-center">
+                            <div class="fw-semibold text-primary">{{ contact.total_messages }}</div>
+                            <small class="text-muted">{% trans 'Mensagens' %}</small>
+                        </div>
+                        <div class="text-center">
+                            <div class="fw-semibold text-success">{{ contact.conversations.count }}</div>
+                            <small class="text-muted">{% trans 'Conversas' %}</small>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-clock me-1"></i>
+                            {% trans 'Último contato' %}: {{ contact.last_contact_at|date:"d/m/Y H:i" }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-center py-5">
+                        <i class="bi bi-person-x text-muted mb-3" style="font-size: 4rem;"></i>
+                        <h4 class="text-muted">{% trans 'Nenhum contato ainda' %}</h4>
+                        <p class="text-muted">{% trans 'Os contatos que interagiram com suas instâncias aparecerão aqui.' %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Offcanvas para Conversas do Contato -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="conversationsOffcanvas" aria-labelledby="conversationsOffcanvasLabel" style="width: 500px;">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="conversationsOffcanvasLabel">
+            <i class="bi bi-chat-dots me-2"></i>
+            {% trans 'Conversas' %}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <!-- Contact Info -->
+        <div id="contactInfo" class="mb-4"></div>
+
+        <!-- Loading -->
+        <div id="conversationsLoading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">{% trans 'Carregando...' %}</span>
+            </div>
+        </div>
+
+        <!-- Conversations List -->
+        <div id="conversationsList" style="display: none;"></div>
+    </div>
+</div>
+
+<!-- Offcanvas para Mensagens da Conversa -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="messagesOffcanvas" aria-labelledby="messagesOffcanvasLabel" style="width: 600px;">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="messagesOffcanvasLabel">
+            <i class="bi bi-envelope me-2"></i>
+            {% trans 'Mensagens' %}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <!-- Conversation Info -->
+        <div id="conversationInfo" class="mb-4"></div>
+
+        <!-- Loading -->
+        <div id="messagesLoading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">{% trans 'Carregando...' %}</span>
+            </div>
+        </div>
+
+        <!-- Messages List -->
+        <div id="messagesList" style="display: none;"></div>
+    </div>
+</div>
+
+<style>
+.contact-item {
+    transition: all 0.3s ease;
+}
+
+.contact-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.conversation-item {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.conversation-item:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.message-bubble {
+    padding: 0.75rem 1rem;
+    border-radius: 1rem;
+    margin-bottom: 0.5rem;
+    max-width: 80%;
+}
+
+.message-from-contact {
+    background-color: #e9ecef;
+    margin-right: auto;
+}
+
+.message-from-bot {
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
+    margin-left: auto;
+}
+
+.search-highlight {
+    background-color: yellow;
+    padding: 0 2px;
+}
+</style>
+
+<script>
+// Search functionality
+document.getElementById('searchContact').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const contactCards = document.querySelectorAll('.contact-card');
+
+    contactCards.forEach(card => {
+        const name = card.getAttribute('data-contact-name');
+        const phone = card.getAttribute('data-contact-phone');
+
+        if (name.includes(searchTerm) || phone.includes(searchTerm)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+
+// Load contact conversations
+function loadContactConversations(contactId) {
+    const offcanvas = new bootstrap.Offcanvas(document.getElementById('conversationsOffcanvas'));
+    offcanvas.show();
+
+    // Show loading
+    document.getElementById('conversationsLoading').style.display = 'block';
+    document.getElementById('conversationsList').style.display = 'none';
+
+    // Fetch conversations
+    fetch(`/api/contatos/${contactId}/conversas/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayContactInfo(data.contact);
+                displayConversations(data.conversations);
+            } else {
+                alert('Erro ao carregar conversas: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao carregar conversas');
+        })
+        .finally(() => {
+            document.getElementById('conversationsLoading').style.display = 'none';
+            document.getElementById('conversationsList').style.display = 'block';
+        });
+}
+
+function displayContactInfo(contact) {
+    const html = `
+        <div class="card">
+            <div class="card-body text-center">
+                ${contact.profile_pic_url ?
+                    `<img src="${contact.profile_pic_url}" alt="${contact.name}" class="rounded-circle mb-2" style="width: 60px; height: 60px; object-fit: cover;">` :
+                    `<div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-2" style="width: 60px; height: 60px;">
+                        <i class="bi bi-person-fill"></i>
+                    </div>`
+                }
+                <h6 class="mb-1">${contact.name || 'Sem nome'}</h6>
+                <small class="text-muted">${contact.phone_number}</small>
+            </div>
+        </div>
+    `;
+    document.getElementById('contactInfo').innerHTML = html;
+}
+
+function displayConversations(conversations) {
+    if (conversations.length === 0) {
+        document.getElementById('conversationsList').innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-chat-dots text-muted mb-3" style="font-size: 3rem;"></i>
+                <p class="text-muted">{% trans 'Nenhuma conversa encontrada' %}</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="list-group">';
+    conversations.forEach(conv => {
+        const lastMessageTime = conv.last_message_time ? new Date(conv.last_message_time).toLocaleString('pt-BR') : 'N/A';
+
+        html += `
+            <div class="conversation-item border" onclick="loadConversationMessages(${conv.id})">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="mb-1">${conv.instance_name || 'Instância desconhecida'}</h6>
+                        <small class="text-muted">
+                            <span class="badge bg-${conv.status === 'ai' ? 'primary' : conv.status === 'human' ? 'warning' : 'secondary'}">
+                                ${conv.status_display}
+                            </span>
+                        </small>
+                    </div>
+                    <small class="text-muted">${conv.total_messages} msgs</small>
+                </div>
+                ${conv.last_message ? `
+                    <p class="mb-1 text-truncate">${conv.last_message}</p>
+                ` : ''}
+                <small class="text-muted">
+                    <i class="bi bi-clock me-1"></i>
+                    ${lastMessageTime}
+                </small>
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    document.getElementById('conversationsList').innerHTML = html;
+}
+
+// Load conversation messages
+function loadConversationMessages(conversationId) {
+    const offcanvas = new bootstrap.Offcanvas(document.getElementById('messagesOffcanvas'));
+    offcanvas.show();
+
+    // Show loading
+    document.getElementById('messagesLoading').style.display = 'block';
+    document.getElementById('messagesList').style.display = 'none';
+
+    // Fetch messages
+    fetch(`/api/conversas/${conversationId}/mensagens/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayConversationInfo(data.conversation);
+                displayMessages(data.messages);
+            } else {
+                alert('Erro ao carregar mensagens: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao carregar mensagens');
+        })
+        .finally(() => {
+            document.getElementById('messagesLoading').style.display = 'none';
+            document.getElementById('messagesList').style.display = 'block';
+        });
+}
+
+function displayConversationInfo(conversation) {
+    const html = `
+        <div class="card">
+            <div class="card-body">
+                <h6 class="mb-2">${conversation.instance_name || 'Instância desconhecida'}</h6>
+                <small class="text-muted d-block mb-1">
+                    <i class="bi bi-person me-1"></i>
+                    ${conversation.contact_name || conversation.from_number}
+                </small>
+                <small class="text-muted">
+                    <span class="badge bg-${conversation.status === 'ai' ? 'primary' : conversation.status === 'human' ? 'warning' : 'secondary'}">
+                        ${conversation.status_display}
+                    </span>
+                </small>
+            </div>
+        </div>
+    `;
+    document.getElementById('conversationInfo').innerHTML = html;
+}
+
+function displayMessages(messages) {
+    if (messages.length === 0) {
+        document.getElementById('messagesList').innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-envelope text-muted mb-3" style="font-size: 3rem;"></i>
+                <p class="text-muted">{% trans 'Nenhuma mensagem encontrada' %}</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="messages-container">';
+    messages.forEach(msg => {
+        const time = new Date(msg.received_at).toLocaleString('pt-BR');
+        const isFromContact = !msg.is_from_me;
+
+        html += `
+            <div class="mb-3">
+                <div class="d-flex align-items-start ${isFromContact ? '' : 'justify-content-end'}">
+                    <div class="message-bubble ${isFromContact ? 'message-from-contact' : 'message-from-bot'}">
+                        ${msg.sender_name ? `<strong class="d-block mb-1">${msg.sender_name}</strong>` : ''}
+
+                        ${msg.message_type === 'text' ?
+                            `<p class="mb-1">${msg.content || ''}</p>` :
+                            `<p class="mb-1">
+                                <i class="bi bi-${msg.message_type === 'image' ? 'image' : msg.message_type === 'audio' ? 'mic' : 'file-earmark'} me-1"></i>
+                                ${msg.message_type_display}
+                            </p>`
+                        }
+
+                        ${msg.response ?
+                            `<div class="mt-2 pt-2 border-top">
+                                <small class="text-primary">
+                                    <i class="bi bi-robot me-1"></i>
+                                    ${msg.response}
+                                </small>
+                            </div>` :
+                            ''
+                        }
+
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-clock me-1"></i>
+                            ${time}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    document.getElementById('messagesList').innerHTML = html;
+
+    // Scroll to bottom
+    setTimeout(() => {
+        const messagesContainer = document.querySelector('.messages-container');
+        if (messagesContainer) {
+            messagesContainer.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, 100);
+}
+</script>
+{% endblock %}

@@ -12,8 +12,12 @@ from ..models import LLMUsage, Agent, Message
 from ..patterns.factories.llm_factory import LLMFactory
 
 
-class AgentContext(TypedDict, total=False):
-    """Schema do contexto passado para as tools via ToolRuntime."""
+class AgentContext(TypedDict):
+    """Schema do contexto passado para as tools via ToolRuntime.
+
+    Note: Using TypedDict with total=False to avoid Pydantic serialization warnings.
+    These fields are not meant to be serialized, only passed to tools at runtime.
+    """
     conversation: Any
     retriever: Any
 

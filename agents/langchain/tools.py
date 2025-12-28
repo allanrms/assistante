@@ -30,6 +30,13 @@ def request_human_intervention(
     - Quando o usuário pedir explicitamente para falar com um atendente, humano ou pessoa real.
     - Se o usuário estiver muito frustrado e o agente não conseguir ajudar.
     - Se o usuário disser "quero falar com um humano" ou algo similar.
+    - Emissão de nota fiscal
+    - Dúvida quanto a medicação
+    - Envio/Pedido do resultado do exame
+    - Solicitação de relatório
+    - Solicitação de atestado
+    - Solicitação de receita médica
+    - Informações sobre cirurgia
 
     QUANDO NÃO USAR:
     - Para resolver problemas que o agente pode resolver.

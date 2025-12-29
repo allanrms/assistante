@@ -30,13 +30,9 @@ def request_human_intervention(
     - Quando o usuário pedir explicitamente para falar com um atendente, humano ou pessoa real.
     - Se o usuário estiver muito frustrado e o agente não conseguir ajudar.
     - Se o usuário disser "quero falar com um humano" ou algo similar.
-    - Emissão de nota fiscal
-    - Dúvida quanto a medicação
-    - Envio/Pedido do resultado do exame
-    - Solicitação de relatório
-    - Solicitação de atestado
-    - Solicitação de receita médica
-    - Informações sobre cirurgia
+
+    SITUAÇÕES CADASTRADAS PARA TRANSFERÊNCIA:
+    {intervention_rules}
 
     QUANDO NÃO USAR:
     - Para resolver problemas que o agente pode resolver.
@@ -262,13 +258,30 @@ def search_documents(query: str, runtime: ToolRuntime) -> str:
     return "\n\n---\n\n".join([d.page_content for d in docs])
 
 
-def get_agent_tools():
+def get_agent_tools(agent=None):
     """
     Retorna a lista de tools disponíveis para o agente.
+
+    Args:
+        agent: Instância do Agent para carregar critérios de transferência humana
 
     Returns:
         Lista de tools LangChain.
     """
+    # Buscar critérios de transferência humana do agente
+    intervention_rules_text = "Nenhum critério cadastrado ainda."
+
+    if agent and agent.human_handoff_criteria:
+        # O campo já vem formatado com linhas começando com -
+        intervention_rules_text = agent.human_handoff_criteria
+
+    # Atualizar a docstring dinamicamente
+    original_doc = request_human_intervention.__doc__
+    if original_doc and '{intervention_rules}' in original_doc:
+        request_human_intervention.__doc__ = original_doc.format(
+            intervention_rules=intervention_rules_text
+        )
+
     return [
         search_documents,
         list_available_files,

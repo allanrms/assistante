@@ -13,7 +13,7 @@ class AgentForm(forms.ModelForm):
         fields = ['display_name', 'name', 'model',
                   'role', 'available_tools', 'input_context', 'steps',
                   'expectation', 'anti_hallucination_policies', 'applied_example',
-                  'useful_default_messages',
+                  'useful_default_messages', 'human_handoff_criteria',
                   'temperature', 'max_tokens', 'top_p', 'presence_penalty', 'frequency_penalty']
         widgets = {
             'display_name': forms.TextInput(attrs={
@@ -76,6 +76,12 @@ class AgentForm(forms.ModelForm):
                 'placeholder': 'Ex:\n- Saudação: "Olá! Como posso ajudar você hoje?"\n- Transferência: "Vou transferir você para um atendente humano..."...',
                 'style': 'font-size: 14px; line-height: 1.6;'
             }),
+            'human_handoff_criteria': forms.Textarea(attrs={
+                'class': 'form-control font-monospace',
+                'rows': 6,
+                'placeholder': 'Ex:\n- Emissão de nota fiscal\n- Dúvida quanto a medicação\n- Envio/Pedido do resultado do exame\n- Solicitação de relatório',
+                'style': 'font-size: 14px; line-height: 1.6;'
+            }),
             'temperature': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'step': '0.1',
@@ -118,6 +124,7 @@ class AgentForm(forms.ModelForm):
             'anti_hallucination_policies': 'Anti-Hallucination Policies',
             'applied_example': 'Applied Example',
             'useful_default_messages': 'Useful Default Messages',
+            'human_handoff_criteria': 'Critérios de Transferência Humana',
             'temperature': 'Temperatura',
             'max_tokens': 'Máximo de Tokens',
             'top_p': 'Top-p',
@@ -136,6 +143,7 @@ class AgentForm(forms.ModelForm):
             'anti_hallucination_policies': 'Regras para evitar alucinações e limites do assistente',
             'applied_example': 'Exemplos práticos de interações e respostas',
             'useful_default_messages': 'Mensagens pré-definidas para situações comuns',
+            'human_handoff_criteria': 'Situações em que o assistente deve transferir para atendimento humano (uma por linha iniciando com -)',
             'temperature': 'Controla criatividade (0.0 = conservador, 2.0 = criativo)',
             'max_tokens': 'Limite máximo de tokens na resposta',
             'top_p': 'Amostragem nuclear - controla diversidade da resposta',
@@ -159,6 +167,7 @@ class AgentForm(forms.ModelForm):
         self.fields['anti_hallucination_policies'].required = False
         self.fields['applied_example'].required = False
         self.fields['useful_default_messages'].required = False
+        self.fields['human_handoff_criteria'].required = False
 
         # Os valores padrão são definidos na view AgentCreateView.get_initial()
         # Não precisamos definir aqui para evitar conflitos

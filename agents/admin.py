@@ -97,7 +97,7 @@ class AgentAdmin(admin.ModelAdmin):
         }),
         ('Instruções (RISE Framework)', {
             'fields': ('role', 'available_tools', 'input_context', 'steps', 'expectation', 'anti_hallucination_policies',
-                       'applied_example', 'useful_default_messages'),
+                       'applied_example', 'useful_default_messages', 'human_handoff_criteria'),
             'classes': ('wide',),
             'description': 'Estes campos constroem o prompt do agente. Preencha para customizar o comportamento.'
         }),
@@ -646,6 +646,7 @@ class GlobalSettingsAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # Impede a exclusão da instância única
         return False
+
 
 @admin.register(LLMUsage)
 class LLMUsageAdmin(admin.ModelAdmin):

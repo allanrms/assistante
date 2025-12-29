@@ -269,6 +269,26 @@
                                     </div>
                                 </div>
 
+                                <!-- 9. HUMAN HANDOFF CRITERIA -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingHandoff">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHandoff" aria-expanded="false" aria-controls="collapseHandoff">
+                                            <i class="bi bi-person-fill-exclamation me-2"></i>
+                                            <strong>9. Critérios de Transferência Humana</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseHandoff" class="accordion-collapse collapse" aria-labelledby="headingHandoff" data-bs-parent="#riseAccordion">
+                                        <div class="accordion-body">
+                                            <label for="id_human_handoff_criteria" class="form-label fw-bold">{{ form.human_handoff_criteria.label }}</label>
+                                            <div class="form-text mb-2">{{ form.human_handoff_criteria.help_text }}</div>
+                                            {{ form.human_handoff_criteria }}
+                                            {% if form.human_handoff_criteria.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.human_handoff_criteria.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
                         
@@ -456,7 +476,7 @@
                 <div class="mb-3">
                     <strong>Arquivos de Contexto:</strong>
                     <div>
-                        <span class="badge bg-{% if object.files.count > 0 %}success{% else %}secondary{% endif %}">
+                        <span class="badge {% if object.files.count > 0 %}text-bg-success{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
                             {{ object.files.count }} arquivo{{ object.files.count|pluralize }}
                         </span>
                     </div>
@@ -466,7 +486,7 @@
                 <div class="mb-3">
                     <strong>Arquivos Vetorizados:</strong>
                     <div>
-                        <span class="badge bg-primary">
+                        <span class="badge text-bg-primary" style="font-weight: 500;">
                             {{ vectorized_files_count }}
                         </span>
                     </div>
@@ -477,51 +497,57 @@
                     <strong>Configuração:</strong>
                     <div class="small">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span><i class="bi bi-person-badge me-1"></i> Role:</span>
-                            <span class="badge bg-{% if object.role %}success{% else %}secondary{% endif %}">
+                            <span><i class="bi bi-person-badge me-1 text-primary"></i> Role:</span>
+                            <span class="badge {% if object.role %}text-bg-primary{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
                                 {% if object.role %}{{ object.role|length }} chars{% else %}Global{% endif %}
                             </span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span><i class="bi bi-tools me-1"></i> Tools:</span>
-                            <span class="badge bg-{% if object.available_tools %}success{% else %}secondary{% endif %}">
+                            <span><i class="bi bi-tools me-1 text-info"></i> Tools:</span>
+                            <span class="badge {% if object.available_tools %}text-bg-info{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
                                 {% if object.available_tools %}{{ object.available_tools|length }} chars{% else %}Global{% endif %}
                             </span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span><i class="bi bi-input-cursor me-1"></i> Input:</span>
-                            <span class="badge bg-{% if object.input_context %}success{% else %}secondary{% endif %}">
+                            <span><i class="bi bi-input-cursor me-1 text-success"></i> Input:</span>
+                            <span class="badge {% if object.input_context %}text-bg-success{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
                                 {% if object.input_context %}{{ object.input_context|length }} chars{% else %}Global{% endif %}
                             </span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span><i class="bi bi-list-ol me-1"></i> Steps:</span>
-                            <span class="badge bg-{% if object.steps %}success{% else %}secondary{% endif %}">
+                            <span><i class="bi bi-list-ol me-1" style="color: #fd7e14;"></i> Steps:</span>
+                            <span class="badge {% if object.steps %}text-bg-warning{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
                                 {% if object.steps %}{{ object.steps|length }} chars{% else %}Global{% endif %}
                             </span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span><i class="bi bi-check2-square me-1"></i> Expectation:</span>
-                            <span class="badge bg-{% if object.expectation %}success{% else %}secondary{% endif %}">
+                            <span><i class="bi bi-check2-square me-1 text-success"></i> Expectation:</span>
+                            <span class="badge {% if object.expectation %}text-bg-success{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
                                 {% if object.expectation %}{{ object.expectation|length }} chars{% else %}Global{% endif %}
                             </span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span><i class="bi bi-shield-check me-1"></i> Anti-Hallucination:</span>
-                            <span class="badge bg-{% if object.anti_hallucination_policies %}success{% else %}secondary{% endif %}">
+                            <span><i class="bi bi-shield-check me-1 text-danger"></i> Anti-Hallucination:</span>
+                            <span class="badge {% if object.anti_hallucination_policies %}text-bg-danger{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
                                 {% if object.anti_hallucination_policies %}{{ object.anti_hallucination_policies|length }} chars{% else %}Global{% endif %}
                             </span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span><i class="bi bi-chat-left-text me-1"></i> Example:</span>
-                            <span class="badge bg-{% if object.applied_example %}success{% else %}secondary{% endif %}">
+                            <span><i class="bi bi-chat-left-text me-1 text-primary"></i> Example:</span>
+                            <span class="badge {% if object.applied_example %}text-bg-primary{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
                                 {% if object.applied_example %}{{ object.applied_example|length }} chars{% else %}Global{% endif %}
                             </span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span><i class="bi bi-envelope me-1"></i> Messages:</span>
-                            <span class="badge bg-{% if object.useful_default_messages %}success{% else %}secondary{% endif %}">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="bi bi-envelope me-1 text-info"></i> Messages:</span>
+                            <span class="badge {% if object.useful_default_messages %}text-bg-info{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
                                 {% if object.useful_default_messages %}{{ object.useful_default_messages|length }} chars{% else %}Global{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-person-fill-exclamation me-1" style="color: #fd7e14;"></i> Handoff:</span>
+                            <span class="badge {% if object.human_handoff_criteria %}text-bg-warning{% else %}bg-light text-secondary{% endif %}" style="font-weight: 500;">
+                                {% if object.human_handoff_criteria %}{{ object.human_handoff_criteria|length }} chars{% else %}Vazio{% endif %}
                             </span>
                         </div>
                     </div>
@@ -554,28 +580,28 @@
                 </h6>
             </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small">Temperature:</span>
-                    <span class="badge bg-secondary">{{ object.temperature }}</span>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small"><i class="bi bi-thermometer-half me-1 text-danger"></i> Temperature:</span>
+                    <span class="badge text-bg-danger" style="font-weight: 500;">{{ object.temperature }}</span>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small">Max Tokens:</span>
-                    <span class="badge bg-secondary">{{ object.max_tokens|default:"Padrão" }}</span>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small"><i class="bi bi-hash me-1 text-primary"></i> Max Tokens:</span>
+                    <span class="badge text-bg-primary" style="font-weight: 500;">{{ object.max_tokens|default:"Padrão" }}</span>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small">Top P:</span>
-                    <span class="badge bg-secondary">{{ object.top_p }}</span>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small"><i class="bi bi-percent me-1 text-info"></i> Top P:</span>
+                    <span class="badge text-bg-info" style="font-weight: 500;">{{ object.top_p }}</span>
                 </div>
                 {% if object.presence_penalty %}
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small">Presence Penalty:</span>
-                    <span class="badge bg-secondary">{{ object.presence_penalty }}</span>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small"><i class="bi bi-graph-up me-1 text-success"></i> Presence Penalty:</span>
+                    <span class="badge text-bg-success" style="font-weight: 500;">{{ object.presence_penalty }}</span>
                 </div>
                 {% endif %}
                 {% if object.frequency_penalty %}
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small">Frequency Penalty:</span>
-                    <span class="badge bg-secondary">{{ object.frequency_penalty }}</span>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small"><i class="bi bi-graph-down me-1 text-warning"></i> Frequency Penalty:</span>
+                    <span class="badge text-bg-warning" style="font-weight: 500;">{{ object.frequency_penalty }}</span>
                 </div>
                 {% endif %}
             </div>
@@ -625,7 +651,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'expectation',
         'anti_hallucination_policies',
         'applied_example',
-        'useful_default_messages'
+        'useful_default_messages',
+        'human_handoff_criteria'
     ];
 
     fields.forEach(function(fieldName) {

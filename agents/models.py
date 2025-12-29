@@ -303,6 +303,13 @@ class Agent(BaseUUIDModel, HistoryBaseModel):
         help_text="Mensagens pré-definidas para situações comuns (saudações, despedidas, transferências)"
     )
 
+    human_handoff_criteria = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Critérios de Transferência Humana",
+        help_text="Situações em que transferir para atendimento humano (uma por linha iniciando com -)"
+    )
+
     max_tokens = models.PositiveIntegerField(
         default=8192,
         verbose_name="Máximo de tokens"

@@ -49,9 +49,9 @@
 <body>
     <div class="error-card">
         <i class="bi bi-x-circle error-icon"></i>
-        <h1>Erro</h1>
-        <p>{{ error }}</p>
-        <p>Por favor, entre em contato conosco via WhatsApp.</p>
+        <h1>{% if error_title %}{{ error_title }}{% else %}Erro{% endif %}</h1>
+        <p>{% if error_message %}{{ error_message }}{% elif error %}{{ error }}{% else %}Ocorreu um erro inesperado.{% endif %}</p>
+        <p class="mt-3">Por favor, entre em contato conosco via WhatsApp.</p>
     </div>
 </body>
 </html>

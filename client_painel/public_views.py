@@ -2,7 +2,7 @@
 Views públicas para agendamento
 """
 
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views import View
@@ -25,7 +25,12 @@ class PublicAppointmentAvailabilityAPI(View):
     def get(self, request, token, date_str):
         """Retorna horários disponíveis para uma data específica"""
         # Busca o token
-        appointment_token = get_object_or_404(AppointmentToken, token=token)
+        try:
+            appointment_token = AppointmentToken.objects.get(token=token)
+        except AppointmentToken.DoesNotExist:
+            return JsonResponse({
+                'error': 'Este link de agendamento não existe ou pode ter sido removido.'
+            }, status=404)
 
         # Verifica se o token é válido
         if not appointment_token.is_valid():
@@ -105,7 +110,13 @@ class PublicAppointmentView(View):
     def get(self, request, token):
         """Exibe a página de agendamento"""
         # Busca o token
-        appointment_token = get_object_or_404(AppointmentToken, token=token)
+        try:
+            appointment_token = AppointmentToken.objects.get(token=token)
+        except AppointmentToken.DoesNotExist:
+            return render(request, 'client_painel/public_appointment_error.html', {
+                'error_title': 'Link não encontrado',
+                'error_message': 'Este link de agendamento não existe ou pode ter sido removido.'
+            })
 
         # Verifica se o token é válido
         if not appointment_token.is_valid():
@@ -184,7 +195,12 @@ class PublicAppointmentView(View):
 
     def post(self, request, token):
         """Processa a seleção de data e hora"""
-        appointment_token = get_object_or_404(AppointmentToken, token=token)
+        try:
+            appointment_token = AppointmentToken.objects.get(token=token)
+        except AppointmentToken.DoesNotExist:
+            return JsonResponse({
+                'error': 'Este link de agendamento não existe ou pode ter sido removido.'
+            }, status=404)
 
         # Verifica se o token é válido
         if not appointment_token.is_valid():

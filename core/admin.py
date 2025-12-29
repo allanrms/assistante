@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.utils.html import format_html
 from .models import (
     Client, Contact, Tag, Employee, Appointment, ScheduleConfig,
-    WorkingDay, BlockedDay, Service, ServiceAvailability
+    WorkingDay, BlockedDay, Service, ServiceAvailability, AppointmentToken
 )
 
 User = get_user_model()
@@ -465,6 +465,140 @@ class AppointmentAdmin(admin.ModelAdmin):
             )
         return format_html('<span style="color: gray;">-</span>')
     calendar_event_link.short_description = 'Link do Evento'
+
+
+@admin.register(AppointmentToken)
+class AppointmentTokenAdmin(admin.ModelAdmin):
+    """
+    Configuração do admin para o modelo AppointmentToken.
+    """
+    list_display = [
+        'token_short',
+        'appointment_info',
+        'expires_at',
+        'is_used',
+        'is_expired',
+        'public_link',
+        'created_at',
+    ]
+    list_filter = [
+        'is_used',
+        'expires_at',
+        'created_at',
+    ]
+    search_fields = [
+        'token',
+        'appointment__contact__name',
+        'appointment__contact__phone_number',
+    ]
+    readonly_fields = [
+        'id',
+        'token',
+        'created_at',
+        'public_scheduling_link',
+        'is_expired',
+    ]
+    raw_id_fields = ['appointment']
+    date_hierarchy = 'created_at'
+    ordering = ['-created_at']
+
+    fieldsets = (
+        ('Informações do Token', {
+            'fields': (
+                'id',
+                'appointment',
+                'token',
+                'public_scheduling_link',
+            )
+        }),
+        ('Status', {
+            'fields': (
+                'is_used',
+                'expires_at',
+                'is_expired',
+            )
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at',
+            )
+        }),
+    )
+
+    def get_queryset(self, request):
+        """
+        Otimiza queryset com select_related.
+        """
+        qs = super().get_queryset(request)
+        return qs.select_related('appointment', 'appointment__contact')
+
+    def token_short(self, obj):
+        """Exibe versão resumida do token"""
+        return format_html(
+            '<code style="background-color: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 11px;">{}</code>',
+            obj.token[:16] + '...' if len(obj.token) > 16 else obj.token
+        )
+    token_short.short_description = 'Token'
+
+    def appointment_info(self, obj):
+        """Exibe informações do agendamento"""
+        if obj.appointment and obj.appointment.contact:
+            contact = obj.appointment.contact
+            if obj.appointment.date and obj.appointment.time:
+                data_hora = f"{obj.appointment.date.strftime('%d/%m/%Y')} {obj.appointment.time.strftime('%H:%M')}"
+                return format_html(
+                    '<strong>{}</strong><br><small>{}</small><br><small style="color: gray;">{}</small>',
+                    contact.name or contact.phone_number,
+                    contact.phone_number,
+                    data_hora
+                )
+            return format_html(
+                '<strong>{}</strong><br><small>{}</small><br><small style="color: orange;">Sem data/hora definida</small>',
+                contact.name or contact.phone_number,
+                contact.phone_number
+            )
+        return format_html('<span style="color: gray;">-</span>')
+    appointment_info.short_description = 'Agendamento'
+
+    def is_expired(self, obj):
+        """Verifica se o token está expirado"""
+        from django.utils import timezone
+        if timezone.now() > obj.expires_at:
+            return format_html('<span style="color: red; font-weight: 600;">✗ Expirado</span>')
+        return format_html('<span style="color: green;">✓ Válido</span>')
+    is_expired.short_description = 'Status'
+
+    def public_link(self, obj):
+        """Exibe se o link está ativo ou não"""
+        from django.utils import timezone
+        if obj.is_used:
+            return format_html('<span style="color: gray;">Já utilizado</span>')
+        elif timezone.now() > obj.expires_at:
+            return format_html('<span style="color: red;">Expirado</span>')
+        else:
+            return format_html('<span style="color: green; font-weight: 600;">✓ Ativo</span>')
+    public_link.short_description = 'Link'
+
+    def public_scheduling_link(self, obj):
+        """Exibe a URL pública do token"""
+        from django.conf import settings
+        from django.utils import timezone
+
+        base_url = getattr(settings, 'BACKEND_BASE_URL', 'http://localhost:8000')
+        url = f"{base_url.rstrip('/')}/agendar/{obj.token}/"
+
+        if obj.is_used:
+            status = '<span style="color: gray;">⚠️ Link já utilizado</span>'
+        elif timezone.now() > obj.expires_at:
+            status = '<span style="color: red;">⚠️ Link expirado</span>'
+        else:
+            status = '<span style="color: green;">✓ Link ativo</span>'
+
+        return format_html(
+            '{}<br><a href="{}" target="_blank" style="color: #1a73e8;">🔗 {}</a>',
+            status, url, url
+        )
+    public_scheduling_link.short_description = 'Link Público'
 
 
 class WorkingDayInline(admin.TabularInline):

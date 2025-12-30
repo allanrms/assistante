@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from agents.langchain.agente import ask_agent
+from agents.langgraph.ask_secretary import ask_secretary
 from agents.models import Agent, Conversation, Message
 from core.models import Client, Contact
 from whatsapp_connector.models import ChatSession, EvolutionInstance
@@ -117,7 +118,8 @@ def send_message(request):
             )
 
             # Call agent with Message model instance
-            result = ask_agent(message, agent)
+            # result = ask_agent(message, agent)
+            result = ask_secretary(message, agent, "direct")
             response_msg = result.get("answer", "")
 
             # Update message with response

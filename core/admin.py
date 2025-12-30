@@ -378,10 +378,12 @@ class AppointmentAdmin(admin.ModelAdmin):
         'date',
         'time',
         'scheduled_for',
+        'status_display',
         'has_calendar_event',
         'created_at',
     ]
     list_filter = [
+        'status',
         'date',
         'created_at',
     ]
@@ -408,6 +410,7 @@ class AppointmentAdmin(admin.ModelAdmin):
                 'scheduled_for',
                 'date',
                 'time',
+                'status',
             )
         }),
         ('Integração Google Calendar', {
@@ -442,6 +445,27 @@ class AppointmentAdmin(admin.ModelAdmin):
         return obj.contact.phone_number
     contact_info.short_description = 'Contato'
     contact_info.admin_order_field = 'contact__name'
+
+    def status_display(self, obj):
+        """Exibe o status do agendamento com cores"""
+        status_colors = {
+            'draft': ('#6B7280', 'Rascunho'),
+            'pending': ('#F59E0B', 'Aguardando Confirmação'),
+            'confirmed': ('#10B981', 'Confirmado'),
+            'cancelled': ('#EF4444', 'Cancelado'),
+            'completed': ('#3B82F6', 'Realizado'),
+        }
+
+        color, label = status_colors.get(obj.status, ('#6B7280', obj.get_status_display()))
+
+        return format_html(
+            '<span style="display: inline-block; padding: 3px 10px; border-radius: 6px; '
+            'background-color: {}; color: white; font-size: 11px; font-weight: 500;">{}</span>',
+            color,
+            label
+        )
+    status_display.short_description = 'Status'
+    status_display.admin_order_field = 'status'
 
     def has_calendar_event(self, obj):
         """Indica se o agendamento tem evento no Google Calendar"""

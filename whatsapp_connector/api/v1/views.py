@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from agents.langchain.agente import ask_agent
+from agents.langgraph.ask_secretary import ask_secretary
 from agents.models import Message, Conversation
 from core.exceptions import WhatsAppConnectorException
 from whatsapp_connector.models import EvolutionInstance
@@ -220,7 +221,8 @@ class EvolutionWebhookView(APIView):
 
         # Processar mensagem com o agente
         try:
-            result = ask_agent(message, evolution_instance.agent)
+            # result = ask_agent(message, evolution_instance.agent)
+            result = ask_secretary(message, evolution_instance.agent,)
             response_msg = result.get("answer", "")
         except Exception as e:
             logger.error(f"Erro LangChain Agent - Usuário: {from_number} | Erro: {e}", exc_info=True)

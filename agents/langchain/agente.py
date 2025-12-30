@@ -40,8 +40,8 @@ def ask_agent(message: Message, agent_model: Agent, k: int = 4) -> dict:
     # Criar componentes
     llm = LLMFactory(agent_model).llm
 
-    # Carregar ferramentas base
-    tools = get_agent_tools()
+    # Carregar ferramentas base (passando agent_model para carregar regras de intervenção)
+    tools = get_agent_tools(agent=agent_model)
 
     tools_secretary = get_secretary_tools()
     tools.extend(tools_secretary)

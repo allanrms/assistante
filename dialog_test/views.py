@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from agents.langchain.agente import ask_agent
-from agents.models import Agent, Conversation
+from agents.models import Agent, Conversation, Message
 from core.models import Client, Contact
 from whatsapp_connector.models import ChatSession, EvolutionInstance
 
@@ -72,10 +72,58 @@ def send_message(request):
         to_number = from_number
 
         try:
+            agent = Agent.objects.get(id=agent_id)
 
-            evolution_instance = EvolutionInstance.objects.last()
-            result = ask_agent(message_text, evolution_instance.agent)
+            # Get or create contact
+            contact, _ = Contact.get_or_create_from_whatsapp(
+                phone_number=from_number,
+                client=client
+            )
+
+            # Get or create conversation
+            conversation, _ = Conversation.get_or_create_active_session(
+                contact=contact,
+                from_number=from_number,
+                to_number=to_number,
+                evolution_instance=agent.evolutioninstance_set.first()
+            )
+
+            # Verificar se a conversa permite resposta AI
+            if not conversation.allows_ai_response():
+                print("\n" + "="*80)
+                print("🚫 RESPOSTA AI BLOQUEADA - Conversa em atendimento humano")
+                print("="*80)
+                print(f"📋 Conversa ID: {conversation.id}")
+                print(f"📱 Contato: {conversation.from_number}")
+                print(f"📝 Status: {conversation.status}")
+                print(f"💬 Mensagem recebida: {message_text[:50]}...")
+                print("="*80 + "\n")
+
+                return Response({
+                    'message': message_text,
+                    'response': 'Esta conversa foi transferida para atendimento humano. Um atendente responderá em breve.',
+                    'success': True,
+                    'status': 'human',
+                    'ai_blocked': True
+                }, status=status.HTTP_200_OK)
+
+            # Create message instance
+            message = Message.objects.create(
+                conversation=conversation,
+                owner=client,
+                content=message_text,
+                message_type='text',
+                processing_status='processing'
+            )
+
+            # Call agent with Message model instance
+            result = ask_agent(message, agent)
             response_msg = result.get("answer", "")
+
+            # Update message with response
+            message.response = response_msg
+            message.processing_status = 'completed'
+            message.save()
 
             return Response({
                 'message': message_text,
@@ -85,10 +133,11 @@ def send_message(request):
 
         except Exception as e:
             traceback.print_exc()
-            # Marcar mensagem como falha
-            # message.processing_status = 'failed'
-            # message.response = f'Erro: {str(e)}'
-            # message.save()
+            # Marcar mensagem como falha se foi criada
+            if 'message' in locals():
+                message.processing_status = 'failed'
+                message.response = f'Erro: {str(e)}'
+                message.save()
 
             return Response({
                 'error': str(e),

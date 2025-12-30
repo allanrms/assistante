@@ -62,51 +62,6 @@ def conversation_guard(state: SecretaryState):
 
 
 # ==============================================================================
-# NÓ 2: SAUDAÇÃO INICIAL
-# ==============================================================================
-
-def initial_greeting(state: SecretaryState):
-    """
-    Responde com saudação inicial ao usuário usando LLM.
-
-    Este nó é executado para toda mensagem recebida, fornecendo
-    uma resposta amigável e personalizada antes de processar a intenção.
-
-    Args:
-        state: Estado atual do grafo
-
-    Returns:
-        dict: Estado com mensagem de saudação enviada
-    """
-    conversation = state.conversation
-    message = state.message
-    agent = state.agent
-
-    # Verificar se é a primeira mensagem da conversa
-    total_messages = conversation.messages.count()
-    is_first_message = total_messages <= 1
-
-    # Usar LLM para gerar saudação personalizada
-    llm = LLMFactory(agent).llm
-    base_prompt = agent.build_prompt()
-
-    response = llm.invoke(base_prompt)
-    greeting = response.content.strip()
-
-    # Enviar saudação
-    runtime = SecretaryRuntime(
-        conversation=conversation,
-        channel=state.channel,
-        messages_buffer=state.messages_sent
-    )
-    runtime.send_message(greeting)
-
-    print(f"👋 Saudação enviada (primeira mensagem: {is_first_message})")
-
-    return state
-
-
-# ==============================================================================
 # NÓ 3: DETECÇÃO DE INTENÇÃO
 # ==============================================================================
 
@@ -296,9 +251,10 @@ Mensagem atual: {state.user_input}
 Extraia:
 1. Tipo de atendimento: "particular" ou "convênio"
 2. Nome completo do paciente
+3. Nome do convênio (SOMENTE se tipo for convênio)
 
 Responda APENAS em JSON:
-{{"tipo": "particular/convênio/null", "nome_completo": "nome/null"}}"""
+{{"tipo": "particular/convênio/null", "nome_completo": "nome/null", "nome_convenio": "nome_do_convenio/null"}}"""
 
     try:
         response = llm.invoke(extraction_prompt)
@@ -314,24 +270,54 @@ Responda APENAS em JSON:
 
         tipo = dados.get("tipo")
         nome_completo = dados.get("nome_completo")
+        nome_convenio = dados.get("nome_convenio")
+
+        # Verificar se é convênio Unimed
+        if tipo and tipo.lower() in ["convênio", "convenio"]:
+            # Verificar se menciona Unimed no histórico ou mensagem atual
+            texto_completo = (history_text + "\n" + state.user_input).lower()
+            if "unimed" in texto_completo:
+                print(f"⚠️ Convênio Unimed detectado - retornando mensagem específica")
+                mensagem_unimed = """Infelizmente o Dr. Daniel não atende pelo convênio da Unimed, mas ele poderia te atender em uma consulta particular e, caso precise fazer cirurgia, o Dr. Daniel consegue fazer pelo seu convênio, assim como, se precisar fazer algum exame, com o pedido do Dr. Daniel você consegue pedir autorização junto ao convênio.
+
+Gostaria de agendar uma consulta particular?"""
+                return {
+                    "step": "INCOMPLETO",
+                    "response": mensagem_unimed
+                }
 
         # Validar se dados estão completos
-        dados_completos = (
-            tipo and tipo != "null" and tipo.lower() in ["particular", "convênio", "convenio"] and
-            nome_completo and nome_completo != "null" and len(nome_completo) > 3
-        )
+        # Se for convênio, precisa do nome do convênio também
+        if tipo and tipo.lower() in ["convênio", "convenio"]:
+            dados_completos = (
+                tipo and tipo != "null" and
+                nome_completo and nome_completo != "null" and len(nome_completo) > 3 and
+                nome_convenio and nome_convenio != "null" and len(nome_convenio) > 2
+            )
+        else:
+            # Se for particular, não precisa de nome de convênio
+            dados_completos = (
+                tipo and tipo != "null" and tipo.lower() == "particular" and
+                nome_completo and nome_completo != "null" and len(nome_completo) > 3
+            )
 
         if dados_completos:
-            print(f"✅ Dados completos - Tipo: {tipo}, Nome: {nome_completo}")
+            if tipo and tipo.lower() in ["convênio", "convenio"]:
+                print(f"✅ Dados completos - Tipo: {tipo}, Convênio: {nome_convenio}, Nome: {nome_completo}")
+            else:
+                print(f"✅ Dados completos - Tipo: {tipo}, Nome: {nome_completo}")
             return {
                 "step": "COMPLETO",
-                "response": json.dumps({"tipo": tipo, "nome_completo": nome_completo})  # Temporário
+                "response": json.dumps({"tipo": tipo, "nome_completo": nome_completo, "nome_convenio": nome_convenio})
             }
         else:
-            print(f"⚠️ Dados incompletos - Tipo: {tipo}, Nome: {nome_completo}")
+            if tipo and tipo.lower() in ["convênio", "convenio"]:
+                print(f"⚠️ Dados incompletos - Tipo: {tipo}, Convênio: {nome_convenio}, Nome: {nome_completo}")
+            else:
+                print(f"⚠️ Dados incompletos - Tipo: {tipo}, Nome: {nome_completo}")
             return {
                 "step": "INCOMPLETO",
-                "response": json.dumps({"tipo": tipo, "nome_completo": nome_completo})  # Temporário
+                "response": json.dumps({"tipo": tipo, "nome_completo": nome_completo, "nome_convenio": nome_convenio})
             }
 
     except Exception as e:
@@ -361,16 +347,29 @@ def gerar_link(state: SecretaryState):
         dados = json.loads(state.response)
         tipo = dados.get("tipo", "")
         nome_completo = dados.get("nome_completo", "")
+        nome_convenio = dados.get("nome_convenio", "")
     except:
         tipo = ""
         nome_completo = ""
+        nome_convenio = ""
 
     # Gerar link
     link = gerar_link_agendamento(runtime)
 
     # Formatar resposta
     tipo_formatado = tipo.capitalize()
-    response_text = f"""✅ Perfeito! Dados confirmados:
+
+    # Se for convênio, incluir nome do convênio
+    if tipo and tipo.lower() in ["convênio", "convenio"] and nome_convenio:
+        response_text = f"""✅ Perfeito! Dados confirmados:
+
+👤 **Paciente:** {nome_completo}
+💳 **Tipo:** {tipo_formatado}
+🏥 **Convênio:** {nome_convenio}
+
+{link}"""
+    else:
+        response_text = f"""✅ Perfeito! Dados confirmados:
 
 👤 **Paciente:** {nome_completo}
 💳 **Tipo:** {tipo_formatado}
@@ -396,6 +395,11 @@ def solicitar_dados(state: SecretaryState):
     Returns:
         dict: Atualização com 'response' solicitando dados
     """
+    # Se a response já é uma mensagem completa (ex: mensagem Unimed), retornar diretamente
+    if state.response and not state.response.startswith("{"):
+        print(f"📋 Enviando mensagem pré-formatada")
+        return {"response": state.response}
+
     agent = state.agent
     llm = LLMFactory(agent).llm
     base_prompt = agent.build_prompt()
@@ -404,11 +408,15 @@ def solicitar_dados(state: SecretaryState):
     try:
         import json
         dados = json.loads(state.response)
-        tem_tipo = dados.get("tipo") and dados.get("tipo") != "null"
+        tipo = dados.get("tipo")
+        tem_tipo = tipo and tipo != "null"
         tem_nome = dados.get("nome_completo") and dados.get("nome_completo") != "null"
+        tem_convenio = dados.get("nome_convenio") and dados.get("nome_convenio") != "null"
     except:
+        tipo = None
         tem_tipo = False
         tem_nome = False
+        tem_convenio = False
 
     # Construir histórico
     history_messages = []
@@ -421,8 +429,31 @@ def solicitar_dados(state: SecretaryState):
 
     history_text = "\n".join(history_messages) if history_messages else ""
 
+    # Verificar se é convênio e precisa do nome do convênio
+    eh_convenio = tipo and tipo.lower() in ["convênio", "convenio"]
+
     # Prompt para solicitar dados de forma natural
-    request_prompt = f"""{base_prompt}
+    if eh_convenio:
+        request_prompt = f"""{base_prompt}
+
+---
+
+Histórico:
+{history_text}
+
+Mensagem atual: {state.user_input}
+
+---
+
+O usuário quer agendar uma consulta pelo convênio. Você precisa coletar:
+- Tipo de atendimento: {"✓ JÁ TEM (Convênio)" if tem_tipo else "✗ FALTANDO"}
+- Nome do convênio: {"✓ JÁ TEM" if tem_convenio else "✗ FALTANDO"}
+- Nome completo: {"✓ JÁ TEM" if tem_nome else "✗ FALTANDO"}
+
+Peça de forma NATURAL e AMIGÁVEL apenas os dados que estão faltando.
+Seja breve (máximo 2-3 linhas)."""
+    else:
+        request_prompt = f"""{base_prompt}
 
 ---
 

@@ -181,6 +181,219 @@ O agendamento foi removido do sistema."""
 
 
 @tool
+def reagendar_consulta(appointment_id: int, runtime: ToolRuntime) -> str:
+    """
+    Reagenda uma consulta existente do paciente.
+
+    Cancela a consulta atual e gera um novo link de agendamento para o paciente escolher
+    uma nova data e horário disponível.
+
+    FLUXO RECOMENDADO:
+    1. Use consultar_agendamentos para listar as consultas do paciente
+    2. Mostre as consultas e pergunte qual deseja reagendar
+    3. Use esta ferramenta com o ID da consulta escolhida
+    4. A ferramenta cancelará a consulta antiga e retornará um novo link
+
+    Args:
+        appointment_id: ID da consulta que deseja reagendar (obtido via consultar_agendamentos)
+
+    Returns:
+        str: Confirmação do cancelamento + link de agendamento novo
+    """
+    try:
+        conversation = runtime.context["conversation"]
+        if not conversation:
+            return "❌ Erro: Conversa não encontrada no contexto."
+
+        contact = conversation.contact
+        if not contact:
+            return "❌ Erro: Contato não encontrado."
+
+        print("\n" + "="*80)
+        print(f"🔧 [TOOL CALL] reagendar_consulta (contact_id={contact.id})")
+        print(f"   🆔 Appointment ID: {appointment_id}")
+        print("="*80)
+
+        from core.models import Appointment
+        from google_calendar.services import GoogleCalendarService
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+        from core.models import AppointmentToken
+        from django.conf import settings
+        import secrets
+
+        # 1. BUSCAR E VALIDAR O AGENDAMENTO
+        print(f"🔍 [TOOL] Buscando agendamento ID={appointment_id}")
+        try:
+            appointment = contact.appointments.get(id=appointment_id)
+            print(f"✅ [TOOL] Agendamento encontrado: #{appointment.id}")
+        except Appointment.DoesNotExist:
+            print(f"❌ [TOOL] Nenhum agendamento encontrado")
+            return f"❌ Não encontrei nenhuma consulta com ID {appointment_id} para este paciente."
+
+        # Verificar se a consulta já passou
+        from datetime import date
+        hoje = date.today()
+        agora = datetime.now().time()
+
+        if appointment.date and appointment.time:
+            if appointment.date < hoje or (appointment.date == hoje and appointment.time < agora):
+                print(f"⚠️ [TOOL] Tentativa de reagendar consulta passada")
+                return f"❌ Não é possível reagendar uma consulta que já passou. Esta consulta era para {appointment.date.strftime('%d/%m/%Y')} às {appointment.time.strftime('%H:%M')}."
+
+        # Guardar informações para a mensagem de confirmação
+        data_formatada = appointment.date.strftime('%d/%m/%Y') if appointment.date else "Data não definida"
+        hora_formatada = appointment.time.strftime('%H:%M') if appointment.time else "Horário não definido"
+
+        # 2. CANCELAR AGENDAMENTO ANTIGO
+        print(f"🗑️ [TOOL] Iniciando cancelamento da consulta antiga...")
+
+        # Deletar do Google Calendar se tiver event_id
+        calendar_deleted = False
+        if appointment.calendar_event_id:
+            print(f"📅 [TOOL] Deletando evento do Google Calendar: {appointment.calendar_event_id}")
+            try:
+                calendar_service = GoogleCalendarService()
+                success, message = calendar_service.delete_event(contact.id, appointment.calendar_event_id)
+
+                if success:
+                    print(f"✅ [TOOL] Evento deletado do Google Calendar")
+                    calendar_deleted = True
+                else:
+                    print(f"⚠️ [TOOL] Erro ao deletar do Calendar: {message}")
+            except Exception as cal_error:
+                print(f"⚠️ [TOOL] Erro ao acessar Google Calendar: {cal_error}")
+        else:
+            print(f"ℹ️ [TOOL] Agendamento não tem event_id do Google Calendar")
+
+        # Deletar o Appointment do banco
+        old_appointment_id = appointment.id
+        appointment.delete()
+        print(f"✅ [TOOL] Appointment #{old_appointment_id} deletado do banco de dados")
+
+        # 3. GERAR NOVO LINK DE AGENDAMENTO
+        print(f"🔗 [TOOL] Gerando novo link de agendamento...")
+
+        # Verificar se já existe um token válido e não usado para este contato
+        existing_token = AppointmentToken.objects.filter(
+            appointment__contact=contact,
+            appointment__status='draft',
+            is_used=False,
+            expires_at__gt=timezone.now()
+        ).select_related('appointment').first()
+
+        if existing_token:
+            print(f"♻️ [TOOL] Link válido existente encontrado (Token #{existing_token.id})")
+
+            # VALIDAÇÃO: Verifica se o token realmente existe e não foi usado
+            if existing_token.is_used:
+                print(f"⚠️ [TOOL] ATENÇÃO: Token #{existing_token.id} foi marcado como usado!")
+                existing_token = None
+            elif not existing_token.appointment:
+                print(f"⚠️ [TOOL] ATENÇÃO: Token #{existing_token.id} não tem appointment associado!")
+                existing_token = None
+
+        if existing_token:
+            # Reutiliza o token existente
+            appointment_token = existing_token
+            base_url = settings.BACKEND_BASE_URL.rstrip('/')
+            public_url = f"{base_url}/agendar/{appointment_token.token}/"
+            print(f"📤 [TOOL] Reutilizando link: {public_url}")
+        else:
+            # Limpar tokens antigos expirados ou usados
+            old_tokens = AppointmentToken.objects.filter(
+                appointment__contact=contact,
+                appointment__status='draft'
+            ).filter(
+                is_used=True
+            ) | AppointmentToken.objects.filter(
+                appointment__contact=contact,
+                appointment__status='draft',
+                expires_at__lte=timezone.now()
+            )
+
+            old_count = old_tokens.count()
+            if old_count > 0:
+                print(f"🗑️ [TOOL] Removendo {old_count} token(s) expirado(s) ou usado(s)")
+                old_appointment_ids = old_tokens.values_list('appointment_id', flat=True)
+                old_appointments = Appointment.objects.filter(id__in=old_appointment_ids)
+                deleted_count = old_appointments.delete()[0]
+                print(f"✅ [TOOL] {deleted_count} appointment(s) draft antigo(s) deletado(s)")
+
+            # Cria novo appointment draft
+            new_appointment = Appointment.objects.create(
+                contact=contact,
+                status='draft'
+            )
+            print(f"✅ [TOOL] Novo Appointment #{new_appointment.id} criado com status=draft")
+
+            # Gera token único
+            token = secrets.token_urlsafe(32)
+            print(f"🔑 [TOOL] Token gerado: {token[:16]}...")
+
+            # Define expiração para 48 horas
+            expires_at = timezone.now() + timedelta(hours=48)
+
+            # Cria o token de agendamento
+            appointment_token = AppointmentToken.objects.create(
+                appointment=new_appointment,
+                token=token,
+                expires_at=expires_at
+            )
+            print(f"✅ [TOOL] AppointmentToken #{appointment_token.id} criado")
+
+            # Gera a URL pública
+            base_url = settings.BACKEND_BASE_URL.rstrip('/')
+            public_url = f"{base_url}/agendar/{appointment_token.token}/"
+            print(f"📤 [TOOL] Link NOVO gerado: {public_url}")
+
+        # VALIDAÇÃO FINAL
+        appointment_token.refresh_from_db()
+
+        if appointment_token.is_used:
+            print(f"❌ [TOOL] ERRO CRÍTICO: Token #{appointment_token.id} foi marcado como usado!")
+            return "❌ Consulta cancelada, mas erro ao gerar novo link. Por favor, solicite um link de agendamento."
+
+        if appointment_token.expires_at <= timezone.now():
+            print(f"❌ [TOOL] ERRO CRÍTICO: Token #{appointment_token.id} está expirado!")
+            return "❌ Consulta cancelada, mas erro ao gerar novo link. Por favor, solicite um link de agendamento."
+
+        if not appointment_token.appointment:
+            print(f"❌ [TOOL] ERRO CRÍTICO: Token #{appointment_token.id} não tem appointment associado!")
+            return "❌ Consulta cancelada, mas erro ao gerar novo link. Por favor, solicite um link de agendamento."
+
+        print(f"✅ [TOOL] Validação final OK - Link válido e disponível")
+
+        expires_formatted = appointment_token.expires_at.strftime('%d/%m/%Y às %H:%M')
+
+        # 4. RETORNAR CONFIRMAÇÃO COMPLETA
+        resultado = f"""✅ Reagendamento iniciado com sucesso!
+
+📅 Consulta cancelada:
+   Data: {data_formatada}
+   Horário: {hora_formatada}"""
+
+        if calendar_deleted:
+            resultado += "\n   (Removida do Google Calendar)"
+
+        resultado += f"""
+
+🔗 Novo link de agendamento:
+   {public_url}
+
+⏰ Link válido até: {expires_formatted}
+
+Por favor, clique no link para escolher a nova data e horário da sua consulta."""
+
+        return resultado
+
+    except Exception as e:
+        print(f"❌ [TOOL] Erro ao reagendar consulta: {e}")
+        traceback.print_exc()
+        return f"❌ Erro ao reagendar consulta: {str(e)}"
+
+
+@tool
 def gerar_link_agendamento(runtime: ToolRuntime) -> str:
     """
     Gera um link de auto-agendamento para o paciente escolher dia e horário da consulta.
@@ -201,15 +414,18 @@ def gerar_link_agendamento(runtime: ToolRuntime) -> str:
     - Precisa enviar opções de horários disponíveis
 
     O QUE A FERRAMENTA FAZ:
-    - Cria um novo appointment em status 'draft'
+    - Verifica se já existe um link válido e reutiliza se possível
+    - Se não, cria um novo appointment em status 'draft'
     - Gera token único e seguro
-    - Invalida links antigos não utilizados do mesmo paciente
+    - Invalida links antigos expirados ou usados
+    - VALIDA o link antes de retornar para garantir que existe e não foi usado
     - Retorna URL válida por 48 horas
 
     IMPORTANTE:
-    - Cada chamada gera um link NOVO e único
-    - Links antigos são automaticamente invalidados
+    - Reutiliza links válidos existentes para evitar poluir o banco
+    - Links antigos expirados ou usados são automaticamente invalidados
     - O link permite que o paciente escolha data/hora disponível
+    - Sempre valida que o link existe e está ativo antes de retornar
 
     Returns:
         str: Link de agendamento válido e data de validade no formato:
@@ -233,56 +449,104 @@ def gerar_link_agendamento(runtime: ToolRuntime) -> str:
         from django.conf import settings
         import secrets
 
-        # Invalida tokens antigos não utilizados deste contato
-        old_tokens = AppointmentToken.objects.filter(
+        # Primeiro, verifica se já existe um token válido e não usado para este contato
+        existing_token = AppointmentToken.objects.filter(
             appointment__contact=contact,
+            appointment__status='draft',
             is_used=False,
-            appointment__status='draft'
-        )
-        old_count = old_tokens.count()
-        if old_count > 0:
-            print(f"🗑️ [TOOL] Invalidando {old_count} token(s) antigo(s) não utilizado(s)")
-            # Deleta appointments draft antigos e seus tokens
-            old_appointments = Appointment.objects.filter(
-                contact=contact,
-                status='draft',
-                token__isnull=False
+            expires_at__gt=timezone.now()
+        ).select_related('appointment').first()
+
+        if existing_token:
+            print(f"♻️ [TOOL] Link válido existente encontrado (Token #{existing_token.id})")
+            print(f"📋 [TOOL] Appointment ID: {existing_token.appointment.id}")
+            print(f"⏰ [TOOL] Expira em: {existing_token.expires_at}")
+
+            # VALIDAÇÃO: Verifica se o token realmente existe e não foi usado
+            if existing_token.is_used:
+                print(f"⚠️ [TOOL] ATENÇÃO: Token #{existing_token.id} foi marcado como usado!")
+                existing_token = None
+            elif not existing_token.appointment:
+                print(f"⚠️ [TOOL] ATENÇÃO: Token #{existing_token.id} não tem appointment associado!")
+                existing_token = None
+
+        if existing_token:
+            # Reutiliza o token existente
+            appointment_token = existing_token
+            base_url = settings.BACKEND_BASE_URL.rstrip('/')
+            public_url = f"{base_url}/agendar/{appointment_token.token}/"
+            print(f"📤 [TOOL] Reutilizando link: {public_url}")
+        else:
+            # Invalida tokens antigos expirados ou usados deste contato
+            old_tokens = AppointmentToken.objects.filter(
+                appointment__contact=contact,
+                appointment__status='draft'
+            ).filter(
+                is_used=True
+            ) | AppointmentToken.objects.filter(
+                appointment__contact=contact,
+                appointment__status='draft',
+                expires_at__lte=timezone.now()
             )
-            deleted_count = old_appointments.delete()[0]
-            print(f"✅ [TOOL] {deleted_count} appointment(s) draft antigo(s) deletado(s)")
 
-        # Cria um appointment em rascunho (sem data/hora definida)
-        appointment = Appointment.objects.create(
-            contact=contact,
-            status='draft'
-        )
-        print(f"✅ [TOOL] Appointment #{appointment.id} criado com status=draft")
+            old_count = old_tokens.count()
+            if old_count > 0:
+                print(f"🗑️ [TOOL] Removendo {old_count} token(s) expirado(s) ou usado(s)")
+                # Deleta appointments draft antigos e seus tokens
+                old_appointment_ids = old_tokens.values_list('appointment_id', flat=True)
+                old_appointments = Appointment.objects.filter(id__in=old_appointment_ids)
+                deleted_count = old_appointments.delete()[0]
+                print(f"✅ [TOOL] {deleted_count} appointment(s) draft antigo(s) deletado(s)")
 
-        # Gera token único
-        token = secrets.token_urlsafe(32)
-        print(f"🔑 [TOOL] Token gerado: {token[:16]}...")
+            # Cria um appointment em rascunho (sem data/hora definida)
+            appointment = Appointment.objects.create(
+                contact=contact,
+                status='draft'
+            )
+            print(f"✅ [TOOL] Appointment #{appointment.id} criado com status=draft")
 
-        # Define expiração para 48 horas
-        expires_at = timezone.now() + timedelta(hours=48)
+            # Gera token único
+            token = secrets.token_urlsafe(32)
+            print(f"🔑 [TOOL] Token gerado: {token[:16]}...")
 
-        # Cria o token de agendamento
-        appointment_token = AppointmentToken.objects.create(
-            appointment=appointment,
-            token=token,
-            expires_at=expires_at
-        )
-        print(f"✅ [TOOL] AppointmentToken #{appointment_token.id} criado")
+            # Define expiração para 48 horas
+            expires_at = timezone.now() + timedelta(hours=48)
 
-        # Gera a URL pública
-        base_url = settings.BACKEND_BASE_URL.rstrip('/')
-        public_url = f"{base_url}/agendar/{appointment_token.token}/"
+            # Cria o token de agendamento
+            appointment_token = AppointmentToken.objects.create(
+                appointment=appointment,
+                token=token,
+                expires_at=expires_at
+            )
+            print(f"✅ [TOOL] AppointmentToken #{appointment_token.id} criado")
 
-        print(f"📤 [TOOL] Link NOVO gerado: {public_url}")
-        print(f"⏰ [TOOL] Expira em: {expires_at}")
-        print(f"📋 [TOOL] Appointment ID: {appointment.id}")
-        print(f"🔑 [TOOL] Token ID: {appointment_token.id}")
+            # Gera a URL pública
+            base_url = settings.BACKEND_BASE_URL.rstrip('/')
+            public_url = f"{base_url}/agendar/{appointment_token.token}/"
 
-        expires_formatted = expires_at.strftime('%d/%m/%Y às %H:%M')
+            print(f"📤 [TOOL] Link NOVO gerado: {public_url}")
+            print(f"⏰ [TOOL] Expira em: {expires_at}")
+            print(f"📋 [TOOL] Appointment ID: {appointment.id}")
+            print(f"🔑 [TOOL] Token ID: {appointment_token.id}")
+
+        # VALIDAÇÃO FINAL: Verifica se o token existe e não foi usado antes de retornar
+        appointment_token.refresh_from_db()
+
+        if appointment_token.is_used:
+            print(f"❌ [TOOL] ERRO CRÍTICO: Token #{appointment_token.id} foi marcado como usado!")
+            return "❌ Erro: O link de agendamento foi marcado como usado. Tente gerar um novo link."
+
+        if appointment_token.expires_at <= timezone.now():
+            print(f"❌ [TOOL] ERRO CRÍTICO: Token #{appointment_token.id} está expirado!")
+            return "❌ Erro: O link de agendamento expirou. Tente gerar um novo link."
+
+        if not appointment_token.appointment:
+            print(f"❌ [TOOL] ERRO CRÍTICO: Token #{appointment_token.id} não tem appointment associado!")
+            return "❌ Erro: O link de agendamento está inválido. Tente gerar um novo link."
+
+        print(f"✅ [TOOL] Validação final OK - Link válido e disponível")
+
+        expires_formatted = appointment_token.expires_at.strftime('%d/%m/%Y às %H:%M')
 
         # Retorna apenas as informações essenciais para o agent formatar a mensagem
         return f"""Link: {public_url}
@@ -304,5 +568,6 @@ def get_secretary_tools():
     return [
         consultar_agendamentos,
         cancelar_agendamento,
+        reagendar_consulta,
         gerar_link_agendamento,
     ]

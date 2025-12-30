@@ -661,10 +661,12 @@ def reagendar_confirmar(state: SecretaryState):
 
 def handle_conversation(state: SecretaryState):
     """
-    Gera resposta conversacional livre usando LLM.
+    Gera resposta conversacional livre usando LLM com ferramentas.
 
     Este nó é executado quando a intenção é "OUTRO" ou quando o usuário
     está apenas conversando sem uma intenção específica de ação.
+
+    O LLM tem acesso a ferramentas como request_human_intervention.
 
     Args:
         state: Estado atual do grafo
@@ -672,9 +674,18 @@ def handle_conversation(state: SecretaryState):
     Returns:
         dict: Atualização com 'response' contendo a mensagem gerada
     """
+    from .conversation_tools import get_conversation_tools
+
     agent = state.agent
     llm = LLMFactory(agent).llm
     base_prompt = agent.build_prompt()
+    runtime = SecretaryRuntime(state.conversation, state.channel, state.messages_sent)
+
+    # Carregar ferramentas disponíveis
+    tools = get_conversation_tools(agent=agent)
+
+    # Fazer bind das tools ao LLM
+    llm_with_tools = llm.bind_tools(tools)
 
     # Construir histórico de conversa
     history_messages = []
@@ -705,7 +716,11 @@ def handle_conversation(state: SecretaryState):
 
 ---
 
-Responda à mensagem do usuário de forma natural e amigável."""
+Responda à mensagem do usuário de forma natural e amigável.
+
+IMPORTANTE: Se a mensagem corresponder aos critérios de transferência humana, você DEVE:
+1. Informar ao usuário que vai transferir
+2. CHAMAR a ferramenta request_human_intervention_tool"""
     else:
         # Primeira mensagem (sem histórico)
         prompt = f"""{base_prompt}
@@ -718,10 +733,45 @@ Responda à mensagem do usuário de forma natural e amigável."""
 
 ---
 
-Responda à mensagem do usuário de forma natural e amigável."""
+Responda à mensagem do usuário de forma natural e amigável.
+
+IMPORTANTE: Se a mensagem corresponder aos critérios de transferência humana, você DEVE:
+1. Informar ao usuário que vai transferir
+2. CHAMAR a ferramenta request_human_intervention_tool"""
 
     # Gerar resposta
-    response = llm.invoke(prompt)
+    response = llm_with_tools.invoke(prompt)
+
+    # Verificar se o LLM chamou alguma tool
+    if hasattr(response, 'tool_calls') and response.tool_calls:
+        print(f"🔧 LLM chamou {len(response.tool_calls)} ferramenta(s)")
+
+        for tool_call in response.tool_calls:
+            tool_name = tool_call.get('name', '')
+            tool_args = tool_call.get('args', {})
+
+            print(f"🔧 Executando tool: {tool_name}")
+            print(f"   Argumentos: {tool_args}")
+
+            if tool_name == 'request_human_intervention_tool':
+                # Injetar runtime nos argumentos
+                tool_args['runtime'] = runtime
+
+                # Executar a tool
+                from .conversation_tools import request_human_intervention_tool
+                tool_result = request_human_intervention_tool.invoke(tool_args)
+
+                print(f"✅ Tool executada: {tool_result}")
+
+                # Retornar indicando que foi transferido
+                response_text = response.content.strip() if response.content else "Vou transferir você para um atendente humano agora. Aguarde que alguém irá te responder em breve! 👤"
+
+                return {
+                    "response": response_text,
+                    "intent": "HUMANO"  # Marcar como transferido
+                }
+
+    # Se não chamou tool, retornar resposta normal
     response_text = response.content.strip()
 
     print(f"💬 Resposta conversacional gerada")

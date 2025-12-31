@@ -228,37 +228,29 @@ class EvolutionWebhookView(APIView):
             logger.error(f"Erro LangChain Agent - Usuário: {from_number} | Erro: {e}", exc_info=True)
             response_msg = "⚠️ Erro ao processar sua mensagem. Por favor, tente novamente."
 
-        # Enviar resposta ao WhatsApp
+        # IMPORTANTE: ask_secretary JÁ envia a mensagem via WhatsApp dentro do grafo LangGraph
+        # O grafo usa SecretaryRuntime.send_message() que envia diretamente via Evolution API
+        # Portanto, NÃO devemos enviar novamente aqui para evitar mensagens duplicadas
+
+        # Apenas registrar que foi processado com sucesso
         if response_msg:
-            send_result = self._send_response_to_whatsapp(evolution_api, message.conversation.from_number, response_msg)
-
-            if send_result:
-                message.response = response_msg
-                message.processing_status = 'completed'
-                message.save()
-
-                return Response({
-                    'status': 'success',
-                    'message': 'Message sent successfully',
-                    'result': send_result
-                }, status=status.HTTP_200_OK)
-            else:
-                message.processing_status = 'failed'
-                message.save()
-
-                return Response({
-                    'status': 'error',
-                    'message': 'Failed to send message'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
+            message.response = response_msg
             message.processing_status = 'completed'
             message.save()
 
             return Response({
                 'status': 'success',
-                'message': 'Message sent successfully',
-                'result': True
+                'message': 'Message sent successfully (by LangGraph)',
+                'response': response_msg
             }, status=status.HTTP_200_OK)
+        else:
+            message.processing_status = 'failed'
+            message.save()
+
+            return Response({
+                'status': 'error',
+                'message': 'Failed to send message'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _should_ignore_message_early(self, data):
         """

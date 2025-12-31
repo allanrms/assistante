@@ -300,7 +300,7 @@ def request_human_intervention(reason: str, runtime):
     """
     try:
         conversation = runtime.conversation
-        agent = conversation.agent
+        agent = conversation.evolution_instance.agent if conversation.evolution_instance else None
 
         # Buscar critérios de transferência humana do agente
         intervention_rules_text = "    ⚠️ Nenhum critério específico cadastrado."

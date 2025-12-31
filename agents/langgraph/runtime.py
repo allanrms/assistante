@@ -61,22 +61,29 @@ class SecretaryRuntime:
         # Canal WHATSAPP: enviar via Evolution API
         try:
             if self.evolution_instance:
-                from whatsapp_connector.utils import send_whatsapp_message
+                from whatsapp_connector.services import EvolutionAPIService
 
-                send_whatsapp_message(
-                    instance=self.evolution_instance,
+                evolution_service = EvolutionAPIService(self.evolution_instance)
+                response = evolution_service.send_text_message(
                     to_number=self.conversation.from_number,
                     message=text
                 )
 
-                print(f"✅ Mensagem enviada via WhatsApp para {self.conversation.from_number}")
-                return True
+                # Verificar se houve erro
+                if isinstance(response, dict) and 'error' in response:
+                    print(f"⚠️ Falha ao enviar mensagem via WhatsApp: {response.get('message', 'Erro desconhecido')}")
+                    return False
+                else:
+                    print(f"✅ Mensagem enviada via WhatsApp para {self.conversation.from_number}")
+                    return True
             else:
                 print(f"⚠️ Nenhuma instância Evolution configurada para a conversa {self.conversation.id}")
                 return False
 
         except Exception as e:
             print(f"❌ Erro ao enviar mensagem via WhatsApp: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def get_conversation_history(self, limit: int = 10):

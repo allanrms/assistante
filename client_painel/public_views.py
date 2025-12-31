@@ -237,6 +237,10 @@ class PublicAppointmentView(View):
         appointment_token.is_used = True
         appointment_token.save()
 
+        # Encerrar conversas ativas do contato após confirmação do agendamento
+        from agents.models import Conversation
+        Conversation.close_contact_conversations(appointment.contact)
+
         # Envia confirmação via WhatsApp
         try:
             client = appointment.contact.client
@@ -278,6 +282,8 @@ _Caso precise reagendar ou cancelar, entre em contato conosco._"""
                 logger.info(f"✅ Mensagem de confirmação enviada para {appointment.contact.phone_number}")
             else:
                 logger.warning(f"⚠️ Nenhuma instância Evolution ativa encontrada para o cliente {client.full_name}")
+
+
 
         except Exception as e:
             # Log do erro, mas não falha o agendamento

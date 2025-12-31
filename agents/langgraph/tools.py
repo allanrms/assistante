@@ -30,6 +30,7 @@ def gerar_link_agendamento(runtime):
         - NUNCA inventar links
         - Sempre gerar token único
         - Link expira em 7 dias
+        - Limpar agendamentos em rascunho antigos antes de gerar novo link
     """
     try:
         # Buscar contato da conversa
@@ -39,7 +40,17 @@ def gerar_link_agendamento(runtime):
         if not contact:
             return "❌ Desculpe, não consegui identificar seu contato. Por favor, tente novamente."
 
-        # Criar agendamento em rascunho
+        # Deletar agendamentos em rascunho antigos do contato
+        # Os tokens associados serão deletados automaticamente (CASCADE)
+        deleted_count = Appointment.objects.filter(
+            contact=contact,
+            status='draft'
+        ).delete()[0]
+
+        if deleted_count > 0:
+            print(f"🗑️ {deleted_count} agendamento(s) em rascunho deletado(s) do contato {contact.id}")
+
+        # Criar novo agendamento em rascunho
         appointment = Appointment.objects.create(
             contact=contact,
             status='draft'

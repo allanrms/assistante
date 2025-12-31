@@ -595,6 +595,29 @@ class Conversation(models.Model):
         print(f"✨ Nova sessão criada: {new_session.id} (instância: {evolution_instance})")
         return new_session, True
 
+    @staticmethod
+    def close_contact_conversations(contact):
+        """
+        Encerra todas as conversas ativas (ai ou human) de um contato.
+
+        Args:
+            contact: Objeto Contact cujas conversas serão encerradas
+
+        Returns:
+            int: Número de conversas encerradas
+        """
+        closed_count = Conversation.objects.filter(
+            contact=contact,
+            status__in=['ai', 'human']
+        ).update(status='closed')
+
+        if closed_count > 0:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"🔒 {closed_count} conversa(s) do contato {contact.id} encerrada(s)")
+
+        return closed_count
+
     def allows_ai_response(self):
         """
         Verifica se a sessão permite resposta automática do AI
